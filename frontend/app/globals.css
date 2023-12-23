@@ -1,0 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+input:-webkit-autofill {
+  -webkit-text-fill-color: #f59e0b !important; /* amber-500 */
+}

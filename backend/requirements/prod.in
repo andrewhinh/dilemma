@@ -1,0 +1,11 @@
+fastapi
+gunicorn
+passlib[bcrypt]
+python-jose[cryptography]
+python-multipart
+uvicorn[standard]
+langchain
+openai
+sqlmodel
+dspy-ai
+pydantic-settings
