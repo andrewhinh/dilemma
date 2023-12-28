@@ -742,10 +742,10 @@ function Profile() {
           </Button>
         </aside>
         <div className="relative flex-1">
-          <div className="p-2 md:p-0 flex justify-center">
+          <div className="flex justify-center">
             <Button
               onClick={(e) => handleUpdateProfile(e, null, !isSideBarOpen)}
-              className="md:top-1/2 md:left-5 block absolute z-10 bg-cyan-500"
+              className="top-2 md:top-1/2 md:left-5 block absolute z-10 bg-cyan-500"
             >
               {isSideBarOpen ? "Close" : "Open"}
             </Button>
