@@ -2,6 +2,76 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Autofill text color */
 input:-webkit-autofill {
-  -webkit-text-fill-color: #f59e0b !important; /* amber-500 */
+  -webkit-text-fill-color: #71717a; /* zinc-500 */
+}
+
+/* Typewriter Effect Keyframes */
+:root {
+  --typing-duration-title: 1s;
+  --typing-steps-title: 13; /* Characters in title */
+  --blink-duration: 0.7s;
+  --show-element-delay: 2.5s; /* typing-duration-title + 1.5s */
+  --typing-duration-subtitle: 1.5s;
+  --typing-steps-subtitle: 31; /* Characters in subtitle */
+  --stop-cursor-delay-subtitle: 3.9s; /* typing-duration-subtitle + show-element-delay - 0.1s */
+}
+
+@keyframes typing {
+  from {
+    max-width: 0;
+  }
+  to {
+    max-width: 100%;
+  }
+}
+
+@keyframes blink-cursor {
+  50% {
+    border-color: transparent;
+  }
+}
+
+@keyframes stop-cursor {
+  to {
+    border-color: transparent;
+  }
+}
+
+@keyframes show-element {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Typewriter Effect Styles */
+.typewriter-effect-title,
+.typewriter-effect-subtitle {
+  overflow: hidden;
+  border-right: 0.2rem solid;
+  white-space: nowrap;
+}
+
+.typewriter-effect-title {
+  border-color: #00bcd4; /* cyan-500 */
+  animation: typing var(--typing-duration-title)
+      steps(var(--typing-steps-title), end) forwards,
+    blink-cursor var(--blink-duration) ease-in-out var(--typing-duration-title)
+      infinite,
+    stop-cursor 0.01s var(--show-element-delay) forwards;
+}
+
+.typewriter-effect-subtitle {
+  opacity: 0;
+  color: #ffbf00; /* amber-500 */
+  border-color: #ffbf00;
+  animation: show-element 0.01s var(--show-element-delay) forwards,
+    typing var(--typing-duration-subtitle)
+      steps(var(--typing-steps-subtitle), end) var(--show-element-delay)
+      forwards,
+    stop-cursor 0.01s var(--stop-cursor-delay-subtitle) forwards;
 }

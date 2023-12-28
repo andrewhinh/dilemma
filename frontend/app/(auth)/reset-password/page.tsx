@@ -1,19 +1,21 @@
 "use client";
 
-import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+
 import { useConst } from "../../providers";
-import { useSendRequest, useRefreshToken } from "../../(util)/lib/HelperFns";
-import Nav from "../../(util)/nav/Nav";
-import Main from "../../(util)/ui/Main";
+import { useSendRequest } from "../../lib/HelperFns";
+
 import validator from "validator";
+
+import Form from "../../ui/Form";
+import Input from "../../ui/Input";
+import Button from "../../ui/Button";
 
 function ResetPassword() {
   const router = useRouter();
-  const { token, uid, apiUrl } = useConst();
+  const { apiUrl } = useConst();
   const sendRequest = useSendRequest();
-  const refreshToken = useRefreshToken();
   const forgotPasswordUrl = apiUrl + "/forgot-password";
   const checkCodeUrl = apiUrl + "/check-code";
   const resetPasswordUrl = apiUrl + "/reset-password";
@@ -26,17 +28,6 @@ function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    setLoading(true);
-    if (!token) refreshToken();
-    if (token) {
-      setLoading(false);
-      router.push("/profile/" + uid);
-    }
-    setLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
 
   const handleSendEmail = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -119,90 +110,59 @@ function ResetPassword() {
 
   return (
     <>
-      <Nav>
-        <div className="flex flex-1 justify-end gap-4">
-          <Link href="/login" className="hover:text-blue-500">
-            Login
-          </Link>
-          <Link href="/signup" className="hover:text-blue-500">
-            Sign Up
-          </Link>
-        </div>
-      </Nav>
-      <Main header={"Reset Password"}>
-        {!verifiedEmail ? (
-          <form
-            onSubmit={handleSendEmail}
-            className="flex flex-col text-center items-center justify-center gap-4"
-          >
-            <label className="text-xl">Enter your email:</label>
-            <input
-              type="email"
-              name="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mb-8 text-center text-amber-500"
-            />
-            <button
-              type="submit"
-              className="mb-4 py-2 px-4 bg-blue-500 hover:bg-blue-700 text-white font-bold rounded"
-            >
-              Send Email
-            </button>
-          </form>
-        ) : (
-          <form
-            onSubmit={verifiedCode ? handlePwdSubmit : handleCodeSubmit}
-            className="flex flex-col text-center items-center justify-center gap-4"
-          >
-            {!verifiedCode ? (
-              <>
-                <label className="text-xl">Enter your code:</label>
-                <input
-                  type="text"
-                  name="code"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  className="mb-8 text-center text-amber-500"
-                />
-              </>
-            ) : (
-              <>
-                <label className="text-xl">New password:</label>
-                <input
-                  type="password"
-                  name="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="mb-8 text-center text-amber-500"
-                />
-                <label className="text-xl">Confirm new password:</label>
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="mb-8 text-center text-amber-500"
-                />
-              </>
-            )}
-            <button
-              type="submit"
-              className="mb-4 py-2 px-4 bg-blue-500 hover:bg-blue-700 text-white font-bold rounded"
-            >
-              {verifiedCode ? "Reset Password" : "Verify Code"}
-            </button>
-          </form>
-        )}
-        {errorMsg && <p className="text-xl text-rose-500">{errorMsg}</p>}
-        {loading && <p className="text-xl">Loading...</p>}
-        <Link
-          href="/signup"
-          className="mt-4 text-xl hover:text-blue-500 underline"
-        >
-          Create Account
-        </Link>
-      </Main>
+      {!verifiedEmail ? (
+        <Form onSubmit={handleSendEmail}>
+          <Input
+            type="email"
+            name="email"
+            value={email}
+            placeholder="Email"
+            autoFocus
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <Button type="submit" className="bg-cyan-500">
+            Send Email
+          </Button>
+        </Form>
+      ) : (
+        <Form onSubmit={verifiedCode ? handlePwdSubmit : handleCodeSubmit}>
+          {!verifiedCode ? (
+            <>
+              <Input
+                type="text"
+                name="code"
+                value={code}
+                placeholder="Code"
+                autoFocus
+                onChange={(e) => setCode(e.target.value)}
+              />
+            </>
+          ) : (
+            <>
+              <Input
+                type="password"
+                name="password"
+                value={password}
+                placeholder="New Password"
+                autoFocus
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <Input
+                type="password"
+                name="confirmPassword"
+                value={confirmPassword}
+                placeholder="Confirm New Password"
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </>
+          )}
+          <Button type="submit" className="bg-cyan-500">
+            {verifiedCode ? "Reset Password" : "Verify Code"}
+          </Button>
+          {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
+          {loading && <p className="text-zinc-500">Loading...</p>}
+        </Form>
+      )}
     </>
   );
 }

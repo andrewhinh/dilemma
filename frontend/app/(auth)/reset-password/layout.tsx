@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
-import ResetPassword from "./page";
 
 export const metadata: Metadata = {
   title: "Reset Password",
 };
 
-export default ResetPassword;
+export default function ResetLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <>{children}</>;
+}

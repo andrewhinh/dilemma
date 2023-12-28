@@ -1,7 +1,7 @@
 {
   "name": "GPU Development Environment",
 
-  "image": "project/development:latest",
+  "image": "dilemma/development:latest",
 
   "extensions": ["ms-python.python"],
 

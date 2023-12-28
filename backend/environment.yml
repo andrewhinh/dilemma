@@ -1,4 +1,4 @@
-name: project
+name: dilemma
 channels:
   - defaults
   - conda-forge

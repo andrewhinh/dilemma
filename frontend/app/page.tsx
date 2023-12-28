@@ -1,6 +1,7 @@
 import React, { Suspense } from "react";
+import { LoggedOutNav, LoggedInNav } from "./ui/LoggedInNav";
 import HomePage from "./home/HomePage";
-import { LoggedOutNav, LoggedInNav } from "./(util)/nav/LoggedInNav";
+import Support from "./home/Support";
 
 function App() {
   return (
@@ -9,6 +10,7 @@ function App() {
         <LoggedInNav />
       </Suspense>
       <HomePage />
+      <Support />
     </>
   );
 }

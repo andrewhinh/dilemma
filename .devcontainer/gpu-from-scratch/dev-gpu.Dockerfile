@@ -23,7 +23,7 @@ WORKDIR /root
 #   removing environment-setting in /root/.bashrc
 RUN sed -i "s/mesg n || true/tty -s \&\& mesg n/" $HOME/.profile
 RUN sed -i "s/conda activate base//" $HOME/.bashrc
-SHELL ["conda", "run", "--no-capture-output", "-n", "project", "/bin/bash", "-c"]
+SHELL ["conda", "run", "--no-capture-output", "-n", "dilemma", "/bin/bash", "-c"]
 
 ## FRONTEND
 
@@ -45,4 +45,4 @@ RUN make pip-tools && rm -rf ./backend/Makefile ./backend/requirements ./backend
 ENV PYTHONPATH=./backend:$PYTHONPATH
 
 # run all commands inside the conda environment
-ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "project", "/bin/bash"]
+ENTRYPOINT ["conda", "run", "--no-capture-output", "-n", "dilemma", "/bin/bash"]

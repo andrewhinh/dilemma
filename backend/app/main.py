@@ -9,6 +9,9 @@ from app.database import create_db_and_tables
 from app.internal import admin
 from app.routers import items, users
 
+# Create database and tables
+create_db_and_tables()
+
 # Settings
 SETTINGS = get_settings()
 
@@ -21,7 +24,7 @@ app.include_router(admin.router)
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[SETTINGS.frontend_url],
+    allow_origins=[SETTINGS.frontend_url, SETTINGS.www_frontend_url],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -43,7 +46,6 @@ async def read_root() -> dict[str, str]:
 
 def main():
     """Run API."""
-    create_db_and_tables()
     uvicorn.run(
         "app.main:app",
         reload=True,

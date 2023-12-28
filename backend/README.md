@@ -13,7 +13,7 @@ Either create the conda environment locally:
 
    ```bash
    make env
-   conda activate project
+   conda activate dilemma
    ```
 
 Or create the conda environment in a Docker container:
@@ -32,10 +32,9 @@ Set up the conda environment:
 Create a `.env` file:
 
    ```bash
-   # Check out the [development section](#development) to create a local database.
    # Get an OpenAI API key: https://platform.openai.com/signup
    # Get your SMTP_SSL_PASSWORD: https://myaccount.google.com/apppasswords
-   DB_URL=postgresql://postgres:postgres@localhost:5432/postgres
+   DB_URL=sqlite:///data.db
    OPENAI_API_KEY=<your key here>
    JWT_SECRET=$(openssl rand -hex 32)
    SMTP_SSL_HOST=smtp.gmail.com

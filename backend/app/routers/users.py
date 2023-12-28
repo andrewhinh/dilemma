@@ -74,7 +74,7 @@ async def signup(*, session: Session = Depends(get_session), response: Response,
     if get_user(db_user.email, session):
         raise HTTPException(
             status_code=400,
-            detail="User already exists",
+            detail="Email is invalid",
         )
 
     user = User(email=db_user.email, hashed_password=get_password_hash(db_user.password))
@@ -87,7 +87,6 @@ async def signup(*, session: Session = Depends(get_session), response: Response,
         raise HTTPException(
             status_code=401,
             detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     access_token = create_access_token(data={"email": user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
@@ -145,13 +144,12 @@ async def login(
 
     verified_user = get_user(db_user.email, session)
     if not verified_user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
 
     if not authenticate_user(verified_user.email, db_user.password, verified_user.hashed_password, session):
         raise HTTPException(
             status_code=401,
             detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
         )
 
     access_token = create_access_token(data={"email": verified_user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
@@ -260,24 +258,22 @@ async def forgot_password(
         raise HTTPException(status_code=400, detail="Email is empty")
 
     user = get_user(db_user.email, session)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+    if user:
+        s = smtplib.SMTP(smtp_ssl_host, smtp_ssl_port)
+        s.ehlo()
+        s.starttls()
+        s.ehlo()
+        s.login(smtp_ssl_login, smtp_ssl_password)
 
-    s = smtplib.SMTP(smtp_ssl_host, smtp_ssl_port)
-    s.ehlo()
-    s.starttls()
-    s.ehlo()
-    s.login(smtp_ssl_login, smtp_ssl_password)
+        recovery_code = uuid.uuid4().hex
+        user.recovery_code = recovery_code
+        session.add(user)
+        session.commit()
+        session.refresh(user)
 
-    recovery_code = uuid.uuid4().hex
-    user.recovery_code = recovery_code
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-
-    message = f"Subject: Password recovery\n\nYou've requested a password reset.\n\nYour code is {recovery_code}.\n\nReturn to the app and enter the code to continue."
-    s.sendmail(smtp_ssl_login, user.email, message)
-    s.quit()
+        message = f"Subject: Password recovery\n\nYou've requested a password reset.\n\nYour code is {recovery_code}.\n\nReturn to the app and enter the code to continue."
+        s.sendmail(smtp_ssl_login, user.email, message)
+        s.quit()
 
     return {"message": "Password recovery email sent"}
 
@@ -315,7 +311,7 @@ async def check_code(
 
     verified_user = get_user(db_user.email, session)
     if not verified_user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=400, detail="Email is invalid")
     if not verified_user.recovery_code:
         raise HTTPException(status_code=404, detail="Previous code not found, request new code")
     if verified_user.recovery_code != db_user.recovery_code:
@@ -366,10 +362,7 @@ async def reset_password(
 
     verified_user = get_user(db_user.email, session)
     if not verified_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    if authenticate_user(verified_user.email, db_user.password, verified_user.hashed_password, session):
-        raise HTTPException(status_code=400, detail="New password cannot be the same as old password")
+        raise HTTPException(status_code=400, detail="Email is invalid")
 
     verified_user.hashed_password = get_password_hash(db_user.password)
     session.add(verified_user)
@@ -449,7 +442,7 @@ async def update_user(
             if get_user(user_data["email"], session):
                 raise HTTPException(
                     status_code=400,
-                    detail="User already exists",
+                    detail="Email is invalid",
                 )
             email_changed = True
 

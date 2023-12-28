@@ -1,18 +1,17 @@
-import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css";
+import type { Metadata } from "next";
 import ConstProvider from "./providers";
-import Footer from "./(util)/ui/Footer";
+import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | Project",
-    default: "Project",
+    template: "%s | Dilemma",
+    default: "Dilemma",
   },
-  description: "Full-Stack Project Template",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "")
+  description: "Gamified Learning",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || ""),
 };
 
 export default function RootLayout({
@@ -23,10 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} antialiased`}>
-        <ConstProvider>
-          {children}
-          <Footer />
-        </ConstProvider>
+        <ConstProvider>{children}</ConstProvider>
       </body>
     </html>
   );

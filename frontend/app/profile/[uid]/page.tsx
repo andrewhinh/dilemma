@@ -2,16 +2,22 @@
 "use client";
 
 import { useRef, useReducer, useEffect, Suspense } from "react";
+import { usePathname, notFound } from "next/navigation";
+
 import { useConst } from "../../providers";
-import { LoggedInNav, LoggedOutNav } from "../../(util)/nav/LoggedInNav";
-import Main from "../../(util)/ui/Main";
-import validator from "validator";
 import {
   useLogOut,
   useRefreshToken,
   useSendRequest,
-} from "../../(util)/lib/HelperFns";
-import { usePathname, notFound } from "next/navigation";
+} from "../../lib/HelperFns";
+
+import validator from "validator";
+
+import { LoggedInNav, LoggedOutNav } from "../../ui/LoggedInNav";
+import Main from "../../ui/Main";
+import Form from "../../ui/Form";
+import Input from "../../ui/Input";
+import Button from "../../ui/Button";
 import profileLoading from "@/public/profile-loading.svg";
 
 interface User {
@@ -33,6 +39,8 @@ interface State {
   password: string;
   confirmPassword: string;
   deleteAccountConfirm: string;
+  leaveTeamConfirm: string;
+  deleteTeamConfirm: string;
   create_team_name: string;
   create_team_description: string;
   join_team_name: string;
@@ -70,6 +78,8 @@ const initialState = {
   password: "",
   confirmPassword: "",
   deleteAccountConfirm: "",
+  leaveTeamConfirm: "",
+  deleteTeamConfirm: "",
   create_team_name: "",
   create_team_description: "",
   join_team_name: "",
@@ -174,6 +184,8 @@ function Profile() {
     pwdSuccessMsg,
     pwdLoading,
     deleteAccountConfirm,
+    leaveTeamConfirm,
+    deleteTeamConfirm,
     deleteAccountErrorMsg,
     deleteAccountLoading,
     create_team_name,
@@ -199,6 +211,8 @@ function Profile() {
   } = state;
 
   const deleteAccountPhrase = "delete my account";
+  const leaveTeamPhrase = "leave";
+  const deleteTeamPhrase = "delete";
   const getUserUrl = apiUrl + "/user/";
   const updateUserUrl = apiUrl + "/user/update";
   const deleteUserUrl = apiUrl + "/user/delete";
@@ -211,10 +225,6 @@ function Profile() {
 
   // Helper functions
   const getTeam = () => {
-    dispatch({ type: "SET_UPDATE_TEAM_ERROR_MSG", payload: null });
-    dispatch({ type: "SET_UPDATE_TEAM_LOADING", payload: true });
-    dispatch({ type: "SET_UPDATE_TEAM_SUCCESS_MSG", payload: null });
-
     sendRequest(getTeamUrl, "GET")
       .then((data) => {
         dispatch({
@@ -269,6 +279,11 @@ function Profile() {
           type: "SET_FIELD",
           field: "fullname",
           payload: data.fullname,
+        });
+        dispatch({
+          type: "SET_FIELD",
+          field: "team_role",
+          payload: "",
         });
         if (data.team !== null) {
           dispatch({
@@ -598,8 +613,27 @@ function Profile() {
     dispatch({ type: "SET_LEAVE_TEAM_ERROR_MSG", payload: null });
     dispatch({ type: "SET_LEAVE_TEAM_LOADING", payload: true });
 
+    if (leaveTeamConfirm === "") {
+      dispatch({
+        type: "SET_LEAVE_TEAM_ERROR_MSG",
+        payload: "You must enter the phrase to leave your team",
+      });
+      dispatch({ type: "SET_LEAVE_TEAM_LOADING", payload: false });
+      return;
+    }
+
+    if (leaveTeamConfirm !== leaveTeamPhrase) {
+      dispatch({
+        type: "SET_LEAVE_TEAM_ERROR_MSG",
+        payload: "Incorrect phrase to leave your team",
+      });
+      dispatch({ type: "SET_LEAVE_TEAM_LOADING", payload: false });
+      return;
+    }
+
     sendRequest(leaveTeamUrl, "POST")
       .then(() => {
+        getUser();
         dispatch({ type: "SET_FIELD", field: "users", payload: [] });
         dispatch({ type: "SET_FIELD", field: "update_team_name", payload: "" });
         dispatch({
@@ -626,6 +660,24 @@ function Profile() {
     dispatch({ type: "SET_DELETE_TEAM_ERROR_MSG", payload: null });
     dispatch({ type: "SET_DELETE_TEAM_LOADING", payload: true });
 
+    if (deleteTeamConfirm === "") {
+      dispatch({
+        type: "SET_DELETE_TEAM_ERROR_MSG",
+        payload: "You must enter the phrase to delete your team",
+      });
+      dispatch({ type: "SET_DELETE_TEAM_LOADING", payload: false });
+      return;
+    }
+
+    if (deleteTeamConfirm !== deleteTeamPhrase) {
+      dispatch({
+        type: "SET_DELETE_TEAM_ERROR_MSG",
+        payload: "Incorrect phrase to delete your team",
+      });
+      dispatch({ type: "SET_DELETE_TEAM_LOADING", payload: false });
+      return;
+    }
+
     if (team_role !== "admin") {
       dispatch({
         type: "SET_DELETE_TEAM_ERROR_MSG",
@@ -637,6 +689,7 @@ function Profile() {
 
     sendRequest(deleteTeamUrl, "DELETE")
       .then(() => {
+        getUser();
         dispatch({ type: "SET_FIELD", field: "users", payload: [] });
         dispatch({ type: "SET_FIELD", field: "update_team_name", payload: "" });
         dispatch({
@@ -661,44 +714,42 @@ function Profile() {
       <Suspense fallback={<LoggedOutNav />}>
         <LoggedInNav />
       </Suspense>
-      <div className="flex flex-col md:flex-row items-stretch text-center text-white">
+      <div className="flex flex-col md:flex-row items-stretch text-center">
         <aside
-          className={`flex flex-col items-center justify-top bg-gradient-to-b from-purple-500 via-pink-500 to-purple-500 p-4 ${
+          className={`p-2 gap-2 md:gap-4 md:p-4 flex flex-col items-center justify-top bg-slate-300 ${
             isSideBarOpen ? "min-w-min" : "hidden"
           }`}
         >
-          <button
+          <Button
             onClick={(e) => {
               handleUpdateProfile(e, "user", null);
             }}
-            className={`w-full my-2 py-2 px-4 text-white font-bold rounded ${
-              profileView === "user"
-                ? "bg-blue-700"
-                : "bg-blue-500 hover:bg-blue-700"
+            className={`w-full ${
+              profileView === "user" ? "bg-zinc-500" : "bg-cyan-500"
             }`}
           >
             Your Profile
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={(e) => {
               handleUpdateProfile(e, "team", null);
             }}
-            className={`w-full my-2 py-2 px-4 text-white font-bold rounded ${
-              profileView === "team"
-                ? "bg-blue-700"
-                : "bg-blue-500 hover:bg-blue-700"
+            className={`w-full ${
+              profileView === "team" ? "bg-zinc-500" : "bg-cyan-500"
             }`}
           >
             Your Team
-          </button>
+          </Button>
         </aside>
-        <div className="relative flex-1 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500">
-          <button
-            onClick={(e) => handleUpdateProfile(e, null, !isSideBarOpen)}
-            className="hidden md:block absolute top-1/2 left-5 z-10 bg-blue-500 hover:bg-blue-700 font-bold py-2 px-4 rounded"
-          >
-            {isSideBarOpen ? "Close" : "Open"}
-          </button>
+        <div className="relative flex-1">
+          <div className="p-2 md:p-0 flex justify-center">
+            <Button
+              onClick={(e) => handleUpdateProfile(e, null, !isSideBarOpen)}
+              className="md:top-1/2 md:left-5 block absolute z-10 bg-cyan-500"
+            >
+              {isSideBarOpen ? "Close" : "Open"}
+            </Button>
+          </div>
           {profileView === "" && (
             <Main className="relative z-0">
               <img
@@ -709,169 +760,153 @@ function Profile() {
             </Main>
           )}
           {profileView === "user" && (
-            <Main header="Your Profile" className="relative z-0 gap-8">
-              <form className="flex flex-col items-center justify-center gap-4">
-                <label htmlFor="email" className="text-xl">
-                  Email:
-                </label>
-                <input
-                  id="email"
-                  type="text"
-                  value={email}
-                  className="mb-4 text-center text-amber-500"
-                  onChange={(e) =>
-                    dispatch({
-                      type: "SET_FIELD",
-                      field: "email",
-                      payload: e.target.value,
-                    })
-                  }
-                />
-                <label htmlFor="username" className="text-xl">
-                  Username:
-                </label>
-                <input
-                  id="username"
-                  type="text"
-                  value={username}
-                  className="mb-4 text-center text-amber-500"
-                  onChange={(e) =>
-                    dispatch({
-                      type: "SET_FIELD",
-                      field: "username",
-                      payload: e.target.value,
-                    })
-                  }
-                />
-                <label htmlFor="fullname" className="text-xl">
-                  Full Name:
-                </label>
-                <input
-                  id="fullname"
-                  type="text"
-                  value={fullname}
-                  className="mb-4 text-center text-amber-500"
-                  onChange={(e) =>
-                    dispatch({
-                      type: "SET_FIELD",
-                      field: "fullname",
-                      payload: e.target.value,
-                    })
-                  }
-                />
-                <button
-                  onClick={(e) => handleUpdateProfile(e, null, null)}
-                  className="mb-4 py-2 px-4 bg-blue-500 hover:bg-blue-700 text-white font-bold rounded"
-                >
-                  Update Profile
-                </button>
+            <Main className="relative z-0 gap-16">
+              <Form onSubmit={(e) => handleUpdateProfile(e, null, null)}>
+                <div className="flex flex-col gap-4 w-48 md:w-60">
+                  <div className="flex flex-col gap-2">
+                    <Input
+                      id="email"
+                      type="text"
+                      value={email}
+                      placeholder="Email"
+                      onChange={(e) =>
+                        dispatch({
+                          type: "SET_FIELD",
+                          field: "email",
+                          payload: e.target.value,
+                        })
+                      }
+                    />
+                    <Input
+                      id="username"
+                      type="text"
+                      value={username}
+                      placeholder="Username"
+                      onChange={(e) =>
+                        dispatch({
+                          type: "SET_FIELD",
+                          field: "username",
+                          payload: e.target.value,
+                        })
+                      }
+                    />
+                    <Input
+                      id="fullname"
+                      type="text"
+                      value={fullname}
+                      placeholder="Full Name"
+                      onChange={(e) =>
+                        dispatch({
+                          type: "SET_FIELD",
+                          field: "fullname",
+                          payload: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <Button className="bg-cyan-500">Update Profile</Button>
+                </div>
                 {updateUserErrorMsg && (
                   <p className="text-rose-500">{updateUserErrorMsg}</p>
                 )}
-                {updateUserLoading && <p>Loading...</p>}
+                {updateUserLoading && (
+                  <p className="text-zinc-500">Loading...</p>
+                )}
                 {updateUserSuccessMsg && <p>{updateUserSuccessMsg}</p>}
-              </form>
-              <form className="flex flex-col items-center justify-center gap-4">
-                <label htmlFor="password" className="text-xl">
-                  New password:
-                </label>
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  className="mb-4 text-center text-amber-500"
-                  onChange={(e) =>
-                    dispatch({
-                      type: "SET_FIELD",
-                      field: "password",
-                      payload: e.target.value,
-                    })
-                  }
-                />
-                <label htmlFor="confirmPassword" className="text-xl">
-                  Confirm new password:
-                </label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  className="mb-4 text-center text-amber-500"
-                  onChange={(e) =>
-                    dispatch({
-                      type: "SET_FIELD",
-                      field: "confirmPassword",
-                      payload: e.target.value,
-                    })
-                  }
-                />
-                <button
-                  onClick={(e) => handleUpdatePassword(e)}
-                  className="mb-4 py-2 px-4 bg-blue-500 hover:bg-blue-700 text-white font-bold rounded"
-                >
-                  Update Password
-                </button>
+              </Form>
+              <Form onSubmit={(e) => handleUpdatePassword(e)}>
+                <div className="flex flex-col gap-4 w-48 md:w-60">
+                  <div className="flex flex-col gap-2">
+                    <Input
+                      id="password"
+                      type="password"
+                      value={password}
+                      placeholder="New Password"
+                      onChange={(e) =>
+                        dispatch({
+                          type: "SET_FIELD",
+                          field: "password",
+                          payload: e.target.value,
+                        })
+                      }
+                    />
+                    <Input
+                      id="confirmPassword"
+                      type="password"
+                      value={confirmPassword}
+                      placeholder="Confirm New Password"
+                      onChange={(e) =>
+                        dispatch({
+                          type: "SET_FIELD",
+                          field: "confirmPassword",
+                          payload: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <Button className="bg-cyan-500">Update Password</Button>
+                </div>
                 {pwdErrorMsg && <p className="text-rose-500">{pwdErrorMsg}</p>}
-                {pwdLoading && <p>Loading...</p>}
+                {pwdLoading && <p className="text-zinc-500">Loading...</p>}
                 {pwdSuccessMsg && <p>{pwdSuccessMsg}</p>}
-              </form>
-              <form className="flex flex-col items-center justify-center gap-4">
-                <label htmlFor="deleteAccountConfirm" className="text-xl">
-                  Type
-                  <span className="font-bold"> {deleteAccountPhrase} </span>
-                  to delete your account:
-                </label>
-                <input
-                  id="deleteAccountConfirm"
-                  type="text"
-                  value={deleteAccountConfirm}
-                  className="mb-4 text-center text-amber-500"
-                  onChange={(e) =>
-                    dispatch({
-                      type: "SET_FIELD",
-                      field: "deleteAccountConfirm",
-                      payload: e.target.value,
-                    })
-                  }
-                />
-                <button
-                  onClick={(e) => handleDeleteAccount(e)}
-                  className="mb-4 py-2 px-4 bg-red-500 hover:bg-red-700 text-white font-bold rounded"
-                >
-                  Delete Account
-                </button>
+              </Form>
+              <Form onSubmit={(e) => handleDeleteAccount(e)}>
+                <div className="flex flex-col gap-4 w-48 md:w-60">
+                  <div className="flex flex-col gap-2">
+                    <label
+                      htmlFor="deleteAccountConfirm"
+                      className="text-zinc-500 text-lg"
+                    >
+                      Type
+                      <span className="font-semibold text-rose-500">
+                        {" "}
+                        {deleteAccountPhrase}{" "}
+                      </span>
+                      to delete your account:
+                    </label>
+                    <Input
+                      id="deleteAccountConfirm"
+                      type="text"
+                      value={deleteAccountConfirm}
+                      placeholder={deleteAccountPhrase}
+                      onChange={(e) =>
+                        dispatch({
+                          type: "SET_FIELD",
+                          field: "deleteAccountConfirm",
+                          payload: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <Button className="bg-rose-500">Delete Account</Button>
+                </div>
                 {deleteAccountErrorMsg && (
                   <p className="text-rose-500">{deleteAccountErrorMsg}</p>
                 )}
-                {deleteAccountLoading && <p>Loading...</p>}
-              </form>
+                {deleteAccountLoading && (
+                  <p className="text-zinc-500">Loading...</p>
+                )}
+              </Form>
             </Main>
           )}
           {profileView === "team" && (
-            <Main header="Your Team" className="relative z-0 gap-8">
-              {update_team_name ? (
+            <Main className="relative z-0 gap-16">
+              {team_role !== "" ? (
                 <>
                   <div className="flex justify-center">
-                    <div className="w-full md:max-w-2xl">
+                    <div className="w-full">
                       <table className="table-auto m-auto">
                         <thead>
-                          <tr className="bg-gradient-to-r from-blue-400 to-pink-500">
-                            <th className="px-4 py-4 text-left text-xl">
-                              Users
-                            </th>
-                            <th className="px-4 py-4 text-left text-xl">
-                              Role
-                            </th>
+                          <tr className="bg-slate-300 text-zinc-500 font-semibold">
+                            <th className="px-4 py-4 text-left">Users</th>
+                            <th className="px-4 py-4 text-left">Role</th>
                           </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="bg-slate-100 shadow-2xl text-zinc-500">
                           {users.map((user: User) => (
                             <tr
                               key={user.uid}
-                              className={`${
-                                user.team_role === "admin"
-                                  ? "bg-gradient-to-r from-pink-500 to-blue-400"
-                                  : "bg-gradient-to-r from-blue-400 to-pink-500"
-                              }`}
+                              className="border-t border-zinc-500"
                             >
                               <td className="px-4 py-4 text-left">
                                 {user.email}
@@ -886,182 +921,212 @@ function Profile() {
                     </div>
                   </div>
                   {team_role === "admin" && (
-                    <form className="flex flex-col items-center justify-center gap-4">
-                      <label htmlFor="update_team_name" className="text-xl">
-                        Team name:
-                      </label>
-                      <input
-                        id="update_team_name"
-                        type="text"
-                        value={update_team_name}
-                        className="mb-4 text-center text-amber-500"
-                        onChange={(e) =>
-                          dispatch({
-                            type: "SET_FIELD",
-                            field: "update_team_name",
-                            payload: e.target.value,
-                          })
-                        }
-                      />
-                      <label
-                        htmlFor="update_team_description"
-                        className="text-xl"
-                      >
-                        Team description (optional):
-                      </label>
-                      <input
-                        id="update_team_description"
-                        type="text"
-                        value={update_team_description}
-                        className="mb-4 text-center text-amber-500"
-                        onChange={(e) =>
-                          dispatch({
-                            type: "SET_FIELD",
-                            field: "update_team_description",
-                            payload: e.target.value,
-                          })
-                        }
-                      />
-                      <button
-                        onClick={(e) => handleUpdateTeam(e)}
-                        className="mb-4 py-2 px-4 bg-blue-500 hover:bg-blue-700 text-white font-bold rounded"
-                      >
-                        Update Team
-                      </button>
-                      {updateTeamErrorMsg && (
-                        <p
-                          className="text-
-              rose-500"
+                    <Form onSubmit={(e) => handleUpdateTeam(e)}>
+                      <div className="flex flex-col gap-4 w-48 md:w-60">
+                        <div className="flex flex-col gap-2">
+                          <Input
+                            id="update_team_name"
+                            type="text"
+                            value={update_team_name}
+                            placeholder="Team Name"
+                            onChange={(e) =>
+                              dispatch({
+                                type: "SET_FIELD",
+                                field: "update_team_name",
+                                payload: e.target.value,
+                              })
+                            }
+                          />
+                          <Input
+                            id="update_team_description"
+                            type="text"
+                            value={update_team_description}
+                            placeholder="Team Description (optional)"
+                            onChange={(e) =>
+                              dispatch({
+                                type: "SET_FIELD",
+                                field: "update_team_description",
+                                payload: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                        <Button
+                          onClick={(e) => handleUpdateTeam(e)}
+                          className="bg-cyan-500"
                         >
-                          {updateTeamErrorMsg}
-                        </p>
+                          Update Team
+                        </Button>
+                      </div>
+                      {updateTeamErrorMsg && (
+                        <p className="text-rose-500">{updateTeamErrorMsg}</p>
                       )}
-                      {updateTeamLoading && <p>Loading...</p>}
+                      {updateTeamLoading && (
+                        <p className="text-zinc-500">Loading...</p>
+                      )}
                       {updateTeamSuccessMsg && <p>{updateTeamSuccessMsg}</p>}
-                    </form>
+                    </Form>
                   )}
                   {team_role === "member" && (
-                    <div className="flex flex-col items-center justify-center gap-4">
-                      <p className="text-xl">Team name:</p>
-                      <p className="text-xl text-amber-500">
+                    <div className="flex flex-col gap-2">
+                      <p className="text-zinc-500 bg-slate-300 p-2 w-48 md:w-60 text-left">
                         {update_team_name}
                       </p>
-                      {update_team_description && (
-                        <>
-                          <p className="text-xl">Team description:</p>
-                          <p className="text-xl text-amber-500">
-                            {update_team_description}
-                          </p>
-                        </>
-                      )}
+                      <p
+                        className={`text-zinc-500 bg-slate-300 p-2 w-48 md:w-60 text-left ${
+                          !update_team_description && "italic"
+                        }`}
+                      >
+                        {update_team_description
+                          ? update_team_description
+                          : "No description"}
+                      </p>
                     </div>
                   )}
-                  <form className="flex flex-col items-center justify-center gap-4">
-                    <label className="text-xl">Leave your team:</label>
-                    <button
-                      onClick={(e) => handleLeaveTeam(e)}
-                      className="mb-4 py-2 px-4 bg-red-500 hover:bg-red-700 text-white font-bold rounded"
-                    >
-                      Leave Team
-                    </button>
+                  <Form onSubmit={(e) => handleLeaveTeam(e)}>
+                    <div className="flex flex-col gap-4 w-48 md:w-60">
+                      <div className="flex flex-col gap-2">
+                        <label
+                          htmlFor="leaveTeamConfirm"
+                          className="text-zinc-500 text-lg"
+                        >
+                          Type
+                          <span className="font-semibold text-rose-500">
+                            {" "}
+                            leave{" "}
+                          </span>
+                          to leave your team:
+                        </label>
+                        <Input
+                          id="leaveTeamConfirm"
+                          type="text"
+                          value={leaveTeamConfirm}
+                          placeholder="leave"
+                          onChange={(e) =>
+                            dispatch({
+                              type: "SET_FIELD",
+                              field: "leaveTeamConfirm",
+                              payload: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <Button className="bg-rose-500">Leave Team</Button>
+                    </div>
                     {leaveTeamErrorMsg && (
                       <p className="text-rose-500">{leaveTeamErrorMsg}</p>
                     )}
-                    {leaveTeamLoading && <p>Loading...</p>}
-                  </form>
+                    {leaveTeamLoading && (
+                      <p className="text-zinc-500">Loading...</p>
+                    )}
+                  </Form>
                   {team_role === "admin" && (
-                    <form className="flex flex-col items-center justify-center gap-4">
-                      <label className="text-xl">Delete your team:</label>
-                      <button
-                        onClick={(e) => handleDeleteTeam(e)}
-                        className="mb-4 py-2 px-4 bg-red-500 hover:bg-red-700 text-white font-bold rounded"
-                      >
-                        Delete Team
-                      </button>
+                    <Form onSubmit={(e) => handleDeleteTeam(e)}>
+                      <div className="flex flex-col gap-4 w-48 md:w-60">
+                        <div className="flex flex-col gap-2">
+                          <label
+                            htmlFor="deleteTeamConfirm"
+                            className="text-zinc-500 text-lg"
+                          >
+                            Type
+                            <span className="font-semibold text-rose-500">
+                              {" "}
+                              delete{" "}
+                            </span>
+                            to delete your team:
+                          </label>
+                          <Input
+                            id="deleteTeamConfirm"
+                            type="text"
+                            value={deleteTeamConfirm}
+                            placeholder="delete"
+                            onChange={(e) =>
+                              dispatch({
+                                type: "SET_FIELD",
+                                field: "deleteTeamConfirm",
+                                payload: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                        <Button className="bg-rose-500">Delete Team</Button>
+                      </div>
                       {deleteTeamErrorMsg && (
                         <p className="text-rose-500">{deleteTeamErrorMsg}</p>
                       )}
-                      {deleteTeamLoading && <p>Loading...</p>}
-                    </form>
+                      {deleteTeamLoading && (
+                        <p className="text-zinc-500">Loading...</p>
+                      )}
+                    </Form>
                   )}
                 </>
               ) : (
                 <>
-                  <form className="flex flex-col items-center justify-center gap-4">
-                    <label htmlFor="create_team_name" className="text-xl">
-                      Team name:
-                    </label>
-                    <input
-                      id="create_team_name"
-                      type="text"
-                      value={create_team_name}
-                      className="mb-4 text-center text-amber-500"
-                      onChange={(e) =>
-                        dispatch({
-                          type: "SET_FIELD",
-                          field: "create_team_name",
-                          payload: e.target.value,
-                        })
-                      }
-                    />
-                    <label
-                      htmlFor="create_team_description"
-                      className="text-xl"
-                    >
-                      Team description (optional):
-                    </label>
-                    <input
-                      id="create_team_description"
-                      type="text"
-                      value={create_team_description}
-                      className="mb-4 text-center text-amber-500"
-                      onChange={(e) =>
-                        dispatch({
-                          type: "SET_FIELD",
-                          field: "create_team_description",
-                          payload: e.target.value,
-                        })
-                      }
-                    />
-                    <button
-                      onClick={(e) => handleCreateTeam(e)}
-                      className="mb-4 py-2 px-4 bg-green-500 hover:bg-green-700 text-white font-bold rounded"
-                    >
-                      Create Team
-                    </button>
+                  <Form onSubmit={(e) => handleCreateTeam(e)}>
+                    <div className="flex flex-col gap-4 w-48 md:w-60">
+                      <div className="flex flex-col gap-2">
+                        <Input
+                          id="create_team_name"
+                          type="text"
+                          value={create_team_name}
+                          placeholder="Team name"
+                          onChange={(e) =>
+                            dispatch({
+                              type: "SET_FIELD",
+                              field: "create_team_name",
+                              payload: e.target.value,
+                            })
+                          }
+                        />
+                        <Input
+                          id="create_team_description"
+                          type="text"
+                          value={create_team_description}
+                          placeholder="Team description (optional)"
+                          onChange={(e) =>
+                            dispatch({
+                              type: "SET_FIELD",
+                              field: "create_team_description",
+                              payload: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <Button className="bg-cyan-500">Create Team</Button>
+                    </div>
                     {createTeamErrorMsg && (
                       <p className="text-rose-500">{createTeamErrorMsg}</p>
                     )}
-                    {createTeamLoading && <p>Loading...</p>}
-                  </form>
-                  <form className="flex flex-col text-center items-center justify-center gap-4">
-                    <label htmlFor="join_team_name" className="text-xl">
-                      Join a team:
-                    </label>
-                    <input
-                      id="join_team_name"
-                      type="text"
-                      value={join_team_name}
-                      className="mb-4 text-center text-amber-500"
-                      onChange={(e) =>
-                        dispatch({
-                          type: "SET_FIELD",
-                          field: "join_team_name",
-                          payload: e.target.value,
-                        })
-                      }
-                    />
-                    <button
-                      onClick={(e) => handleJoinTeam(e)}
-                      className="mb-4 py-2 px-4 bg-blue-500 hover:bg-blue-700 text-white font-bold rounded"
-                    >
-                      Join Team
-                    </button>
+                    {createTeamLoading && (
+                      <p className="text-zinc-500">Loading...</p>
+                    )}
+                  </Form>
+                  <Form onSubmit={(e) => handleJoinTeam(e)}>
+                    <div className="flex flex-col gap-4 w-48 md:w-60">
+                      <div className="flex flex-col gap-2">
+                        <Input
+                          id="join_team_name"
+                          type="text"
+                          value={join_team_name}
+                          placeholder="Team name"
+                          onChange={(e) =>
+                            dispatch({
+                              type: "SET_FIELD",
+                              field: "join_team_name",
+                              payload: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                      <Button className="bg-cyan-500">Join Team</Button>
+                    </div>
                     {joinTeamErrorMsg && (
                       <p className="text-rose-500">{joinTeamErrorMsg}</p>
                     )}
-                    {joinTeamLoading && <p>Loading...</p>}
-                  </form>
+                    {joinTeamLoading && (
+                      <p className="text-zinc-500">Loading...</p>
+                    )}
+                  </Form>
                 </>
               )}
             </Main>

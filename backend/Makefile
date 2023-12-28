@@ -19,6 +19,7 @@ setup:
 	echo "export PYTHONPATH=.:$PYTHONPATH" >> ~/.bashrc
 	mkcert -install
 	mkcert localhost 127.0.0.1 ::1
+	mkdir -p certificates
 	mv localhost+2-key.pem certificates/localhost+2-key.pem
 	mv localhost+2.pem certificates/localhost+2.pem
 

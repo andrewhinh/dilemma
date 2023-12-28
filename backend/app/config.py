@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     smtp_ssl_login: str = ""
     smtp_ssl_password: str = ""
     frontend_url: str = ""
+    www_frontend_url: str = ""
     echo: bool = False
 
     model_config = SettingsConfigDict(env_file=".env")

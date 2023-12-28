@@ -1,5 +1,5 @@
 import { useRouter } from "next/navigation";
-import { useConst } from "../../providers";
+import { useConst } from "../providers";
 
 const useToProfile = () => {
   const router = useRouter();
@@ -64,28 +64,27 @@ const useRefreshToken = () => {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
       })
-      .then((response) => {
-        if (!response.ok) {
-          // If response is not OK, throw an error to catch
-          return response.json().then((data) => {
-            Promise.reject(data);
-            resolve(false); // Resolve to false in case of error
-          });
-        }
-        return response.json();
-      })
-      .then((data) => {
-        setToken(data.access_token);
-        setUid(data.uid);
-        resolve(true); // Resolve to true for success
-      })
-      .catch(() => {
-        resolve(false); // Resolve to false in case of an error
-      });
+        .then((response) => {
+          if (!response.ok) {
+            // If response is not OK, throw an error to catch
+            return response.json().then((data) => {
+              Promise.reject(data);
+              resolve(false); // Resolve to false in case of error
+            });
+          }
+          return response.json();
+        })
+        .then((data) => {
+          setToken(data.access_token);
+          setUid(data.uid);
+          resolve(true); // Resolve to true for success
+        })
+        .catch(() => {
+          resolve(false); // Resolve to false in case of an error
+        });
     });
   };
 };
-
 
 const useSendRequest = () => {
   const { token } = useConst();
@@ -114,16 +113,12 @@ const useSendRequest = () => {
 const useSendWebsocket = () => {
   return (
     websocket: WebSocket,
-    setText: (value: string | ((prevValue: string) => string)) => void,
-    setIsFetchingComplete: (isComplete: boolean) => void,
-    defaultMessage: string | null = null
+    setText: (value: string | ((prevValue: string) => string)) => void
   ) => {
     let timeout: number | NodeJS.Timeout | null | undefined = null;
 
     websocket.onopen = () => {
       timeout = setTimeout(() => {
-        setText(defaultMessage || "");
-        setIsFetchingComplete(true);
         websocket.close(1011, "timeout");
       }, 15000);
     };
@@ -135,27 +130,25 @@ const useSendWebsocket = () => {
       const data = JSON.parse(event.data);
 
       if (data.status === "ERROR") {
-        setText(defaultMessage || "");
-        setIsFetchingComplete(true);
         websocket.close(1011, "error");
       } else if (data.status === "DONE") {
         setText(data.result);
-        setIsFetchingComplete(true);
         websocket.close(1000, "success");
       } else {
         setText((prevMessage: string) => prevMessage + data.message);
       }
     };
 
-    websocket.onclose = () => {
+    websocket.onclose = (event) => {
       if (timeout !== null) {
         clearTimeout(timeout);
+      }
+      if (event.code !== 1000) {
+        setText("There was an error. Please try again later.");
       }
     };
 
     websocket.onerror = () => {
-      setText(defaultMessage || "");
-      setIsFetchingComplete(true);
       websocket.close(1011, "error");
     };
   };

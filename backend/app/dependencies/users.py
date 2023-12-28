@@ -64,6 +64,7 @@ def set_cookie(refresh_token: str, response: Response):
         max_age=REFRESH_TOKEN_EXPIRES.total_seconds(),
         secure=True,
         httponly=True,
+        samesite="none",
     )
 
 
