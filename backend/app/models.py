@@ -97,7 +97,7 @@ class TeamUpdate(SQLModel):
 class UserBase(SQLModel):
     """User base model."""
 
-    email: str = Field(index=True)
+    email: Optional[str] = Field(default=None, index=True)
     username: Optional[str] = Field(default=None, index=True)
     fullname: Optional[str] = Field(default=None, index=True)
     disabled: Optional[bool] = False

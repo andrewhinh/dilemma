@@ -28,11 +28,12 @@ def base_client_fixture(session: Session):
 
 @pytest.fixture(name="user_data")
 def user_data_fixture(base_client: TestClient):
-    credentials = {"email": "example@example.com", "password": "secret"}
+    credentials = {"email": "example@example.com", "username": "example", "password": "secret"}
     response = base_client.post(
         "/token/signup/",
         json={
             "email": credentials["email"],
+            "username": credentials["username"],
             "password": credentials["password"],
             "confirm_password": credentials["password"],
         },
@@ -48,7 +49,7 @@ def user_data_fixture(base_client: TestClient):
 
 @pytest.fixture(name="current_user")
 def current_user_fixture(user_data: dict, session: Session):
-    return get_user(user_data["email"], session)
+    return get_user(session, user_data["email"])
 
 
 @pytest.fixture(name="client")
@@ -100,7 +101,7 @@ def test_delete_user(client: TestClient):
     assert response.json()["detail"] == "User not found"
 
 
-def test_create_team(client: TestClient):
+def create_team(client: TestClient):
     team_name = "test"
     response = client.post("/team/create", json={"name": team_name})
     data = response.json()
@@ -113,8 +114,12 @@ def test_create_team(client: TestClient):
     return data
 
 
+def test_create_team(client: TestClient):
+    create_team(client)
+
+
 def test_read_team(current_user: User, client: TestClient):
-    team_data = test_create_team(client)
+    team_data = create_team(client)
     response = client.get("/team/")
     data = response.json()
 
@@ -127,7 +132,7 @@ def test_read_team(current_user: User, client: TestClient):
 
 
 def test_update_team(client: TestClient):
-    team_data = test_create_team(client)
+    team_data = create_team(client)
     new_description = "Updated description"
 
     response = client.patch("/team/update", json={"description": new_description})
@@ -143,7 +148,7 @@ def test_update_team(client: TestClient):
 
 
 def test_delete_team(client: TestClient):
-    test_create_team(client)
+    create_team(client)
     response = client.delete("/team/delete")
     assert response.status_code == 200
     assert response.json()["message"] == "Team deleted"
@@ -153,8 +158,8 @@ def test_delete_team(client: TestClient):
     assert response.json()["detail"] == "User not in team"
 
 
-def test_leave_team(client: TestClient):
-    team_data = test_create_team(client)
+def leave_team(client: TestClient):
+    team_data = create_team(client)
 
     response = client.post("/team/leave")
     leave_data = response.json()
@@ -164,8 +169,12 @@ def test_leave_team(client: TestClient):
     return team_data
 
 
+def test_leave_team(client: TestClient):
+    leave_team(client)
+
+
 def test_join_team(client: TestClient):
-    team_data = test_leave_team(client)
+    team_data = leave_team(client)
 
     response = client.post("/team/join", json={"name": team_data["name"]})
     join_data = response.json()

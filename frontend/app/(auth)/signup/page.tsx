@@ -47,6 +47,12 @@ function SignUp() {
       return;
     }
 
+    if (formDataObj.username === "") {
+      setErrorMsg("Username cannot be empty");
+      setLoading(false);
+      return;
+    }
+
     if (formDataObj.password === "") {
       setErrorMsg("Password cannot be empty");
       setLoading(false);
@@ -80,6 +86,12 @@ function SignUp() {
     <Form onSubmit={handleSubmit}>
       <div className="gap-2 flex flex-col text-left">
         <Input type="email" name="email" placeholder="Email" autoFocus />
+        <Input
+          type="username"
+          name="username"
+          placeholder="Username"
+          autoFocus
+        />
         <Input type="password" name="password" placeholder="Password" />
         <Input
           type="password"

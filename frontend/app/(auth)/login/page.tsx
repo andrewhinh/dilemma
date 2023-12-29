@@ -34,17 +34,18 @@ function Login() {
       ])
     );
 
-    if (formDataObj.email === "") {
-      setErrorMsg("Email cannot be empty");
+    if (formDataObj.id === "") {
+      setErrorMsg("Username or email cannot be empty");
       setLoading(false);
       return;
     }
 
-    if (!validator.isEmail(formDataObj.email)) {
-      setErrorMsg("Email is not valid");
-      setLoading(false);
-      return;
+    if (validator.isEmail(formDataObj.id)) {
+      formDataObj.email = formDataObj.id;
+    } else {
+      formDataObj.username = formDataObj.id;
     }
+    delete formDataObj.id;
 
     if (formDataObj.password === "") {
       setErrorMsg("Password cannot be empty");
@@ -66,7 +67,7 @@ function Login() {
   return (
     <Form onSubmit={handleSubmit}>
       <div className="gap-2 flex flex-col text-left">
-        <Input type="email" name="email" placeholder="Email" autoFocus />
+        <Input type="id" name="id" placeholder="Username or email" autoFocus />
         <Input type="password" name="password" placeholder="Password" />
         <Link
           href="/reset-password"
