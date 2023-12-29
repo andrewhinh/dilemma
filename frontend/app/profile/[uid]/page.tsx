@@ -22,7 +22,7 @@ import profileLoading from "@/public/profile-loading.svg";
 
 interface User {
   uid: string;
-  email: string;
+  username: string;
   team_role: string;
 }
 
@@ -909,7 +909,7 @@ function Profile() {
                               className="border-t border-zinc-500"
                             >
                               <td className="px-4 py-4 text-left">
-                                {user.email}
+                                {user.username}
                               </td>
                               <td className="px-4 py-4 text-left">
                                 {user.team_role}

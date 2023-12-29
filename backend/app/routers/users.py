@@ -55,6 +55,11 @@ async def signup(*, session: Session = Depends(get_session), response: Response,
             status_code=400,
             detail="Email is empty",
         )
+    if not db_user.username:
+        raise HTTPException(
+            status_code=400,
+            detail="Username is empty",
+        )
     if not db_user.password:
         raise HTTPException(
             status_code=400,
@@ -71,28 +76,27 @@ async def signup(*, session: Session = Depends(get_session), response: Response,
             detail="Passwords do not match",
         )
 
-    if get_user(db_user.email, session):
+    if get_user(session, db_user.email):
         raise HTTPException(
             status_code=400,
             detail="Email is invalid",
         )
 
-    user = User(email=db_user.email, hashed_password=get_password_hash(db_user.password))
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-
-    user = authenticate_user(db_user.email, db_user.password, user.hashed_password, session)
-    if not user:
+    if get_user(session, username=db_user.username):
         raise HTTPException(
-            status_code=401,
-            detail="Incorrect email or password",
+            status_code=400,
+            detail="Username is invalid",
         )
 
     access_token = create_access_token(data={"email": user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
     refresh_token = create_access_token(data={"email": user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
 
-    user.refresh_token = refresh_token
+    user = User(
+        email=db_user.email,
+        username=db_user.username,
+        hashed_password=get_password_hash(db_user.password),
+        refresh_token=refresh_token,
+    )
     session.add(user)
     session.commit()
     session.refresh(user)
@@ -131,18 +135,22 @@ async def login(
     """
     db_user = UserCreate.model_validate(user)
 
-    if not db_user.email:
+    if not db_user.email and not db_user.username:
         raise HTTPException(
             status_code=400,
-            detail="Email is empty",
+            detail="Username or email is empty",
         )
+
     if not db_user.password:
         raise HTTPException(
             status_code=400,
             detail="Password is empty",
         )
 
-    verified_user = get_user(db_user.email, session)
+    if db_user.email:
+        verified_user = get_user(session, db_user.email)
+    elif db_user.username:
+        verified_user = get_user(session, username=db_user.username)
     if not verified_user:
         raise HTTPException(status_code=401, detail="Incorrect email or password")
 
@@ -211,20 +219,36 @@ async def refresh_token(
 
 
 @router.post("/token/logout")
-async def logout(*, response: Response):
+async def logout(
+    *,
+    session: Session = Depends(get_session),
+    response: Response,
+    refresh_token: Optional[str] = Cookie(default=None),
+):
     """Logout.
 
     Parameters
     ----------
+    session
+        Database session
     response
         Response
+    refresh_token
+        Refresh token
 
     Returns
     -------
     dict[str, str]
         Message
     """
-    response.delete_cookie("refresh_token")
+    if refresh_token:
+        response.delete_cookie("refresh_token")
+        user = get_user_from_token(refresh_token, session)
+        user.refresh_token = None
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
     return {"message": "Logged out"}
 
 
@@ -257,7 +281,7 @@ async def forgot_password(
     if not db_user.email:
         raise HTTPException(status_code=400, detail="Email is empty")
 
-    user = get_user(db_user.email, session)
+    user = get_user(session, db_user.email)
     if user:
         s = smtplib.SMTP(smtp_ssl_host, smtp_ssl_port)
         s.ehlo()
@@ -309,7 +333,7 @@ async def check_code(
     if not db_user.recovery_code:
         raise HTTPException(status_code=400, detail="Code is empty")
 
-    verified_user = get_user(db_user.email, session)
+    verified_user = get_user(session, db_user.email)
     if not verified_user:
         raise HTTPException(status_code=400, detail="Email is invalid")
     if not verified_user.recovery_code:
@@ -360,7 +384,7 @@ async def reset_password(
     if db_user.password != db_user.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match")
 
-    verified_user = get_user(db_user.email, session)
+    verified_user = get_user(session, db_user.email)
     if not verified_user:
         raise HTTPException(status_code=400, detail="Email is invalid")
 
@@ -398,14 +422,14 @@ async def read_user(
     HTTPException
         User not found
     """
-    if not get_user(current_user.email, session):
+    if not get_user(session, current_user.email):
         raise HTTPException(status_code=404, detail="User not found")
     user = UserReadWithTeam.model_validate(current_user)
     return user
 
 
 @router.patch("/user/update", response_model=Union[Token, UserRead])
-async def update_user(
+async def update_user(  # noqa: C901
     *,
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
@@ -439,12 +463,20 @@ async def update_user(
 
     if "email" in user_data.keys():
         if current_user.email != user_data["email"]:
-            if get_user(user_data["email"], session):
+            if get_user(session, user_data["email"]):
                 raise HTTPException(
                     status_code=400,
                     detail="Email is invalid",
                 )
             email_changed = True
+
+    if "username" in user_data.keys():
+        if current_user.username != user_data["username"]:
+            if get_user(session, username=user_data["username"]):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Username is invalid",
+                )
 
     if "password" in user_data.keys() and "confirm_password" in user_data.keys():
         if not user_data["password"]:
@@ -628,3 +660,67 @@ def delete_team(
     session.delete(team)
     session.commit()
     return {"message": "Team deleted"}
+
+
+@router.post("/friend/add", response_model=UserRead)
+def add_friend(
+    *,
+    session: Session = Depends(get_session),
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    friend: UserCreate,
+):
+    db_friend = UserCreate.model_validate(friend)
+    if not db_friend.email:
+        raise HTTPException(status_code=400, detail="Email is empty")
+    if current_user.email == db_friend.email:
+        raise HTTPException(status_code=400, detail="Cannot add yourself as a friend")
+    friend = get_user(session, db_friend.email)
+    if friend:
+        if friend in current_user.friends:
+            raise HTTPException(status_code=400, detail="Friend already added")
+        current_user.friends.append(friend)
+        session.add(current_user)
+        session.commit()
+        session.refresh(current_user)
+        return current_user
+    else:
+        raise HTTPException(status_code=404, detail="Friend not found")
+
+
+@router.get("/friends/", response_model=list[UserRead])
+def read_friends(
+    *,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
+    user = UserReadWithTeam.model_validate(current_user)
+    if not user.friends:
+        raise HTTPException(status_code=400, detail="No friends added")
+    friends = []
+    for friend in user.friends:
+        friends.append(UserRead.model_validate(friend))
+    return friends
+
+
+@router.delete("/friend/delete")
+def delete_friend(
+    *,
+    session: Session = Depends(get_session),
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    friend: UserCreate,
+):
+    db_friend = UserCreate.model_validate(friend)
+    if not db_friend.email:
+        raise HTTPException(status_code=400, detail="Email is empty")
+    if current_user.email == db_friend.email:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself as a friend")
+    friend = get_user(session, db_friend.email)
+    if friend:
+        if friend not in current_user.friends:
+            raise HTTPException(status_code=400, detail="Friend not added")
+        current_user.friends.remove(friend)
+        session.add(current_user)
+        session.commit()
+        session.refresh(current_user)
+        return {"message": "Friend deleted"}
+    else:
+        raise HTTPException(status_code=404, detail="Friend not found")

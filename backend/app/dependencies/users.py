@@ -68,23 +68,29 @@ def set_cookie(refresh_token: str, response: Response):
     )
 
 
-def get_user(email: str, session: Session) -> User | None:
+def get_user(session: Session, email: str = None, username: str = None) -> User | None:
     """
     Get user.
 
     Parameters
     ----------
-    email : str
-        Email
     session : Session
         Session
+    email : str
+        Email
+    username : str
+        Username
 
     Returns
     -------
     User | None
         User if exists, else None
     """
-    return session.exec(select(User).where(User.email == email)).first()
+    if email:
+        return session.exec(select(User).where(User.email == email)).first()
+    if username:
+        return session.exec(select(User).where(User.username == username)).first()
+    return None
 
 
 def get_team(name: str, session: Session) -> Team | None:
@@ -126,7 +132,7 @@ def authenticate_user(email: str, password: str, hashed_password: str, session: 
     User | None
         User if authenticated, else None
     """
-    user = get_user(email, session)
+    user = get_user(session, email)
     if not user:
         return False
     if not verify_password(password, hashed_password):
@@ -190,7 +196,7 @@ def get_user_from_token(token: str, session: Session) -> User:
             raise credentials_exception
     except JWTError:
         raise credentials_exception from None
-    db_user = get_user(email=email, session=session)
+    db_user = get_user(session, email)
     if db_user is None:
         raise credentials_exception
     return db_user
