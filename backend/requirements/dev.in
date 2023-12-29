@@ -13,14 +13,12 @@ flake8-black
 flake8-docstrings
 flake8-import-order
 httpx
-mypy==0.960
-# mypy version also pinned in .pre-commit-config.yaml
+mypy
 pre-commit
 ruff
 shellcheck-py
 toml
 types-toml
-# versioned to give pip hints
-coverage[toml]==6.4
-pytest==7.1.1
-pytest-cov==3.0.0
+coverage[toml]
+pytest
+pytest-cov
