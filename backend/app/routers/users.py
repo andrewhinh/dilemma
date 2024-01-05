@@ -1,7 +1,8 @@
 """User routes."""
 import smtplib
 import uuid
-from typing import Annotated, Optional, Union
+from datetime import datetime
+from typing import Annotated, List, Optional, Union
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
 from sqlmodel import Session
@@ -15,22 +16,20 @@ from app.dependencies.users import (
     create_access_token,
     get_current_active_user,
     get_password_hash,
-    get_team,
     get_user,
     get_user_from_token,
     set_cookie,
 )
 from app.models import (
-    Team,
-    TeamCreate,
-    TeamRead,
-    TeamReadWithUsers,
-    TeamUpdate,
+    FriendRead,
+    FriendRequestRead,
+    FriendRequests,
+    Friends,
     Token,
     User,
     UserCreate,
     UserRead,
-    UserReadWithTeam,
+    UserReference,
     UserUpdate,
 )
 
@@ -397,7 +396,7 @@ async def reset_password(
     return read_user
 
 
-@router.get("/user/", response_model=UserReadWithTeam)
+@router.get("/user/", response_model=UserRead)
 async def read_user(
     *,
     session: Session = Depends(get_session),
@@ -424,7 +423,7 @@ async def read_user(
     """
     if not get_user(session, current_user.email):
         raise HTTPException(status_code=404, detail="User not found")
-    user = UserReadWithTeam.model_validate(current_user)
+    user = UserRead.model_validate(current_user)
     return user
 
 
@@ -532,195 +531,201 @@ def delete_user(
     return {"message": "User deleted"}
 
 
-@router.post("/team/create", response_model=TeamRead)
-def create_team(
+@router.post("/friends/send-request", response_model=UserRead)
+def send_friend_request(
     *,
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
-    team: TeamCreate,
+    friend: UserReference,
 ):
-    db_team = Team.model_validate(team)
-    if get_team(db_team.name, session):
-        raise HTTPException(status_code=400, detail="Team already exists")
-    user = UserReadWithTeam.model_validate(current_user)
-    if user.team:
-        raise HTTPException(status_code=400, detail="User already in team")
+    db_friend = UserReference.model_validate(friend)
+    if not db_friend.username:
+        raise HTTPException(status_code=400, detail="Username is empty")
+    if current_user.username == db_friend.username:
+        raise HTTPException(status_code=400, detail="Cannot send request to yourself")
 
-    current_user.team_role = "admin"
-    db_team.users.append(current_user)
-    session.add(db_team)
-    session.commit()
-    session.refresh(current_user)
-    session.refresh(db_team)
-    return db_team
-
-
-@router.post("/team/join", response_model=TeamRead)
-def join_team(
-    *,
-    session: Session = Depends(get_session),
-    current_user: Annotated[User, Depends(get_current_active_user)],
-    team: TeamCreate,
-):
-    user = UserReadWithTeam.model_validate(current_user)
-    if user.team:
-        raise HTTPException(status_code=400, detail="User already in team")
-    db_team = Team.model_validate(team)
-    team = get_team(db_team.name, session)
-    if not team:
-        raise HTTPException(status_code=404, detail="Team not found")
-    if current_user in team.users:
-        raise HTTPException(status_code=400, detail="User already in team")
-
-    current_user.team_role = "member"
-    team.users.append(current_user)
-    session.add(team)
-    session.commit()
-    session.refresh(current_user)
-    session.refresh(team)
-    return team
-
-
-@router.get("/team/", response_model=TeamReadWithUsers)
-def read_team(
-    *,
-    session: Session = Depends(get_session),
-    current_user: Annotated[User, Depends(get_current_active_user)],
-):
-    user = UserReadWithTeam.model_validate(current_user)
-    if not user.team:
-        raise HTTPException(status_code=400, detail="User not in team")
-    team = get_team(user.team.name, session)
-    return team
-
-
-@router.patch("/team/update", response_model=TeamRead)
-def update_team(
-    *,
-    session: Session = Depends(get_session),
-    current_user: Annotated[User, Depends(get_current_active_user)],
-    team: TeamUpdate,
-):
-    if current_user.team_role != "admin":
-        raise HTTPException(status_code=403, detail="Forbidden")
-    user = UserReadWithTeam.model_validate(current_user)
-    if not user.team:
-        raise HTTPException(status_code=400, detail="User not in team")
-    db_team = get_team(user.team.name, session)
-    if not db_team:
-        raise HTTPException(status_code=404, detail="Team not found")
-    if current_user not in db_team.users:
-        raise HTTPException(status_code=403, detail="Forbidden")
-    team_data = team.model_dump(exclude_unset=True)
-    for key, value in team_data.items():
-        setattr(db_team, key, value)
-    session.add(db_team)
-    session.commit()
-    session.refresh(db_team)
-    return db_team
-
-
-@router.post("/team/leave", response_model=TeamRead)
-def leave_team(
-    *,
-    session: Session = Depends(get_session),
-    current_user: Annotated[User, Depends(get_current_active_user)],
-):
-    user = UserReadWithTeam.model_validate(current_user)
-    if not user.team:
-        raise HTTPException(status_code=400, detail="User not in team")
-    team = get_team(user.team.name, session)
-    if not team:
-        raise HTTPException(status_code=404, detail="Team not found")
-    if current_user not in team.users:
-        raise HTTPException(status_code=400, detail="User not in team")
-    current_user.team_role = None
-    team.users.remove(current_user)
-    session.add(team)
-    session.commit()
-    session.refresh(team)
-    return team
-
-
-@router.delete("/team/delete")
-def delete_team(
-    *,
-    session: Session = Depends(get_session),
-    current_user: Annotated[User, Depends(get_current_active_user)],
-) -> dict[str, str]:
-    if current_user.team_role != "admin":
-        raise HTTPException(status_code=403, detail="Forbidden")
-    user = UserReadWithTeam.model_validate(current_user)
-    if not user.team:
-        raise HTTPException(status_code=400, detail="User not in team")
-    team = get_team(user.team.name, session)
-    if not team:
-        raise HTTPException(status_code=404, detail="Team not found")
-    current_user.team_role = None
-    session.delete(team)
-    session.commit()
-    return {"message": "Team deleted"}
-
-
-@router.post("/friend/add", response_model=UserRead)
-def add_friend(
-    *,
-    session: Session = Depends(get_session),
-    current_user: Annotated[User, Depends(get_current_active_user)],
-    friend: UserCreate,
-):
-    db_friend = UserCreate.model_validate(friend)
-    if not db_friend.email:
-        raise HTTPException(status_code=400, detail="Email is empty")
-    if current_user.email == db_friend.email:
-        raise HTTPException(status_code=400, detail="Cannot add yourself as a friend")
-    friend = get_user(session, db_friend.email)
+    friend = get_user(session, username=db_friend.username)
     if friend:
-        if friend in current_user.friends:
+        friend_requests = [link.receiver for link in current_user.sender_links]
+        friends = [link.friend_2 for link in current_user.friend_1_links]
+        if friend in friend_requests:
+            raise HTTPException(status_code=400, detail="Friend request already sent")
+        if friend in friends:
             raise HTTPException(status_code=400, detail="Friend already added")
-        current_user.friends.append(friend)
-        session.add(current_user)
+
+        new_friend_request = FriendRequests(
+            sender=current_user, receiver=friend, request_date=datetime.now(), status="pending"
+        )
+        session.add(new_friend_request)
         session.commit()
-        session.refresh(current_user)
-        return current_user
+        session.refresh(new_friend_request)
+        return UserRead.model_validate(current_user)
     else:
         raise HTTPException(status_code=404, detail="Friend not found")
 
 
-@router.get("/friends/", response_model=list[UserRead])
+@router.post("/friends/accept-request", response_model=UserRead)
+def accept_friend_request(
+    *,
+    session: Session = Depends(get_session),
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    friend: UserReference,
+):
+    db_friend = UserReference.model_validate(friend)
+    if not db_friend.username:
+        raise HTTPException(status_code=400, detail="Username is empty")
+    if current_user.username == db_friend.username:
+        raise HTTPException(status_code=400, detail="Cannot accept request from yourself")
+
+    friend = get_user(session, username=db_friend.username)
+    if friend:
+        friend_request_links = list(current_user.receiver_links)
+        friend_requests = [link.sender for link in friend_request_links]
+        friends = [link.friend_1 for link in current_user.friend_2_links]
+        if friend not in friend_requests:
+            raise HTTPException(status_code=400, detail="Friend request not sent")
+        if friend in friends:
+            raise HTTPException(status_code=400, detail="Friend already added")
+
+        for friend_request, friend_request_link in zip(friend_requests, friend_request_links, strict=False):
+            if friend_request.username == friend.username:
+                friend_request_link.status = "accepted"
+                new_friend = Friends(
+                    friend_1=current_user, friend_2=friend, friendship_date=datetime.now(), status="confirmed"
+                )
+                session.add(current_user)
+                session.add(new_friend)
+                session.commit()
+                session.refresh(current_user)
+                return UserRead.model_validate(current_user)
+    else:
+        raise HTTPException(status_code=404, detail="Friend not found")
+
+
+@router.post("/friends/decline-request", response_model=UserRead)
+def decline_friend_request(
+    *,
+    session: Session = Depends(get_session),
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    friend: UserReference,
+):
+    db_friend = UserReference.model_validate(friend)
+    if not db_friend.username:
+        raise HTTPException(status_code=400, detail="Username is empty")
+    if current_user.username == db_friend.username:
+        raise HTTPException(status_code=400, detail="Cannot decline request from yourself")
+
+    friend = get_user(session, username=db_friend.username)
+    if friend:
+        friend_request_links = list(current_user.receiver_links)
+        friend_requests = [link.sender for link in friend_request_links]
+        friends = [link.friend_1 for link in current_user.friend_2_links]
+        if friend not in friend_requests:
+            raise HTTPException(status_code=400, detail="Friend request not sent")
+        if friend in friends:
+            raise HTTPException(status_code=400, detail="Friend already added")
+
+        for friend_request, friend_request_link in zip(friend_requests, friend_request_links, strict=False):
+            if friend_request.username == friend.username:
+                friend_request_link.status = "declined"
+                session.add(current_user)
+                session.commit()
+                session.refresh(current_user)
+                return UserRead.model_validate(current_user)
+    else:
+        raise HTTPException(status_code=404, detail="Friend not found")
+
+
+@router.get("/friends/requests/sent", response_model=List[FriendRequestRead])
+def read_sent_friend_requests(
+    *,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
+    friend_requests = [UserRead.model_validate(link.receiver) for link in current_user.sender_links]
+    friend_requests = [
+        FriendRequestRead(
+            uid=friend_request.uid,
+            username=friend_request.username,
+            status=link.status,
+            request_date=link.request_date,
+        )
+        for friend_request, link in zip(friend_requests, current_user.sender_links, strict=False)
+    ]
+    if not friend_requests:
+        raise HTTPException(status_code=404, detail="No sent friend requests")
+    return friend_requests
+
+
+@router.get("/friends/requests/incoming", response_model=List[FriendRequestRead])
+def read_incoming_friend_requests(
+    *,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
+    friend_requests = [UserRead.model_validate(link.sender) for link in current_user.receiver_links]
+    friend_requests = [
+        FriendRequestRead(
+            uid=friend_request.uid,
+            username=friend_request.username,
+            status=link.status,
+            request_date=link.request_date,
+        )
+        for friend_request, link in zip(friend_requests, current_user.receiver_links, strict=False)
+    ]
+    if not friend_requests:
+        raise HTTPException(status_code=404, detail="No incoming friend requests")
+    return friend_requests
+
+
+@router.get("/friends/", response_model=List[FriendRead])
 def read_friends(
     *,
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
-    user = UserReadWithTeam.model_validate(current_user)
-    if not user.friends:
-        raise HTTPException(status_code=400, detail="No friends added")
-    friends = []
-    for friend in user.friends:
-        friends.append(UserRead.model_validate(friend))
+    friends = [UserRead.model_validate(link.friend_1) for link in current_user.friend_1_links] + [
+        UserRead.model_validate(link.friend_2) for link in current_user.friend_2_links
+    ]
+    friends = [
+        FriendRead(
+            uid=friend.uid,
+            username=friend.username,
+            status=link.status,
+            friendship_date=link.friendship_date,
+        )
+        for friend, link in zip(friends, current_user.friend_1_links + current_user.friend_2_links, strict=False)
+    ]
+    if not friends:
+        raise HTTPException(status_code=404, detail="No friends added")
     return friends
 
 
-@router.delete("/friend/delete")
+@router.post("/friends/delete")
 def delete_friend(
     *,
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
-    friend: UserCreate,
+    friend: UserReference,
 ):
-    db_friend = UserCreate.model_validate(friend)
-    if not db_friend.email:
-        raise HTTPException(status_code=400, detail="Email is empty")
-    if current_user.email == db_friend.email:
+    db_friend = UserReference.model_validate(friend)
+    if not db_friend.username:
+        raise HTTPException(status_code=400, detail="Username is empty")
+    if current_user.username == db_friend.username:
         raise HTTPException(status_code=400, detail="Cannot delete yourself as a friend")
-    friend = get_user(session, db_friend.email)
+
+    friend = get_user(session, username=db_friend.username)
     if friend:
-        if friend not in current_user.friends:
+        friend_1_links = list(current_user.friend_1_links)
+        friend_2_links = list(current_user.friend_2_links)
+        friend_links = friend_1_links + friend_2_links
+        friends = [link.friend_1 for link in friend_1_links] + [link.friend_2 for link in friend_2_links]
+        if friend not in friends:
             raise HTTPException(status_code=400, detail="Friend not added")
-        current_user.friends.remove(friend)
-        session.add(current_user)
-        session.commit()
-        session.refresh(current_user)
-        return {"message": "Friend deleted"}
+
+        for delete_friend, delete_friend_link in zip(friends, friend_links, strict=False):
+            if delete_friend.username == friend.username:
+                delete_friend_link.status = "deleted"
+                session.add(current_user)
+                session.commit()
+                session.refresh(current_user)
+                return {"message": "Friend deleted"}
     else:
         raise HTTPException(status_code=404, detail="Friend not found")

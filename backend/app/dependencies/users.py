@@ -10,7 +10,7 @@ from sqlmodel import Session, select
 
 from app.config import get_settings
 from app.database import get_session
-from app.models import Team, User
+from app.models import User
 
 SETTINGS = get_settings()
 JWT_SECRET = SETTINGS.jwt_secret
@@ -91,25 +91,6 @@ def get_user(session: Session, email: str = None, username: str = None) -> User 
     if username:
         return session.exec(select(User).where(User.username == username)).first()
     return None
-
-
-def get_team(name: str, session: Session) -> Team | None:
-    """
-    Get team.
-
-    Parameters
-    ----------
-    name : str
-        Name
-    session : Session
-        Session
-
-    Returns
-    -------
-    Team | None
-        Team if exists, else None
-    """
-    return session.exec(select(Team).where(Team.name == name)).first()
 
 
 def authenticate_user(email: str, password: str, hashed_password: str, session: Session) -> User | None:

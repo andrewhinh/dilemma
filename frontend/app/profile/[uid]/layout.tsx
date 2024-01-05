@@ -1,8 +1,24 @@
 import type { Metadata } from "next";
-import Profile from "./page";
+import { Suspense } from "react";
+import { ProfileProvider } from "../providers";
+
+import { LoggedInNav, LoggedOutNav } from "../../ui/LoggedInNav";
 
 export const metadata: Metadata = {
   title: "Profile",
 };
 
-export default Profile;
+export default function ProfileLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <ProfileProvider>
+      <Suspense fallback={<LoggedOutNav />}>
+        <LoggedInNav />
+      </Suspense>
+      {children}
+    </ProfileProvider>
+  );
+}

@@ -48,6 +48,7 @@ def main():
     """Run API."""
     uvicorn.run(
         "app.main:app",
+        port=SETTINGS.api_port,
         reload=True,
         ssl_keyfile="./certificates/localhost+2-key.pem",
         ssl_certfile="./certificates/localhost+2.pem",
