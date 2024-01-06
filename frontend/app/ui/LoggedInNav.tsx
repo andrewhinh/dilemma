@@ -4,7 +4,7 @@ import React, { useEffect } from "react";
 import Link from "next/link";
 import { useConst } from "../providers";
 import Nav from "./Nav";
-import { useRefreshToken, useLogOut } from "../lib/HelperFns";
+import { useRefreshToken, useLogOut } from "../lib/utils";
 
 function LoggedOutNav() {
   return (

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useConst } from "../providers";
 import { usePathname } from "next/navigation";
-import { useRefreshToken, useLogOut } from "../lib/HelperFns";
+import { useRefreshToken } from "../lib/utils";
 import Nav from "../ui/Nav";
 
 function AuthNav() {

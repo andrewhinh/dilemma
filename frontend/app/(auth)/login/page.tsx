@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 
 import { useConst } from "../../providers";
-import { useToProfile } from "../../lib/HelperFns";
+import { useToProfile } from "../../lib/utils";
 
 import validator from "validator";
 

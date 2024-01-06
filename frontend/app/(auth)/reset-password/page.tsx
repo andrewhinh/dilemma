@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useConst } from "../../providers";
-import { useSendRequest } from "../../lib/HelperFns";
+import { useSendRequest } from "../../lib/utils";
 
 import validator from "validator";
 

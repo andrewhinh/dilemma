@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     """Settings for the API."""
 
     db_url: str = ""
+    db_echo: bool = False
     openai_api_key: str = ""
     jwt_secret: str = ""
     smtp_ssl_host: str = ""
@@ -15,7 +16,6 @@ class Settings(BaseSettings):
     smtp_ssl_password: str = ""
     frontend_url: str = ""
     www_frontend_url: str = ""
-    echo: bool = False
 
     model_config = SettingsConfigDict(env_file=".env")
 

@@ -101,83 +101,29 @@ def test_delete_user(client: TestClient):
     assert response.json()["detail"] == "User not found"
 
 
-def create_team(client: TestClient):
-    team_name = "test"
-    response = client.post("/team/create", json={"name": team_name})
-    data = response.json()
-
-    assert response.status_code == 200
-    assert data["name"] == team_name
-    assert data["description"] is None
-    assert data["uid"] is not None
-
-    return data
+def test_send_friend_request():
+    pass
 
 
-def test_create_team(client: TestClient):
-    create_team(client)
+def test_accept_friend_request():
+    pass
 
 
-def test_read_team(current_user: User, client: TestClient):
-    team_data = create_team(client)
-    response = client.get("/team/")
-    data = response.json()
-
-    assert response.status_code == 200
-    user_data = data["users"][0]
-    for key in user_data:
-        assert user_data[key] == getattr(current_user, key)
-    del data["users"]
-    assert data == team_data
+def test_decline_friend_request():
+    pass
 
 
-def test_update_team(client: TestClient):
-    team_data = create_team(client)
-    new_description = "Updated description"
-
-    response = client.patch("/team/update", json={"description": new_description})
-    updated_data = response.json()
-
-    assert response.status_code == 200
-    for key in updated_data:
-        if key == "description":
-            assert updated_data[key] == new_description
-            assert updated_data[key] != team_data[key]
-        else:
-            assert updated_data[key] == team_data[key]
+def test_get_sent_friend_requests():
+    pass
 
 
-def test_delete_team(client: TestClient):
-    create_team(client)
-    response = client.delete("/team/delete")
-    assert response.status_code == 200
-    assert response.json()["message"] == "Team deleted"
-
-    response = client.get("/team/")
-    assert response.status_code == 400
-    assert response.json()["detail"] == "User not in team"
+def test_get_incoming_friend_requests():
+    pass
 
 
-def leave_team(client: TestClient):
-    team_data = create_team(client)
-
-    response = client.post("/team/leave")
-    leave_data = response.json()
-
-    assert response.status_code == 200
-    assert leave_data == team_data
-    return team_data
+def test_get_friends():
+    pass
 
 
-def test_leave_team(client: TestClient):
-    leave_team(client)
-
-
-def test_join_team(client: TestClient):
-    team_data = leave_team(client)
-
-    response = client.post("/team/join", json={"name": team_data["name"]})
-    join_data = response.json()
-
-    assert response.status_code == 200
-    assert join_data == team_data
+def test_delete_friend():
+    pass

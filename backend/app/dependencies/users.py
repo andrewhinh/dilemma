@@ -1,6 +1,6 @@
 """Dependencies for user endpoints."""
 from datetime import datetime, timedelta
-from typing import Annotated
+from typing import Annotated, List
 
 from fastapi import Depends, HTTPException, Response
 from fastapi.security import OAuth2PasswordBearer
@@ -10,7 +10,7 @@ from sqlmodel import Session, select
 
 from app.config import get_settings
 from app.database import get_session
-from app.models import Team, User
+from app.models import FriendRequests, Friends, User
 
 SETTINGS = get_settings()
 JWT_SECRET = SETTINGS.jwt_secret
@@ -91,25 +91,6 @@ def get_user(session: Session, email: str = None, username: str = None) -> User 
     if username:
         return session.exec(select(User).where(User.username == username)).first()
     return None
-
-
-def get_team(name: str, session: Session) -> Team | None:
-    """
-    Get team.
-
-    Parameters
-    ----------
-    name : str
-        Name
-    session : Session
-        Session
-
-    Returns
-    -------
-    Team | None
-        Team if exists, else None
-    """
-    return session.exec(select(Team).where(Team.name == name)).first()
 
 
 def authenticate_user(email: str, password: str, hashed_password: str, session: Session) -> User | None:
@@ -249,3 +230,109 @@ async def get_current_active_user(
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
+def get_sent_friend_request_links(current_user: User) -> List[FriendRequests]:
+    """
+    Get sent friend request links.
+
+    Parameters
+    ----------
+    current_user : User
+        Current user
+
+    Returns
+    -------
+    List[FriendRequests]
+        Sent friend request links
+    """
+    return [link for link in current_user.sender_links if link.status == "pending"]
+
+
+def get_sent_friend_requests(current_user: User, status: str = "pending") -> List[User]:
+    """
+    Get sent friend requests.
+
+    Parameters
+    ----------
+    current_user : User
+        Current user
+
+    Returns
+    -------
+    List[User]
+        Sent friend requests
+    """
+    return [link.receiver for link in current_user.sender_links if link.status == status]
+
+
+def get_incoming_friend_request_links(current_user: User) -> List[FriendRequests]:
+    """
+    Get incoming friend request links.
+
+    Parameters
+    ----------
+    current_user : User
+        Current user
+
+    Returns
+    -------
+    List[FriendRequests]
+        Incoming friend request links
+    """
+    return [link for link in current_user.receiver_links if link.status == "pending"]
+
+
+def get_incoming_friend_requests(current_user: User, status: str = "pending") -> List[User]:
+    """
+    Get incoming friend requests.
+
+    Parameters
+    ----------
+    current_user : User
+        Current user
+
+    Returns
+    -------
+    List[User]
+        Incoming friend requests
+    """
+    return [link.sender for link in current_user.receiver_links if link.status == status]
+
+
+def get_friend_links(current_user: User) -> List[Friends]:
+    """
+    Get friends links.
+
+    Parameters
+    ----------
+    current_user : User
+        Current user
+
+    Returns
+    -------
+    List[Friends]
+        Friends links
+    """
+    return [link for link in current_user.friend_1_links if link.status == "confirmed"] + [
+        link for link in current_user.friend_2_links if link.status == "confirmed"
+    ]
+
+
+def get_friends(current_user: User, status: str = "confirmed") -> List[User]:
+    """
+    Get friends.
+
+    Parameters
+    ----------
+    current_user : User
+        Current user
+
+    Returns
+    -------
+    List[User]
+        Friends
+    """
+    return [link.friend_1 for link in current_user.friend_1_links if link.status == status] + [
+        link.friend_2 for link in current_user.friend_2_links if link.status == status
+    ]
