@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useLogOut, useSendRequest } from "../lib/utils";
@@ -9,6 +10,7 @@ import Main from "../ui/Main";
 import Form from "../ui/Form";
 import Input from "../ui/Input";
 import Button from "../ui/Button";
+import buttonLoading from "@/public/button-loading.svg";
 
 function UserView() {
   const { state, dispatch } = useProfile();
@@ -169,13 +171,24 @@ function UserView() {
               }
             />
           </div>
-          <Button className="bg-cyan-500">Update Profile</Button>
+          <Button type="submit">
+            {updateUserLoading ? (
+              <img
+                src={buttonLoading.src}
+                className="w-5 h-5"
+                alt="Update Profile"
+              />
+            ) : (
+              <p>Update Profile</p>
+            )}
+          </Button>
         </div>
         {updateUserErrorMsg && (
           <p className="text-rose-500">{updateUserErrorMsg}</p>
         )}
-        {updateUserLoading && <p className="text-zinc-500">Loading...</p>}
-        {updateUserSuccessMsg && <p>{updateUserSuccessMsg}</p>}
+        {updateUserSuccessMsg && (
+          <p className="text-cyan-500">{updateUserSuccessMsg}</p>
+        )}
       </Form>
       <Form onSubmit={(e) => handleUpdatePassword(e)}>
         <div className="flex flex-col gap-4 w-48 md:w-60">
@@ -207,19 +220,21 @@ function UserView() {
               }
             />
           </div>
-          <Button className="bg-cyan-500">Update Password</Button>
+          <Button>
+            {pwdLoading ? (
+              <img src={buttonLoading.src} className="w-5 h-5" alt="Update" />
+            ) : (
+              <p>Update Password</p>
+            )}
+          </Button>
         </div>
         {pwdErrorMsg && <p className="text-rose-500">{pwdErrorMsg}</p>}
-        {pwdLoading && <p className="text-zinc-500">Loading...</p>}
-        {pwdSuccessMsg && <p>{pwdSuccessMsg}</p>}
+        {pwdSuccessMsg && <p className="text-cyan-500">{pwdSuccessMsg}</p>}
       </Form>
       <Form onSubmit={(e) => handleDeleteAccount(e)}>
         <div className="flex flex-col gap-4 w-48 md:w-60">
           <div className="flex flex-col gap-2">
-            <label
-              htmlFor="deleteAccountConfirm"
-              className="text-zinc-500 text-lg"
-            >
+            <label htmlFor="deleteAccountConfirm" className="text-lg">
               Type
               <span className="font-semibold text-rose-500">
                 {" "}
@@ -241,12 +256,17 @@ function UserView() {
               }
             />
           </div>
-          <Button className="bg-rose-500">Delete Account</Button>
+          <Button className="bg-rose-500">
+            {deleteAccountLoading ? (
+              <img src={buttonLoading.src} className="w-5 h-5" alt="Delete" />
+            ) : (
+              <p>Delete Account</p>
+            )}
+          </Button>
         </div>
         {deleteAccountErrorMsg && (
           <p className="text-rose-500">{deleteAccountErrorMsg}</p>
         )}
-        {deleteAccountLoading && <p className="text-zinc-500">Loading...</p>}
       </Form>
     </Main>
   );

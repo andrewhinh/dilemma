@@ -71,16 +71,14 @@ function Login() {
         <Input type="password" name="password" placeholder="Password" />
         <Link
           href="/reset-password"
-          className="text-md text-zinc-500 underline hover:opacity-50 transition 300ms ease-in-out"
+          className="text-md underline hover:opacity-50 transition 300ms ease-in-out"
         >
           Forgot Password?
         </Link>
       </div>
-      <Button type="submit" className="bg-cyan-500">
-        Login
-      </Button>
+      <Button type="submit">Login</Button>
       {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
-      {loading && <p className="text-zinc-500">Loading...</p>}
+      {loading && <p>Loading...</p>}
     </Form>
   );
 }

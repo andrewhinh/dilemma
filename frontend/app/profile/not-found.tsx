@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { Suspense } from "react";
 import Link from "next/link";
-import { LoggedOutNav, LoggedInNav } from "../ui/LoggedInNav";
+import { LoggedOutNav, LoggedInNav } from "../ui/Nav";
 import Header from "../ui/Header";
 import Main from "../ui/Main";
 

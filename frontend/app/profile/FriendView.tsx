@@ -1,6 +1,7 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { User, FriendRequest, Friend } from "./utils";
+import { FriendRequest, Friend } from "./utils";
 import { useProfile } from "./providers";
 import { useSendRequest } from "../lib/utils";
 import { useConst } from "../providers";
@@ -10,12 +11,19 @@ import Main from "../ui/Main";
 import Button from "../ui/Button";
 import Input from "../ui/Input";
 import Form from "../ui/Form";
+import check from "@/public/check.svg";
+import x from "@/public/x.svg";
+import trash from "@/public/trash.svg";
+import buttonLoading from "@/public/button-loading.svg";
 
 function FriendView() {
   const { state, dispatch } = useProfile();
   const { apiUrl } = useConst();
   const sendRequest = useSendRequest();
   const getUser = useGetUser();
+
+  const maxSmallChars = 7;
+  const maxLargeChars = 12;
 
   const {
     requestUsername,
@@ -210,7 +218,7 @@ function FriendView() {
   return (
     <Main className="relative z-0 gap-16">
       <Form onSubmit={(e) => handlesendFriendRequest(e)}>
-        <div className="flex flex-col gap-4 w-48 md:w-60">
+        <div className="w-48 md:w-60 flex flex-col gap-4">
           <Input
             id="requestUsername"
             type="text"
@@ -224,34 +232,44 @@ function FriendView() {
               })
             }
           />
-          <Button type="submit" className="bg-cyan-500">
-            Send Friend Request
+          <Button type="submit" className="whitespace-nowrap">
+            {sendRequestLoading ? (
+              <img
+                className="w-5 h-5"
+                src={buttonLoading.src}
+                alt="Send Request"
+              />
+            ) : (
+              <p>Send Request</p>
+            )}
           </Button>
         </div>
         {sendRequestErrorMsg && (
           <p className="text-rose-500">{sendRequestErrorMsg}</p>
         )}
-        {sendRequestLoading && <p className="text-zinc-500">Loading...</p>}
-        {sendRequestSuccessMsg && <p>{sendRequestSuccessMsg}</p>}
+        {sendRequestSuccessMsg && (
+          <p className="text-cyan-500">{sendRequestSuccessMsg}</p>
+        )}
       </Form>
       <div className="flex justify-center">
         <div className="w-full">
-          <table className="table-auto m-auto">
+          <table className="table-auto m-auto w-48 md:w-60">
             <thead>
-              <tr className="bg-slate-300 text-zinc-500 font-semibold">
-                <th className="px-4 py-4 text-left">Sent Friend Requests</th>
+              <tr className="bg-slate-300 font-semibold">
+                <th className="px-4 py-4 text-center whitespace-nowrap">
+                  Sent Friend Requests
+                </th>
               </tr>
             </thead>
-            <tbody className="bg-slate-100 shadow-2xl text-zinc-500">
+            <tbody className="bg-slate-100 shadow-2xl">
               {sentFriendRequests.map((friendRequest: FriendRequest) => (
                 <tr
                   key={friendRequest.uid}
-                  className={`border-t border-zinc-500 ${
-                    friendRequest.status !== "pending" && "hidden"
-                  }`}
+                  className="border-t border-zinc-500"
                 >
-                  <td className="px-4 py-4 text-left">
-                    {friendRequest.username}
+                  <td className="px-4 py-4 text-center">
+                    {friendRequest.username.slice(0, maxLargeChars)}
+                    {friendRequest.username.length > maxLargeChars && "..."}
                   </td>
                 </tr>
               ))}
@@ -261,30 +279,35 @@ function FriendView() {
       </div>
       <div className="flex justify-center">
         <div className="w-full">
-          <table className="table-auto m-auto">
+          <table className="table-auto m-auto w-60 md:w-80">
             <thead>
-              <tr className="bg-slate-300 text-zinc-500 font-semibold">
-                <th className="px-4 py-4 text-left">
+              <tr className="bg-slate-300 font-semibold">
+                <th className="px-4 py-4 text-center whitespace-nowrap">
                   Incoming Friend Requests
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-slate-100 shadow-2xl text-zinc-500">
+            <tbody className="bg-slate-100 shadow-2xl">
               {incomingFriendRequests.map((friendRequest: FriendRequest) => (
                 <tr
                   key={friendRequest.uid}
-                  className={`border-t border-zinc-500 ${
-                    friendRequest.status !== "pending" && "hidden"
-                  }`}
+                  className="border-t border-zinc-500"
                 >
-                  <td className="px-4 py-4 w-72">
-                    <div className="flex">
-                      <div className="flex flex-1 justify-start">
-                        <p className="flex flex-col justify-center">
-                          {friendRequest.username}
+                  <td className="px-4 py-4">
+                    <div className="flex justify-between">
+                      <div className="flex flex-1">
+                        <p className="flex md:hidden flex-col justify-center">
+                          {friendRequest.username.slice(0, maxSmallChars)}
+                          {friendRequest.username.length > maxSmallChars &&
+                            "..."}
+                        </p>
+                        <p className="hidden md:flex flex-col justify-center">
+                          {friendRequest.username.slice(0, maxLargeChars)}
+                          {friendRequest.username.length > maxLargeChars &&
+                            "..."}
                         </p>
                       </div>
-                      <div className="flex justify-end gap-2">
+                      <div className="flex gap-2">
                         <Form onSubmit={(e) => handleAcceptFriendRequest(e)}>
                           <Input
                             id="acceptUsername"
@@ -292,8 +315,20 @@ function FriendView() {
                             type="hidden"
                             value={friendRequest.username}
                           />
-                          <Button type="submit" className="bg-cyan-500">
-                            Accept
+                          <Button type="submit">
+                            {acceptRequestLoading ? (
+                              <img
+                                className="w-5 h-5"
+                                src={buttonLoading.src}
+                                alt="Accept"
+                              />
+                            ) : (
+                              <img
+                                className="w-5 h-5"
+                                src={check.src}
+                                alt="Accept"
+                              />
+                            )}
                           </Button>
                         </Form>
                         <Form onSubmit={(e) => handleDeclineFriendRequest(e)}>
@@ -304,7 +339,19 @@ function FriendView() {
                             value={friendRequest.username}
                           />
                           <Button type="submit" className="bg-rose-500">
-                            Decline
+                            {declineRequestLoading ? (
+                              <img
+                                className="w-5 h-5"
+                                src={buttonLoading.src}
+                                alt="Decline"
+                              />
+                            ) : (
+                              <img
+                                className="w-5 h-5"
+                                src={x.src}
+                                alt="Decline"
+                              />
+                            )}
                           </Button>
                         </Form>
                       </div>
@@ -315,31 +362,36 @@ function FriendView() {
             </tbody>
           </table>
         </div>
+        {acceptRequestErrorMsg && (
+          <p className="text-rose-500">{acceptRequestErrorMsg}</p>
+        )}
+        {declineRequestErrorMsg && (
+          <p className="text-rose-500">{declineRequestErrorMsg}</p>
+        )}
       </div>
       <div className="flex justify-center">
         <div className="w-full">
-          <table className="table-auto m-auto">
+          <table className="table-auto m-auto w-60">
             <thead>
-              <tr className="bg-slate-300 text-zinc-500 font-semibold">
-                <th className="px-4 py-4 text-left">Friends</th>
+              <tr className="bg-slate-300 font-semibold">
+                <th className="px-4 py-4 text-center">Friends</th>
               </tr>
             </thead>
-            <tbody className="bg-slate-100 shadow-2xl text-zinc-500">
+            <tbody className="bg-slate-100 shadow-2xl">
               {friends.map((friend: Friend) => (
                 <tr
                   key={friend.uid}
-                  className={`border-t border-zinc-500 ${
-                    friend.status !== "confirmed" && "hidden"
-                  }`}
+                  className="w-60 md:w-72 border-t border-zinc-500"
                 >
-                  <td className="px-4 py-4 w-48 md:w-60">
-                    <div className="flex">
-                      <div className="flex flex-1 justify-start">
+                  <td className="px-4 py-4">
+                    <div className="flex justify-between">
+                      <div className="flex flex-1">
                         <p className="flex flex-col justify-center">
-                          {friend.username}
+                          {friend.username.slice(0, maxLargeChars)}
+                          {friend.username.length > maxLargeChars && "..."}
                         </p>
                       </div>
-                      <div className="flex justify-end">
+                      <div className="flex">
                         <Form onSubmit={(e) => handleDeleteFriend(e)}>
                           <Input
                             id="deleteUsername"
@@ -348,7 +400,19 @@ function FriendView() {
                             value={friend.username}
                           />
                           <Button type="submit" className="bg-rose-500">
-                            Delete
+                            {deleteFriendLoading ? (
+                              <img
+                                className="w-5 h-5"
+                                src={buttonLoading.src}
+                                alt="Delete"
+                              />
+                            ) : (
+                              <img
+                                className="w-5 h-5"
+                                src={trash.src}
+                                alt="Delete"
+                              />
+                            )}
                           </Button>
                         </Form>
                       </div>
@@ -359,6 +423,9 @@ function FriendView() {
             </tbody>
           </table>
         </div>
+        {deleteFriendErrorMsg && (
+          <p className="text-rose-500">{deleteFriendErrorMsg}</p>
+        )}
       </div>
     </Main>
   );

@@ -120,9 +120,7 @@ function ResetPassword() {
             autoFocus
             onChange={(e) => setEmail(e.target.value)}
           />
-          <Button type="submit" className="bg-cyan-500">
-            Send Email
-          </Button>
+          <Button type="submit">Send Email</Button>
         </Form>
       ) : (
         <Form onSubmit={verifiedCode ? handlePwdSubmit : handleCodeSubmit}>
@@ -156,11 +154,11 @@ function ResetPassword() {
               />
             </>
           )}
-          <Button type="submit" className="bg-cyan-500">
+          <Button type="submit">
             {verifiedCode ? "Reset Password" : "Verify Code"}
           </Button>
           {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
-          {loading && <p className="text-zinc-500">Loading...</p>}
+          {loading && <p>Loading...</p>}
         </Form>
       )}
     </>

@@ -1,5 +1,3 @@
-import React, { ReactNode } from "react";
-
 interface InputProps {
   input?: string;
   id?: string;
@@ -22,7 +20,7 @@ function Input({
   className,
   onChange,
 }: InputProps) {
-  const defaultClassName = "text-zinc-500 bg-slate-300 p-2";
+  const defaultClassName = "h-10 text-zinc-500 bg-slate-300 p-2";
 
   return (
     <input

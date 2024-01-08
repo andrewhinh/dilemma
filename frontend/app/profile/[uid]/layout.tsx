@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { ProfileProvider } from "../providers";
 
-import { LoggedInNav, LoggedOutNav } from "../../ui/LoggedInNav";
+import { LoggedInNav, LoggedOutNav } from "../../ui/Nav";
 
 export const metadata: Metadata = {
   title: "Profile",

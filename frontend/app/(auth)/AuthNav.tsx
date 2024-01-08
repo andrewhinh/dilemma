@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useEffect } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useConst } from "../providers";
 import { usePathname } from "next/navigation";
 import { useRefreshToken } from "../lib/utils";
-import Nav from "../ui/Nav";
+
+import { LoggedOutNav } from "../ui/Nav";
 
 function AuthNav() {
   const { token, uid } = useConst();
@@ -23,48 +23,9 @@ function AuthNav() {
 
   return (
     <>
-      {route === "login" && (
-        <Nav>
-          <div className="flex flex-1 justify-end">
-            <Link
-              href="/signup"
-              className="hover:opacity-50 transition 300ms ease-in-out"
-            >
-              Sign Up
-            </Link>
-          </div>
-        </Nav>
-      )}
-      {route === "signup" && (
-        <Nav>
-          <div className="flex flex-1 justify-end">
-            <Link
-              href="/login"
-              className="hover:opacity-50 transition 300ms ease-in-out"
-            >
-              Login
-            </Link>
-          </div>
-        </Nav>
-      )}
-      {route === "reset-password" && (
-        <Nav>
-          <div className="flex flex-1 justify-end gap-4">
-            <Link
-              href="/login"
-              className="hover:opacity-50 transition 300ms ease-in-out"
-            >
-              Login
-            </Link>
-            <Link
-              href="/signup"
-              className="hover:opacity-50 transition 300ms ease-in-out"
-            >
-              Sign Up
-            </Link>
-          </div>
-        </Nav>
-      )}
+      {route === "login" && <LoggedOutNav showLogin={false} />}
+      {route === "signup" && <LoggedOutNav showSignUp={false} />}
+      {route === "reset-password" && <LoggedOutNav />}
     </>
   );
 }

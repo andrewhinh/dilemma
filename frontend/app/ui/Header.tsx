@@ -8,7 +8,7 @@ interface HeaderProps {
 
 function Header({ children, className }: HeaderProps) {
   const defaultClassName =
-    "gap-4 flex flex-col text-center items-center justify-center";
+    "text-cyan-500 gap-4 flex flex-col text-center items-center justify-center";
 
   return (
     <header

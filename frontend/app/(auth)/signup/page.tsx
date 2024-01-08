@@ -100,16 +100,14 @@ function SignUp() {
         />
         <Link
           href="/login"
-          className="text-md text-zinc-500 underline hover:opacity-50 transition 300ms ease-in-out"
+          className="text-md underline hover:opacity-50 transition 300ms ease-in-out"
         >
           Already have an account?
         </Link>
       </div>
-      <Button type="submit" className="bg-cyan-500">
-        Sign Up
-      </Button>
+      <Button type="submit">Sign Up</Button>
       {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
-      {loading && <p className="text-zinc-500">Loading...</p>}
+      {loading && <p>Loading...</p>}
     </Form>
   );
 }

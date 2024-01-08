@@ -4,18 +4,15 @@
 
 /* Autofill text color */
 input:-webkit-autofill {
-  -webkit-text-fill-color: #71717a; /* zinc-500 */
+  -webkit-line-1-fill-color: #71717a; /* zinc-500 */
 }
 
 /* Typewriter Effect Keyframes */
 :root {
-  --typing-duration-title: 1s;
-  --typing-steps-title: 13; /* Characters in title */
-  --blink-duration: 0.7s;
-  --show-element-delay: 2.5s; /* typing-duration-title + 1.5s */
-  --typing-duration-subtitle: 1.5s;
-  --typing-steps-subtitle: 31; /* Characters in subtitle */
-  --stop-cursor-delay-subtitle: 3.9s; /* typing-duration-subtitle + show-element-delay - 0.1s */
+  --typing-duration: 1.5s; /* Typing duration for subtitle */
+  --blink-duration: 1s; /* Blink duration for cursor */
+  --stop-cursor-duration: 2.5s; /* typing-duration + blink-duration */
+  --typing-steps-subtitle: 20; /* Characters in subtitle */
 }
 
 @keyframes typing {
@@ -39,39 +36,16 @@ input:-webkit-autofill {
   }
 }
 
-@keyframes show-element {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
 /* Typewriter Effect Styles */
-.typewriter-effect-title,
-.typewriter-effect-subtitle {
+.subtitle {
   overflow: hidden;
   border-right: 0.2rem solid;
   white-space: nowrap;
-}
-
-.typewriter-effect-title {
-  border-color: #00bcd4; /* cyan-500 */
-  animation: typing var(--typing-duration-title)
-      steps(var(--typing-steps-title), end) forwards,
-    blink-cursor var(--blink-duration) ease-in-out var(--typing-duration-title)
-      infinite,
-    stop-cursor 0.01s var(--show-element-delay) forwards;
-}
-
-.typewriter-effect-subtitle {
-  opacity: 0;
   color: #ffbf00; /* amber-500 */
   border-color: #ffbf00;
-  animation: show-element 0.01s var(--show-element-delay) forwards,
-    typing var(--typing-duration-subtitle)
-      steps(var(--typing-steps-subtitle), end) var(--show-element-delay)
-      forwards,
-    stop-cursor 0.01s var(--stop-cursor-delay-subtitle) forwards;
+  animation: typing var(--typing-duration)
+      steps(var(--typing-steps-subtitle), end) forwards,
+    blink-cursor var(--blink-duration) ease-in-out var(--typing-duration)
+      infinite,
+    stop-cursor 0.01s var(--stop-cursor-duration) forwards;
 }

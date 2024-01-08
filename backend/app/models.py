@@ -91,14 +91,12 @@ class Friends(SQLModel, table=True):
         back_populates="friend_1_links",
         sa_relationship_kwargs={
             "foreign_keys": "Friends.friend_uid",
-            "lazy": "selectin",
         },
     )
     friend_2: "User" = Relationship(
         back_populates="friend_2_links",
         sa_relationship_kwargs={
             "foreign_keys": "Friends.user_uid",
-            "lazy": "selectin",
         },
     )
 
@@ -108,7 +106,6 @@ class FriendReadBase(BaseModel):
 
     uid: str
     username: str
-    status: str
 
 
 class FriendRequestRead(FriendReadBase):
@@ -150,6 +147,7 @@ class User(UserBase, table=True):
         sa_relationship_kwargs={
             "foreign_keys": "FriendRequests.user_uid",
             "lazy": "selectin",
+            "cascade": "all, delete",
         },
     )
     receiver_links: Optional[List["FriendRequests"]] = Relationship(
@@ -157,6 +155,7 @@ class User(UserBase, table=True):
         sa_relationship_kwargs={
             "foreign_keys": "FriendRequests.friend_uid",
             "lazy": "selectin",
+            "cascade": "all, delete",
         },
     )
 
@@ -165,6 +164,7 @@ class User(UserBase, table=True):
         sa_relationship_kwargs={
             "foreign_keys": "Friends.user_uid",
             "lazy": "selectin",
+            "cascade": "all, delete",
         },
     )
     friend_2_links: Optional[List["Friends"]] = Relationship(
@@ -172,6 +172,7 @@ class User(UserBase, table=True):
         sa_relationship_kwargs={
             "foreign_keys": "Friends.friend_uid",
             "lazy": "selectin",
+            "cascade": "all, delete",
         },
     )
 

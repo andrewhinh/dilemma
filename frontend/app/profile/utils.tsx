@@ -10,20 +10,17 @@ import validator from "validator";
 interface User {
   uid: string;
   username: string;
-  status: string;
 }
 
 interface FriendRequest {
   uid: string;
   username: string;
-  status: string;
   request_date: string;
 }
 
 interface Friend {
   uid: string;
   username: string;
-  status: string;
   friendship_date: string;
 }
 

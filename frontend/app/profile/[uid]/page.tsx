@@ -11,9 +11,16 @@ import { useGetUser, useUpdateUser } from "../utils";
 
 import Main from "../../ui/Main";
 import Button from "../../ui/Button";
-import profileLoading from "@/public/profile-loading.svg";
 import UserView from "../UserView";
 import FriendView from "../FriendView";
+import profileLoading from "@/public/profile-loading.svg";
+import buttonLoading from "@/public/button-loading.svg";
+import profile from "@/public/profile.svg";
+import friends from "@/public/friends.svg";
+import xCloseSidebar from "@/public/x-close-sidebar.svg";
+import xOpenSidebar from "@/public/x-open-sidebar.svg";
+import yCloseSidebar from "@/public/y-close-sidebar.svg";
+import yOpenSidebar from "@/public/y-open-sidebar.svg";
 
 function Profile() {
   const { token, uid } = useConst();
@@ -24,7 +31,8 @@ function Profile() {
   const getUser = useGetUser();
   const updateUser = useUpdateUser();
 
-  const { updateUserErrorMsg, profileView, isSideBarOpen } = state;
+  const { updateUserErrorMsg, updateUserLoading, profileView, isSideBarOpen } =
+    state;
 
   // Main logic
   let numAttempts = useRef(0);
@@ -63,30 +71,70 @@ function Profile() {
           onClick={(e) => {
             updateUser(e, "user", null);
           }}
-          className={`w-full ${
-            profileView === "user" ? "bg-zinc-500" : "bg-cyan-500"
-          }`}
+          className={`w-full ${profileView === "user" && "bg-zinc-500"}`}
         >
-          Your Profile
+          {updateUserLoading ? (
+            <img
+              src={buttonLoading.src}
+              className="w-5 h-5"
+              alt="Your Profile"
+            />
+          ) : (
+            <img src={profile.src} className="w-5 h-5" alt="Your Profile" />
+          )}
         </Button>
         <Button
           onClick={(e) => {
             updateUser(e, "friend", null);
           }}
-          className={`w-full ${
-            profileView === "friend" ? "bg-zinc-500" : "bg-cyan-500"
-          }`}
+          className={`w-full ${profileView === "friend" && "bg-zinc-500"}`}
         >
-          Your Friends
+          {updateUserLoading ? (
+            <img
+              src={buttonLoading.src}
+              className="w-5 h-5"
+              alt="Your Friends"
+            />
+          ) : (
+            <img src={friends.src} className="w-5 h-5" alt="Your Friends" />
+          )}
         </Button>
       </aside>
       <div className="relative flex-1">
         <div className="flex justify-center">
           <Button
             onClick={(e) => updateUser(e, null, !isSideBarOpen)}
-            className="top-2 md:top-1/2 md:left-5 block absolute z-10 bg-cyan-500"
+            className="top-2 md:top-1/2 md:left-5 block absolute z-10"
           >
-            {isSideBarOpen ? "Close" : "Open"}
+            {updateUserLoading ? (
+              <img className="w-5 h-5" src={buttonLoading.src} alt="Sidebar" />
+            ) : isSideBarOpen ? (
+              <>
+                <img
+                  className="hidden md:block w-5 h-5"
+                  src={xCloseSidebar.src}
+                  alt="Close Sidebar"
+                />
+                <img
+                  className="block md:hidden w-5 h-5"
+                  src={yCloseSidebar.src}
+                  alt="Close Sidebar"
+                />
+              </>
+            ) : (
+              <>
+                <img
+                  className="hidden md:block w-5 h-5"
+                  src={xOpenSidebar.src}
+                  alt="Open Sidebar"
+                />
+                <img
+                  className="block md:hidden w-5 h-5"
+                  src={yOpenSidebar.src}
+                  alt="Open Sidebar"
+                />
+              </>
+            )}
           </Button>
         </div>
         {profileView === "" && (

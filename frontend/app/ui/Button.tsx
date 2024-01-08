@@ -10,7 +10,7 @@ interface ButtonProps {
 
 function Button({ children, type, className, onClick }: ButtonProps) {
   const defaultClassName =
-    "py-2 px-4 text-zinc-50 hover:opacity-50 hover:shadow-2xl transition 300ms ease-in-out font-semibold rounded";
+    "h-10 bg-cyan-500 py-2 px-4 text-zinc-50 hover:opacity-50 hover:shadow-2xl transition 300ms ease-in-out font-semibold rounded flex justify-center items-center";
 
   return (
     <button

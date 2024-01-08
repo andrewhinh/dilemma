@@ -34,7 +34,6 @@ Create a `.env` file:
    ```bash
    # Get an OpenAI API key: https://platform.openai.com/signup
    # Get your SMTP_SSL_PASSWORD: https://myaccount.google.com/apppasswords
-   API_PORT=8000
    DB_URL=sqlite:///data.db
    DB_ECHO=True
    OPENAI_API_KEY=<your key here>
@@ -44,7 +43,6 @@ Create a `.env` file:
    SMTP_SSL_LOGIN=<your email here>
    SMTP_SSL_PASSWORD=<your password here>
    FRONTEND_URL=<frontend URL here>
-   echo "API_PORT=$API_PORT" >> .env
    echo "DB_URL=$DB_URL" >> .env
    echo "DB_ECHO=$DB_ECHO" >> .env
    echo "OPENAI_API_KEY=$OPENAI_API_KEY" >> .env
@@ -54,7 +52,6 @@ Create a `.env` file:
    echo "SMTP_SSL_LOGIN=$SMTP_SSL_LOGIN" >> .env
    echo "SMTP_SSL_PASSWORD=$SMTP_SSL_PASSWORD" >> .env
    echo "FRONTEND_URL=$FRONTEND_URL" >> .env
-   echo "ECHO=$ECHO" >> .env
    ```
 
 ## Development

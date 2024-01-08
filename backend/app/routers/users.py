@@ -651,7 +651,6 @@ def read_sent_friend_requests(
         FriendRequestRead(
             uid=friend_request.uid,
             username=friend_request.username,
-            status=link.status,
             request_date=link.request_date,
         )
         for friend_request, link in zip(friend_requests, friend_request_links, strict=False)
