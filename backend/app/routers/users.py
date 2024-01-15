@@ -2,7 +2,7 @@
 import smtplib
 import uuid
 from datetime import datetime
-from typing import Annotated, List, Optional, Union
+from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
 from sqlmodel import Session
@@ -97,6 +97,7 @@ async def signup(*, session: Session = Depends(get_session), response: Response,
     refresh_token = create_access_token(data={"email": user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
 
     user = User(
+        profile_picture=db_user.profile_picture,
         email=db_user.email,
         username=db_user.username,
         hashed_password=get_password_hash(db_user.password),
@@ -433,8 +434,8 @@ async def read_user(
     return user
 
 
-@router.patch("/user/update", response_model=Union[Token, UserRead])
-async def update_user(  # noqa: C901
+@router.patch("/user/update", response_model=Token)
+async def update_user(
     *,
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
@@ -463,7 +464,6 @@ async def update_user(  # noqa: C901
     HTTPException
         User not found
     """
-    email_changed = False
     user_data = new_user.model_dump(exclude_unset=True)
 
     if "email" in user_data.keys():
@@ -473,7 +473,6 @@ async def update_user(  # noqa: C901
                     status_code=400,
                     detail="Email is invalid",
                 )
-            email_changed = True
 
     if "username" in user_data.keys():
         if current_user.username != user_data["username"]:
@@ -510,20 +509,16 @@ async def update_user(  # noqa: C901
     session.commit()
     session.refresh(current_user)
 
-    if email_changed:
-        access_token = create_access_token(data={"email": current_user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
-        refresh_token = create_access_token(data={"email": current_user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
+    access_token = create_access_token(data={"email": current_user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
+    refresh_token = create_access_token(data={"email": current_user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
 
-        current_user.refresh_token = refresh_token
-        session.add(current_user)
-        session.commit()
-        session.refresh(current_user)
+    current_user.refresh_token = refresh_token
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
 
-        set_cookie(refresh_token=refresh_token, response=response)
-        return Token(access_token=access_token, token_type="bearer", uid=current_user.uid)
-    else:
-        read_user = UserRead.model_validate(current_user)
-        return read_user
+    set_cookie(refresh_token=refresh_token, response=response)
+    return Token(access_token=access_token, token_type="bearer", uid=current_user.uid)
 
 
 @router.delete("/user/delete")
@@ -559,13 +554,44 @@ def send_friend_request(
         if friend in get_friends(current_user):
             raise HTTPException(status_code=400, detail="Friend already added")
 
-        new_friend_request = FriendRequests(
-            sender=current_user, receiver=friend, request_date=datetime.now(), status="pending"
-        )
+        new_friend_request = FriendRequests(sender=current_user, receiver=friend, request_date=datetime.now())
         session.add(new_friend_request)
         session.commit()
         session.refresh(new_friend_request)
         return UserRead.model_validate(current_user)
+    else:
+        raise HTTPException(status_code=404, detail="Friend not found")
+
+
+@router.post("/friends/revert-request", response_model=UserRead)
+def revert_friend_request(
+    *,
+    session: Session = Depends(get_session),
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    friend: UserReference,
+):
+    db_friend = UserReference.model_validate(friend)
+    if not db_friend.username:
+        raise HTTPException(status_code=400, detail="Username is empty")
+    if current_user.username == db_friend.username:
+        raise HTTPException(status_code=400, detail="Cannot send request to yourself")
+
+    friend = get_user(session, username=db_friend.username)
+    if friend:
+        friend_request_links = get_sent_friend_request_links(current_user)
+        friend_requests = get_sent_friend_requests(current_user)
+        if friend not in friend_requests:
+            raise HTTPException(status_code=400, detail="Friend request not found")
+        if friend in get_friends(current_user):
+            raise HTTPException(status_code=400, detail="Friend already added")
+
+        for delete_request, delete_request_link in zip(friend_requests, friend_request_links, strict=False):
+            if delete_request.username == friend.username:
+                delete_request_link.status = "reverted"
+                session.add(current_user)
+                session.commit()
+                session.refresh(current_user)
+                return UserRead.model_validate(current_user)
     else:
         raise HTTPException(status_code=404, detail="Friend not found")
 
@@ -595,9 +621,7 @@ def accept_friend_request(
         for friend_request, friend_request_link in zip(friend_requests, friend_request_links, strict=False):
             if friend_request.username == friend.username:
                 friend_request_link.status = "accepted"
-                new_friend = Friends(
-                    friend_1=current_user, friend_2=friend, friendship_date=datetime.now(), status="confirmed"
-                )
+                new_friend = Friends(friend_1=current_user, friend_2=friend, friendship_date=datetime.now())
                 session.add(current_user)
                 session.add(new_friend)
                 session.commit()
@@ -650,6 +674,7 @@ def read_sent_friend_requests(
     friend_requests = [
         FriendRequestRead(
             uid=friend_request.uid,
+            profile_picture=friend_request.profile_picture,
             username=friend_request.username,
             request_date=link.request_date,
         )
@@ -668,6 +693,7 @@ def read_incoming_friend_requests(
     friend_requests = [
         FriendRequestRead(
             uid=friend_request.uid,
+            profile_picture=friend_request.profile_picture,
             username=friend_request.username,
             status=link.status,
             request_date=link.request_date,
@@ -687,6 +713,7 @@ def read_friends(
     friends = [
         FriendRead(
             uid=friend.uid,
+            profile_picture=friend.profile_picture,
             username=friend.username,
             status=link.status,
             friendship_date=link.friendship_date,
@@ -696,7 +723,7 @@ def read_friends(
     return friends
 
 
-@router.post("/friends/delete")
+@router.post("/friends/delete", response_model=UserRead)
 def delete_friend(
     *,
     session: Session = Depends(get_session),
@@ -722,6 +749,6 @@ def delete_friend(
                 session.add(current_user)
                 session.commit()
                 session.refresh(current_user)
-                return {"message": "Friend deleted"}
+                return UserRead.model_validate(current_user)
     else:
         raise HTTPException(status_code=404, detail="Friend not found")

@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
+import { useState } from "react";
 import { useLogOut, useSendRequest } from "../lib/utils";
 import { useConst } from "../providers";
 import { useProfile } from "./providers";
@@ -8,8 +9,9 @@ import { useUpdateUser } from "./utils";
 
 import Main from "../ui/Main";
 import Form from "../ui/Form";
+import { ProfilePicture } from "../ui/Upload";
 import Input from "../ui/Input";
-import Button from "../ui/Button";
+import { FormButton } from "../ui/Button";
 import buttonLoading from "@/public/button-loading.svg";
 
 function UserView() {
@@ -20,25 +22,100 @@ function UserView() {
   const updateUser = useUpdateUser();
 
   const {
+    profilePicture,
     email,
     username,
     fullname,
     password,
     confirmPassword,
     deleteAccountConfirm,
+    canUpdateUser,
     updateUserErrorMsg,
     updateUserLoading,
-    updateUserSuccessMsg,
     pwdErrorMsg,
     pwdLoading,
     pwdSuccessMsg,
     deleteAccountErrorMsg,
     deleteAccountLoading,
   } = state;
+  const [tempProfilePicture, setTempProfilePicture] = useState(profilePicture);
+  const [tempEmail, setTempEmail] = useState(email);
+  const [tempUsername, setTempUsername] = useState(username);
+  const [tempFullname, setTempFullname] = useState(fullname);
+
   const updateUserUrl = apiUrl + "/user/update";
   const deleteUserUrl = apiUrl + "/user/delete";
 
   const deleteAccountPhrase = "delete my account";
+
+  const handlePicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileType = file.type.split("/")[0];
+    if (fileType !== "image") {
+      dispatch({
+        type: "SET_UPDATE_USER_ERROR_MSG",
+        payload: "File type must be image",
+      });
+      return;
+    }
+
+    const fileExtension = file.type.split("/")[1];
+    if (!["png", "jpg", "jpeg"].includes(fileExtension)) {
+      dispatch({
+        type: "SET_UPDATE_USER_ERROR_MSG",
+        payload: "File type must be png, jpg, or jpeg",
+      });
+      return;
+    }
+
+    const fileSize = file.size;
+    if (fileSize > 3 * 1024 * 1024) {
+      dispatch({
+        type: "SET_UPDATE_USER_ERROR_MSG",
+        payload: "File size must be less than 3MB",
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target && event.target.result) {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            const size = Math.min(img.width, img.height);
+            const startX = (img.width - size) / 2;
+            const startY = (img.height - size) / 2;
+
+            // Update ProfilePicture if this is changed
+            canvas.width = 96;
+            canvas.height = 96;
+
+            ctx.drawImage(img, startX, startY, size, size, 0, 0, 96, 96);
+            const croppedImageDataURL = canvas.toDataURL(file.type);
+            setTempProfilePicture(croppedImageDataURL);
+            if (croppedImageDataURL !== profilePicture) {
+              dispatch({
+                type: "SET_CAN_UPDATE_USER",
+                payload: true,
+              });
+            } else {
+              dispatch({
+                type: "SET_CAN_UPDATE_USER",
+                payload: false,
+              });
+            }
+          }
+        };
+        img.src = event.target.result as string;
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleUpdatePassword = (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
@@ -128,66 +205,133 @@ function UserView() {
 
   return (
     <Main className="relative z-0 gap-16">
-      <Form onSubmit={(e) => updateUser(e, null, null)}>
+      <Form onSubmit={(e) => updateUser(e)}>
+        <ProfilePicture
+          picture={tempProfilePicture}
+          handleUpload={handlePicUpload}
+        />
         <div className="flex flex-col gap-4 w-48 md:w-60">
           <div className="flex flex-col gap-2">
             <Input
               id="email"
               type="text"
-              value={email}
+              value={tempEmail}
               placeholder="Email"
-              onChange={(e) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "email",
-                  payload: e.target.value,
-                })
-              }
+              onChange={(e) => {
+                setTempEmail(e.target.value);
+                if (e.target.value !== email) {
+                  if (e.target.value === "" && email === null) {
+                    dispatch({
+                      type: "SET_CAN_UPDATE_USER",
+                      payload: false,
+                    });
+                  } else {
+                    dispatch({
+                      type: "SET_CAN_UPDATE_USER",
+                      payload: true,
+                    });
+                  }
+                } else {
+                  dispatch({
+                    type: "SET_CAN_UPDATE_USER",
+                    payload: false,
+                  });
+                }
+              }}
             />
             <Input
               id="username"
               type="text"
-              value={username}
+              value={tempUsername}
               placeholder="Username"
-              onChange={(e) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "username",
-                  payload: e.target.value,
-                })
-              }
+              onChange={(e) => {
+                setTempUsername(e.target.value);
+                if (e.target.value !== username) {
+                  if (e.target.value === "" && username === null) {
+                    dispatch({
+                      type: "SET_CAN_UPDATE_USER",
+                      payload: false,
+                    });
+                  } else {
+                    dispatch({
+                      type: "SET_CAN_UPDATE_USER",
+                      payload: true,
+                    });
+                  }
+                } else {
+                  dispatch({
+                    type: "SET_CAN_UPDATE_USER",
+                    payload: false,
+                  });
+                }
+              }}
             />
             <Input
               id="fullname"
               type="text"
-              value={fullname}
+              value={tempFullname}
               placeholder="Full Name"
-              onChange={(e) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "fullname",
-                  payload: e.target.value,
-                })
-              }
+              onChange={(e) => {
+                setTempFullname(e.target.value);
+                if (e.target.value !== fullname) {
+                  if (e.target.value === "" && fullname === null) {
+                    dispatch({
+                      type: "SET_CAN_UPDATE_USER",
+                      payload: false,
+                    });
+                  } else {
+                    dispatch({
+                      type: "SET_CAN_UPDATE_USER",
+                      payload: true,
+                    });
+                  }
+                } else {
+                  dispatch({
+                    type: "SET_CAN_UPDATE_USER",
+                    payload: false,
+                  });
+                }
+              }}
             />
           </div>
-          <Button type="submit">
+          <FormButton
+            noHover={canUpdateUser}
+            onClick={() => {
+              dispatch({
+                type: "SET_FIELD",
+                field: "profilePicture",
+                payload: tempProfilePicture,
+              });
+              dispatch({
+                type: "SET_FIELD",
+                field: "email",
+                payload: tempEmail,
+              });
+              dispatch({
+                type: "SET_FIELD",
+                field: "username",
+                payload: tempUsername,
+              });
+              dispatch({
+                type: "SET_FIELD",
+                field: "fullname",
+                payload: tempFullname,
+              });
+            }}
+          >
             {updateUserLoading ? (
               <img
                 src={buttonLoading.src}
-                className="w-5 h-5"
+                className="w-6 h-6"
                 alt="Update Profile"
               />
             ) : (
               <p>Update Profile</p>
             )}
-          </Button>
+          </FormButton>
         </div>
         {updateUserErrorMsg && (
           <p className="text-rose-500">{updateUserErrorMsg}</p>
-        )}
-        {updateUserSuccessMsg && (
-          <p className="text-cyan-500">{updateUserSuccessMsg}</p>
         )}
       </Form>
       <Form onSubmit={(e) => handleUpdatePassword(e)}>
@@ -220,13 +364,13 @@ function UserView() {
               }
             />
           </div>
-          <Button>
+          <FormButton>
             {pwdLoading ? (
-              <img src={buttonLoading.src} className="w-5 h-5" alt="Update" />
+              <img src={buttonLoading.src} className="w-6 h-6" alt="Update" />
             ) : (
               <p>Update Password</p>
             )}
-          </Button>
+          </FormButton>
         </div>
         {pwdErrorMsg && <p className="text-rose-500">{pwdErrorMsg}</p>}
         {pwdSuccessMsg && <p className="text-cyan-500">{pwdSuccessMsg}</p>}
@@ -256,13 +400,13 @@ function UserView() {
               }
             />
           </div>
-          <Button className="bg-rose-500">
+          <FormButton className="bg-rose-500">
             {deleteAccountLoading ? (
-              <img src={buttonLoading.src} className="w-5 h-5" alt="Delete" />
+              <img src={buttonLoading.src} className="w-6 h-6" alt="Delete" />
             ) : (
               <p>Delete Account</p>
             )}
-          </Button>
+          </FormButton>
         </div>
         {deleteAccountErrorMsg && (
           <p className="text-rose-500">{deleteAccountErrorMsg}</p>

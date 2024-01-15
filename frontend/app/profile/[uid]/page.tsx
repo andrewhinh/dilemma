@@ -10,11 +10,11 @@ import { useProfile } from "../providers";
 import { useGetUser, useUpdateUser } from "../utils";
 
 import Main from "../../ui/Main";
-import Button from "../../ui/Button";
+import Form from "../../ui/Form";
+import { Button } from "../../ui/Button";
 import UserView from "../UserView";
 import FriendView from "../FriendView";
 import profileLoading from "@/public/profile-loading.svg";
-import buttonLoading from "@/public/button-loading.svg";
 import profile from "@/public/profile.svg";
 import friends from "@/public/friends.svg";
 import xCloseSidebar from "@/public/x-close-sidebar.svg";
@@ -27,12 +27,11 @@ function Profile() {
   const refreshToken = useRefreshToken();
   const logOut = useLogOut();
   const pathname = usePathname();
-  const { state } = useProfile();
+  const { dispatch, state } = useProfile();
   const getUser = useGetUser();
   const updateUser = useUpdateUser();
 
-  const { updateUserErrorMsg, updateUserLoading, profileView, isSideBarOpen } =
-    state;
+  const { getUserInfo, updateUserErrorMsg, profileView, isSideBarOpen } = state;
 
   // Main logic
   let numAttempts = useRef(0);
@@ -53,12 +52,14 @@ function Profile() {
       if (pathnameUid !== uid) {
         notFound();
       } else {
-        getUser();
-        if (updateUserErrorMsg) logOut();
+        if (getUserInfo) {
+          getUser();
+          if (updateUserErrorMsg) logOut();
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [token, getUserInfo]);
 
   return (
     <div className="flex flex-col md:flex-row items-stretch text-center">
@@ -67,75 +68,96 @@ function Profile() {
           isSideBarOpen ? "min-w-min" : "hidden"
         }`}
       >
-        <Button
-          onClick={(e) => {
-            updateUser(e, "user", null);
-          }}
-          className={`w-full ${profileView === "user" && "bg-zinc-500"}`}
-        >
-          {updateUserLoading ? (
-            <img
-              src={buttonLoading.src}
-              className="w-5 h-5"
-              alt="Your Profile"
-            />
-          ) : (
-            <img src={profile.src} className="w-5 h-5" alt="Your Profile" />
-          )}
-        </Button>
-        <Button
-          onClick={(e) => {
-            updateUser(e, "friend", null);
-          }}
-          className={`w-full ${profileView === "friend" && "bg-zinc-500"}`}
-        >
-          {updateUserLoading ? (
-            <img
-              src={buttonLoading.src}
-              className="w-5 h-5"
-              alt="Your Friends"
-            />
-          ) : (
-            <img src={friends.src} className="w-5 h-5" alt="Your Friends" />
-          )}
-        </Button>
+        <Form className="w-full" onSubmit={(e) => updateUser(e, false)}>
+          <Button
+            type="submit"
+            onClick={() => {
+              dispatch({
+                type: "SET_CAN_UPDATE_USER",
+                payload: true,
+              });
+              dispatch({
+                type: "SET_FIELD",
+                field: "profileView",
+                payload: "user",
+              });
+            }}
+            className={`w-full px-4 py-2 ${
+              profileView === "user" && "bg-zinc-500"
+            }`}
+          >
+            <img src={profile.src} className="w-6 h-6" alt="Your Profile" />
+          </Button>
+        </Form>
+        <Form className="w-full" onSubmit={(e) => updateUser(e, false)}>
+          <Button
+            type="submit"
+            onClick={() => {
+              dispatch({
+                type: "SET_CAN_UPDATE_USER",
+                payload: true,
+              });
+              dispatch({
+                type: "SET_FIELD",
+                field: "profileView",
+                payload: "friend",
+              });
+            }}
+            className={`w-full px-4 py-2 ${
+              profileView === "friend" && "bg-zinc-500"
+            }`}
+          >
+            <img src={friends.src} className="w-6 h-6" alt="Your Friends" />
+          </Button>
+        </Form>
       </aside>
       <div className="relative flex-1">
         <div className="flex justify-center">
-          <Button
-            onClick={(e) => updateUser(e, null, !isSideBarOpen)}
-            className="top-2 md:top-1/2 md:left-5 block absolute z-10"
-          >
-            {updateUserLoading ? (
-              <img className="w-5 h-5" src={buttonLoading.src} alt="Sidebar" />
-            ) : isSideBarOpen ? (
-              <>
-                <img
-                  className="hidden md:block w-5 h-5"
-                  src={xCloseSidebar.src}
-                  alt="Close Sidebar"
-                />
-                <img
-                  className="block md:hidden w-5 h-5"
-                  src={yCloseSidebar.src}
-                  alt="Close Sidebar"
-                />
-              </>
-            ) : (
-              <>
-                <img
-                  className="hidden md:block w-5 h-5"
-                  src={xOpenSidebar.src}
-                  alt="Open Sidebar"
-                />
-                <img
-                  className="block md:hidden w-5 h-5"
-                  src={yOpenSidebar.src}
-                  alt="Open Sidebar"
-                />
-              </>
-            )}
-          </Button>
+          <Form className="w-full" onSubmit={(e) => updateUser(e, false)}>
+            <Button
+              type="submit"
+              onClick={() => {
+                dispatch({
+                  type: "SET_CAN_UPDATE_USER",
+                  payload: true,
+                });
+                dispatch({
+                  type: "SET_FIELD",
+                  field: "isSideBarOpen",
+                  payload: !isSideBarOpen,
+                });
+              }}
+              className="bg-transparent top-2 md:top-1/2 md:left-5 absolute z-10"
+            >
+              {isSideBarOpen ? (
+                <>
+                  <img
+                    className="hidden md:block w-6 h-6"
+                    src={xCloseSidebar.src}
+                    alt="Close Sidebar"
+                  />
+                  <img
+                    className="block md:hidden w-6 h-6"
+                    src={yCloseSidebar.src}
+                    alt="Close Sidebar"
+                  />
+                </>
+              ) : (
+                <>
+                  <img
+                    className="hidden md:block w-6 h-6"
+                    src={xOpenSidebar.src}
+                    alt="Open Sidebar"
+                  />
+                  <img
+                    className="block md:hidden w-6 h-6"
+                    src={yOpenSidebar.src}
+                    alt="Open Sidebar"
+                  />
+                </>
+              )}
+            </Button>
+          </Form>
         </div>
         {profileView === "" && (
           <Main className="relative z-0">

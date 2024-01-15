@@ -4,15 +4,17 @@ import React, { createContext, useReducer, useContext } from "react";
 import { Action, State } from "./utils";
 
 const initialState: State = {
+  getUserInfo: true,
   profileView: "",
   isSideBarOpen: false,
+  profilePicture: "",
   email: "",
   username: "",
   fullname: "",
   password: "",
   confirmPassword: "",
+  canUpdateUser: false,
   updateUserErrorMsg: "",
-  updateUserSuccessMsg: "",
   updateUserLoading: false,
   pwdErrorMsg: "",
   pwdSuccessMsg: "",
@@ -23,8 +25,9 @@ const initialState: State = {
   requestUsername: "",
   sentFriendRequests: [],
   sendRequestErrorMsg: "",
-  sendRequestSuccessMsg: "",
   sendRequestLoading: false,
+  revertRequestErrorMsg: "",
+  revertRequestLoading: false,
   incomingFriendRequests: [],
   acceptRequestErrorMsg: "",
   acceptRequestLoading: false,
@@ -47,21 +50,19 @@ const ProfileContext = createContext<ProfileContextType>({
 
 const reducer = (state: State, action: Action) => {
   switch (action.type) {
-    case "SET_PROFILE_VIEW":
-      return { ...state, profileView: action.payload };
-    case "SET_IS_SIDEBAR_OPEN":
-      return { ...state, isSideBarOpen: action.payload };
     case "SET_FIELD":
       if (action.field) {
         return { ...state, [action.field]: action.payload };
       }
       return state;
+    case "SET_GET_USER_INFO":
+      return { ...state, getUserInfo: action.payload };
+    case "SET_CAN_UPDATE_USER":
+      return { ...state, canUpdateUser: action.payload };
     case "SET_UPDATE_USER_ERROR_MSG":
       return { ...state, updateUserErrorMsg: action.payload };
     case "SET_UPDATE_USER_LOADING":
       return { ...state, updateUserLoading: action.payload };
-    case "SET_UPDATE_USER_SUCCESS_MSG":
-      return { ...state, updateUserSuccessMsg: action.payload };
     case "SET_PWD_ERROR_MSG":
       return { ...state, pwdErrorMsg: action.payload };
     case "SET_PWD_LOADING":
@@ -74,10 +75,12 @@ const reducer = (state: State, action: Action) => {
       return { ...state, deleteAccountLoading: action.payload };
     case "SET_SEND_REQUEST_ERROR_MSG":
       return { ...state, sendRequestErrorMsg: action.payload };
-    case "SET_SEND_REQUEST_SUCCESS_MSG":
-      return { ...state, sendRequestSuccessMsg: action.payload };
     case "SET_SEND_REQUEST_LOADING":
       return { ...state, sendRequestLoading: action.payload };
+    case "SET_REVERT_REQUEST_ERROR_MSG":
+      return { ...state, revertRequestErrorMsg: action.payload };
+    case "SET_REVERT_REQUEST_LOADING":
+      return { ...state, revertRequestLoading: action.payload };
     case "SET_ACCEPT_REQUEST_ERROR_MSG":
       return { ...state, acceptRequestErrorMsg: action.payload };
     case "SET_ACCEPT_REQUEST_LOADING":

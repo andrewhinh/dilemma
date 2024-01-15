@@ -10,7 +10,7 @@ import validator from "validator";
 
 import Form from "../../ui/Form";
 import Input from "../../ui/Input";
-import Button from "../../ui/Button";
+import { FormButton } from "../../ui/Button";
 
 function ResetPassword() {
   const router = useRouter();
@@ -120,7 +120,7 @@ function ResetPassword() {
             autoFocus
             onChange={(e) => setEmail(e.target.value)}
           />
-          <Button type="submit">Send Email</Button>
+          <FormButton>Send Email</FormButton>
         </Form>
       ) : (
         <Form onSubmit={verifiedCode ? handlePwdSubmit : handleCodeSubmit}>
@@ -154,9 +154,9 @@ function ResetPassword() {
               />
             </>
           )}
-          <Button type="submit">
+          <FormButton>
             {verifiedCode ? "Reset Password" : "Verify Code"}
-          </Button>
+          </FormButton>
           {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
           {loading && <p>Loading...</p>}
         </Form>

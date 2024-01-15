@@ -105,6 +105,7 @@ class FriendReadBase(BaseModel):
     """Friend read base model."""
 
     uid: str
+    profile_picture: Optional[str]
     username: str
 
 
@@ -123,6 +124,7 @@ class FriendRead(FriendReadBase):
 class UserBase(SQLModel):
     """User base model."""
 
+    profile_picture: Optional[str] = Field(default=None)
     email: Optional[str] = Field(default=None, index=True)
     username: Optional[str] = Field(default=None, index=True)
     fullname: Optional[str] = Field(default=None, index=True)
@@ -199,6 +201,7 @@ class UserRead(UserBase):
 class UserUpdate(SQLModel):
     """User update model."""
 
+    profile_picture: Optional[str] = None
     email: Optional[str] = None
     username: Optional[str] = None
     fullname: Optional[str] = None

@@ -3,7 +3,6 @@
 
 import React, { ReactNode, useEffect } from "react";
 import Link from "next/link";
-import PropTypes from "prop-types";
 
 import { useConst } from "../providers";
 import { useRefreshToken, useLogOut } from "../lib/utils";

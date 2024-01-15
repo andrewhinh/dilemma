@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import Header from "../ui/Header";
-import Button from "../ui/Button";
+import { Button } from "../ui/Button";
 
 function Spec() {
   return (
@@ -11,9 +11,7 @@ function Spec() {
         {
           // Change steps of typewriter effect if text is changed
         }
-        <h2 className="text-xl md:text-3xl subtitle">
-          Multiplayer Learning
-        </h2>
+        <h2 className="text-xl md:text-3xl subtitle">Multiplayer Learning</h2>
       </Header>
       <div className="gap-2 flex flex-col items-center justify-center w-60 md:w-72">
         <p className="text-base md:text-lg">Learning can be boring.</p>
@@ -24,11 +22,11 @@ function Spec() {
       </div>
       <div className="button gap-2 flex flex-col md:flex-row items-center justify-center">
         <Link href="/signup">
-          <Button className="whitespace-nowrap">Join Now</Button>
+          <Button className="px-4 py-2 whitespace-nowrap">Join Now</Button>
         </Link>
         <p className="text-base md:text-lg">or</p>
         <Link href="/login">
-          <Button>Login</Button>
+          <Button className="px-4 py-2">Login</Button>
         </Link>
       </div>
     </>

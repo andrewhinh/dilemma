@@ -7,7 +7,7 @@ import { useRefreshToken } from "../lib/utils";
 import { LoggedInNav } from "../ui/Nav";
 import Main from "../ui/Main";
 import Spec from "./Spec";
-import Upload from "./Upload";
+import { File } from "../ui/Upload";
 import Support from "./Support";
 
 function HomePage() {
@@ -25,7 +25,7 @@ function HomePage() {
         <>
           <LoggedInNav />
           <Main className="gap-12 md:gap-24">
-            <Upload />
+            <File />
           </Main>
           <Support />
         </>

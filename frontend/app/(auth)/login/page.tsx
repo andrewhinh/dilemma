@@ -10,7 +10,7 @@ import validator from "validator";
 
 import Form from "../../ui/Form";
 import Input from "../../ui/Input";
-import Button from "../../ui/Button";
+import { FormButton } from "../../ui/Button";
 
 function Login() {
   const { apiUrl } = useConst();
@@ -76,7 +76,7 @@ function Login() {
           Forgot Password?
         </Link>
       </div>
-      <Button type="submit">Login</Button>
+      <FormButton>Login</FormButton>
       {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
       {loading && <p>Loading...</p>}
     </Form>
