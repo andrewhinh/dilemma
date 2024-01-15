@@ -1,5 +1,4 @@
 """User routes."""
-import smtplib
 import uuid
 from datetime import datetime
 from typing import Annotated, List, Optional
@@ -7,11 +6,11 @@ from typing import Annotated, List, Optional
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
 from sqlmodel import Session
 
-from app.config import get_settings
 from app.database import get_session
 from app.dependencies.users import (
     ACCESS_TOKEN_EXPIRES,
     REFRESH_TOKEN_EXPIRES,
+    VERIFY_CODE_EXPIRES,
     authenticate_user,
     create_access_token,
     get_current_active_user,
@@ -24,36 +23,56 @@ from app.dependencies.users import (
     get_sent_friend_requests,
     get_user,
     get_user_from_token,
+    get_verification_code,
+    send_email,
     set_cookie,
 )
 from app.models import (
+    Friend,
     FriendRead,
+    FriendRequest,
     FriendRequestRead,
-    FriendRequests,
-    Friends,
     Token,
     User,
     UserCreate,
     UserRead,
     UserReference,
     UserUpdate,
+    VerificationCode,
 )
 
 router = APIRouter(
     tags=["users"],
     responses={404: {"description": "Not found"}},
 )
-SETTINGS = get_settings()
-smtp_ssl_host = SETTINGS.smtp_ssl_host
-smtp_ssl_port = SETTINGS.smtp_ssl_port
-smtp_ssl_login = SETTINGS.smtp_ssl_login
-smtp_ssl_password = SETTINGS.smtp_ssl_password
 
 
-@router.post("/token/signup", response_model=Token)
-async def signup(*, session: Session = Depends(get_session), response: Response, user: UserCreate):
-    """Signup."""
-    db_user = UserCreate.model_validate(user)
+@router.post("/verify-email", response_model=dict[str, str])
+async def verify_email(
+    *,
+    session: Session = Depends(get_session),
+    user: UserCreate,
+):
+    """Verify email.
+
+    Parameters
+    ----------
+    session
+        Database session
+    user
+        UserUpdate
+
+    Returns
+    -------
+    dict[str, str]
+        Message
+
+    Raises
+    ------
+    HTTPException
+        User not found
+    """
+    db_user = UserUpdate.model_validate(user)
 
     if not db_user.email:
         raise HTTPException(
@@ -86,29 +105,107 @@ async def signup(*, session: Session = Depends(get_session), response: Response,
             status_code=400,
             detail="Email is invalid",
         )
-
     if get_user(session, username=db_user.username):
         raise HTTPException(
             status_code=400,
             detail="Username is invalid",
         )
 
+    verify_code = VerificationCode(
+        email=db_user.email,
+        code=uuid.uuid4().hex,
+        request_date=datetime.now(),
+        expiry_date=datetime.now() + VERIFY_CODE_EXPIRES,
+    )
+    session.add(verify_code)
+    session.commit()
+    session.refresh(verify_code)
+
+    body = f"Welcome!\n\nHead back to the website and enter the following code to continue:\n\n{verify_code.code}"
+    send_email(db_user.email, subject="Verify Email", body=body)
+    return {"message": "Verification email sent"}
+
+
+@router.post("/token/signup", response_model=Token)
+async def signup(*, session: Session = Depends(get_session), response: Response, user: UserCreate):
+    """Signup."""
+    db_user = UserCreate.model_validate(user)
+    if not db_user.email:
+        raise HTTPException(
+            status_code=400,
+            detail="Email is empty",
+        )
+    if not db_user.username:
+        raise HTTPException(
+            status_code=400,
+            detail="Username is empty",
+        )
+    if not db_user.password:
+        raise HTTPException(
+            status_code=400,
+            detail="Password is empty",
+        )
+    if not db_user.confirm_password:
+        raise HTTPException(
+            status_code=400,
+            detail="Confirm password is empty",
+        )
+    if db_user.password != db_user.confirm_password:
+        raise HTTPException(
+            status_code=400,
+            detail="Passwords do not match",
+        )
+    if not db_user.verify_code:
+        raise HTTPException(
+            status_code=400,
+            detail="Code is empty",
+        )
+
+    if get_user(session, db_user.email):
+        raise HTTPException(
+            status_code=400,
+            detail="Email is invalid",
+        )
+    if get_user(session, username=db_user.username):
+        raise HTTPException(
+            status_code=400,
+            detail="Username is invalid",
+        )
+
+    verify_code = get_verification_code(session, db_user.email)
+    if not verify_code:
+        raise HTTPException(
+            status_code=404,
+            detail="Previous code not found, request new code",
+        )
+    if verify_code.code != db_user.verify_code:
+        raise HTTPException(
+            status_code=400,
+            detail="Code is invalid",
+        )
+
+    verify_code.status = "verified"
+    verify_code.verify_date = datetime.now()
+    session.add(verify_code)
+
     access_token = create_access_token(data={"email": user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
     refresh_token = create_access_token(data={"email": user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
 
-    user = User(
+    created_user = User(
         profile_picture=db_user.profile_picture,
         email=db_user.email,
         username=db_user.username,
+        fullname=db_user.fullname,
         hashed_password=get_password_hash(db_user.password),
         refresh_token=refresh_token,
     )
-    session.add(user)
+    session.add(created_user)
     session.commit()
-    session.refresh(user)
+    session.refresh(verify_code)
+    session.refresh(created_user)
 
     set_cookie(refresh_token=refresh_token, response=response)
-    return Token(access_token=access_token, token_type="bearer", uid=user.uid)
+    return Token(access_token=access_token, token_type="bearer", uid=created_user.uid)
 
 
 @router.post("/token/login", response_model=Token)
@@ -224,7 +321,7 @@ async def refresh_token(
     return Token(access_token=access_token, token_type="bearer", uid=user.uid)
 
 
-@router.post("/token/logout")
+@router.post("/token/logout", response_model=dict[str, str])
 async def logout(
     *,
     session: Session = Depends(get_session),
@@ -258,7 +355,7 @@ async def logout(
     return {"message": "Logged out"}
 
 
-@router.post("/forgot-password")
+@router.post("/forgot-password", response_model=dict[str, str])
 async def forgot_password(
     *,
     session: Session = Depends(get_session),
@@ -287,28 +384,21 @@ async def forgot_password(
     if not db_user.email:
         raise HTTPException(status_code=400, detail="Email is empty")
 
-    user = get_user(session, db_user.email)
-    if user:
-        s = smtplib.SMTP(smtp_ssl_host, smtp_ssl_port)
-        s.ehlo()
-        s.starttls()
-        s.ehlo()
-        s.login(smtp_ssl_login, smtp_ssl_password)
-
+    verified_user = get_user(session, db_user.email)
+    if verified_user:
         recovery_code = uuid.uuid4().hex
-        user.recovery_code = recovery_code
-        session.add(user)
+        verified_user.recovery_code = recovery_code
+        session.add(verified_user)
         session.commit()
-        session.refresh(user)
+        session.refresh(verified_user)
 
-        message = f"Subject: Password recovery\n\nYou've requested a password reset.\n\nYour code is {recovery_code}.\n\nReturn to the app and enter the code to continue."
-        s.sendmail(smtp_ssl_login, user.email, message)
-        s.quit()
+        body = f"You've requested a password reset.\n\nHead back to the website and enter the following code to continue:\n\n{recovery_code}"
+        send_email(verified_user.email, subject="Password Recovery", body=body)
 
     return {"message": "Password recovery email sent"}
 
 
-@router.post("/check-code")
+@router.post("/check-code", response_model=dict[str, str])
 async def check_code(
     *,
     session: Session = Depends(get_session),
@@ -521,7 +611,7 @@ async def update_user(
     return Token(access_token=access_token, token_type="bearer", uid=current_user.uid)
 
 
-@router.delete("/user/delete")
+@router.delete("/user/delete", response_model=dict[str, str])
 def delete_user(
     *,
     session: Session = Depends(get_session),
@@ -554,7 +644,7 @@ def send_friend_request(
         if friend in get_friends(current_user):
             raise HTTPException(status_code=400, detail="Friend already added")
 
-        new_friend_request = FriendRequests(sender=current_user, receiver=friend, request_date=datetime.now())
+        new_friend_request = FriendRequest(sender=current_user, receiver=friend, request_date=datetime.now())
         session.add(new_friend_request)
         session.commit()
         session.refresh(new_friend_request)
@@ -621,7 +711,7 @@ def accept_friend_request(
         for friend_request, friend_request_link in zip(friend_requests, friend_request_links, strict=False):
             if friend_request.username == friend.username:
                 friend_request_link.status = "accepted"
-                new_friend = Friends(friend_1=current_user, friend_2=friend, friendship_date=datetime.now())
+                new_friend = Friend(friend_1=current_user, friend_2=friend, friendship_date=datetime.now())
                 session.add(current_user)
                 session.add(new_friend)
                 session.commit()

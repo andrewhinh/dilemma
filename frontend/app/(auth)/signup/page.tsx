@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-
+import { useSendRequest } from "../../lib/utils";
 import { useConst } from "../../providers";
 import { useToProfile } from "../../lib/utils";
 
@@ -13,14 +13,23 @@ import Form from "../../ui/Form";
 import { ProfilePicture } from "../../ui/Upload";
 import Input from "../../ui/Input";
 import { FormButton } from "../../ui/Button";
+import buttonLoading from "@/public/button-loading.svg";
 
 function SignUp() {
   const { apiUrl } = useConst();
   const toProfile = useToProfile();
+  const sendRequest = useSendRequest();
 
+  const verifyEmailUrl = apiUrl + "/verify-email";
   const signUpUrl = apiUrl + "/token/signup";
 
   const [pic, setPic] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
+  const [username, setUsername] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [confirmPassword, setConfirmPassword] = useState<string>("");
+  const [verifiedEmail, setVerifiedEmail] = useState(false);
+  const [code, setCode] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -73,61 +82,122 @@ function SignUp() {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSendEmail = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     setLoading(true);
     setErrorMsg(null);
 
-    const formData = new FormData(e.target as HTMLFormElement);
-    const formDataObj = Object.fromEntries(
-      Array.from(formData.entries()).map(([key, value]) => [
-        key,
-        value.toString(),
-      ])
-    );
-
-    if (pic) formDataObj.profile_picture = pic;
-
-    if (formDataObj.email === "") {
+    if (email === "") {
       setErrorMsg("Email cannot be empty");
       setLoading(false);
       return;
     }
 
-    if (!validator.isEmail(formDataObj.email)) {
+    if (!validator.isEmail(email)) {
       setErrorMsg("Email is not valid");
       setLoading(false);
       return;
     }
 
-    if (formDataObj.username === "") {
+    if (username === "") {
       setErrorMsg("Username cannot be empty");
       setLoading(false);
       return;
     }
 
-    if (formDataObj.password === "") {
+    if (password === "") {
       setErrorMsg("Password cannot be empty");
       setLoading(false);
       return;
     }
 
-    if (formDataObj.confirm_password === "") {
+    if (confirmPassword === "") {
       setErrorMsg("Confirm password cannot be empty");
       setLoading(false);
       return;
     }
 
-    if (formDataObj.password !== formDataObj.confirm_password) {
+    if (password !== confirmPassword) {
       setErrorMsg("Passwords do not match");
       setLoading(false);
       return;
     }
 
+    let request = {
+      profile_picture: pic,
+      email: email,
+      username: username,
+      password: password,
+      confirm_password: confirmPassword,
+    };
+    sendRequest(verifyEmailUrl, "POST", request)
+      .then(() => {
+        setVerifiedEmail(true);
+      })
+      .catch((error) => setErrorMsg(error.detail || error))
+      .finally(() => setLoading(false));
+  };
+
+  const handleCodeSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    setLoading(true);
+    setErrorMsg(null);
+
+    if (email === "") {
+      setErrorMsg("Email cannot be empty");
+      setLoading(false);
+      return;
+    }
+
+    if (!validator.isEmail(email)) {
+      setErrorMsg("Email is not valid");
+      setLoading(false);
+      return;
+    }
+
+    if (username === "") {
+      setErrorMsg("Username cannot be empty");
+      setLoading(false);
+      return;
+    }
+
+    if (password === "") {
+      setErrorMsg("Password cannot be empty");
+      setLoading(false);
+      return;
+    }
+
+    if (confirmPassword === "") {
+      setErrorMsg("Confirm password cannot be empty");
+      setLoading(false);
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setErrorMsg("Passwords do not match");
+      setLoading(false);
+      return;
+    }
+
+    if (code === "") {
+      setErrorMsg("Code cannot be empty");
+      setLoading(false);
+      return;
+    }
+
+    let request = {
+      profile_picture: pic,
+      email: email,
+      username: username,
+      password: password,
+      confirm_password: confirmPassword,
+      verify_code: code,
+    };
     toProfile(
       signUpUrl,
-      formDataObj,
+      request,
       () => setLoading(false),
       (error) => {
         setErrorMsg(error);
@@ -137,33 +207,82 @@ function SignUp() {
   };
 
   return (
-    <Form onSubmit={handleSubmit}>
-      <ProfilePicture picture={pic} handleUpload={handlePicUpload} />
-      <div className="gap-2 flex flex-col text-left">
-        <Input type="email" name="email" placeholder="Email" autoFocus />
-        <Input
-          type="username"
-          name="username"
-          placeholder="Username"
-          autoFocus
-        />
-        <Input type="password" name="password" placeholder="Password" />
-        <Input
-          type="password"
-          name="confirm_password"
-          placeholder="Confirm Password"
-        />
-        <Link
-          href="/login"
-          className="text-md underline hover:opacity-50 transition 300ms ease-in-out"
-        >
-          Already have an account?
-        </Link>
-      </div>
-      <FormButton>Sign Up</FormButton>
-      {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
-      {loading && <p>Loading...</p>}
-    </Form>
+    <>
+      {!verifiedEmail ? (
+        <Form onSubmit={handleSendEmail}>
+          <ProfilePicture picture={pic} handleUpload={handlePicUpload} />
+          <div className="gap-2 flex flex-col text-left">
+            <Input
+              type="email"
+              name="email"
+              value={email}
+              placeholder="Email"
+              autoFocus
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <Input
+              type="username"
+              name="username"
+              value={username}
+              placeholder="Username"
+              onChange={(e) => setUsername(e.target.value)}
+            />
+            <Input
+              type="password"
+              name="password"
+              value={password}
+              placeholder="Password"
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <Input
+              type="password"
+              name="confirm_password"
+              value={confirmPassword}
+              placeholder="Confirm Password"
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+            <Link
+              href="/login"
+              className="text-md underline hover:opacity-50 transition 300ms ease-in-out"
+            >
+              Already have an account?
+            </Link>
+          </div>
+          <FormButton>
+            {loading ? (
+              <img src={buttonLoading.src} className="w-6 h-6" alt="Sign Up" />
+            ) : (
+              <p>Sign Up</p>
+            )}
+          </FormButton>
+          {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
+        </Form>
+      ) : (
+        <Form onSubmit={handleCodeSubmit}>
+          <p>A verification code has been sent to your email.</p>
+          <Input
+            type="text"
+            name="code"
+            value={code}
+            placeholder="Code"
+            autoFocus
+            onChange={(e) => setCode(e.target.value)}
+          />
+          <FormButton>
+            {loading ? (
+              <img
+                src={buttonLoading.src}
+                className="w-6 h-6"
+                alt="Verify Code"
+              />
+            ) : (
+              <p>Verify Code</p>
+            )}
+          </FormButton>
+          {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
+        </Form>
+      )}
+    </>
   );
 }
 

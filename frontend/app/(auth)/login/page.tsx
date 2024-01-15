@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState } from "react";
@@ -11,6 +12,7 @@ import validator from "validator";
 import Form from "../../ui/Form";
 import Input from "../../ui/Input";
 import { FormButton } from "../../ui/Button";
+import buttonLoading from "@/public/button-loading.svg";
 
 function Login() {
   const { apiUrl } = useConst();
@@ -76,9 +78,14 @@ function Login() {
           Forgot Password?
         </Link>
       </div>
-      <FormButton>Login</FormButton>
+      <FormButton>
+        {loading ? (
+          <img src={buttonLoading.src} className="w-6 h-6" alt="Login" />
+        ) : (
+          <p>Login</p>
+        )}
+      </FormButton>
       {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
-      {loading && <p>Loading...</p>}
     </Form>
   );
 }

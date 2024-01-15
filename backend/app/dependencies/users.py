@@ -1,5 +1,8 @@
 """Dependencies for user endpoints."""
+import smtplib
 from datetime import datetime, timedelta
+from email.message import EmailMessage
+from email.utils import formataddr
 from typing import Annotated, List
 
 from fastapi import Depends, HTTPException, Response
@@ -10,16 +13,72 @@ from sqlmodel import Session, select
 
 from app.config import get_settings
 from app.database import get_session
-from app.models import FriendRequests, Friends, User
+from app.models import Friend, FriendRequest, User, VerificationCode
 
 SETTINGS = get_settings()
+
+SMTP_SSL_HOST = SETTINGS.smtp_ssl_host
+SMTP_SSL_PORT = SETTINGS.smtp_ssl_port
+SMTP_SSL_LOGIN = SETTINGS.smtp_ssl_login
+SMTP_SSL_PASSWORD = SETTINGS.smtp_ssl_password
+VERIFY_CODE_EXPIRES = timedelta(minutes=30)
+
 JWT_SECRET = SETTINGS.jwt_secret
 JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRES = timedelta(minutes=30)
 REFRESH_TOKEN_EXPIRES = timedelta(days=30)
-
 PWD_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
 OAUTH2_SCHEME = OAuth2PasswordBearer(tokenUrl="/token")
+
+
+def send_email(email: str, subject: str, body: str):
+    """
+    Send email.
+
+    Parameters
+    ----------
+    email : str
+        Email
+    subject : str
+        Subject
+    body : str
+        Body
+    """
+    with smtplib.SMTP(SMTP_SSL_HOST, SMTP_SSL_PORT) as s:
+        s.ehlo()
+        s.starttls()
+        s.ehlo()
+        s.login(SMTP_SSL_LOGIN, SMTP_SSL_PASSWORD)
+
+        msg = EmailMessage()
+        msg["From"] = formataddr(("Andrew Hinh", SMTP_SSL_LOGIN))
+        msg["To"] = email
+        msg["Subject"] = subject
+        msg.set_content(body)
+        s.send_message(msg)
+
+
+def get_verification_code(session: Session, email: str, status: str = "pending") -> VerificationCode | None:
+    """
+    Get verification code.
+
+    Parameters
+    ----------
+    session : Session
+        Session
+    email : str
+        Email
+    status : str
+        Status
+
+    Returns
+    -------
+    VerificationCode
+        Verification code
+    """
+    return session.exec(
+        select(VerificationCode).where(VerificationCode.email == email).where(VerificationCode.status == status)
+    ).first()
 
 
 def get_password_hash(password: str) -> str:
@@ -232,7 +291,7 @@ async def get_current_active_user(
     return current_user
 
 
-def get_sent_friend_request_links(current_user: User) -> List[FriendRequests]:
+def get_sent_friend_request_links(current_user: User) -> List[FriendRequest]:
     """
     Get sent friend request links.
 
@@ -243,7 +302,7 @@ def get_sent_friend_request_links(current_user: User) -> List[FriendRequests]:
 
     Returns
     -------
-    List[FriendRequests]
+    List[FriendRequest]
         Sent friend request links
     """
     return [link for link in current_user.sender_links if link.status == "pending"]
@@ -266,7 +325,7 @@ def get_sent_friend_requests(current_user: User, status: str = "pending") -> Lis
     return [link.receiver for link in current_user.sender_links if link.status == status]
 
 
-def get_incoming_friend_request_links(current_user: User) -> List[FriendRequests]:
+def get_incoming_friend_request_links(current_user: User) -> List[FriendRequest]:
     """
     Get incoming friend request links.
 
@@ -277,7 +336,7 @@ def get_incoming_friend_request_links(current_user: User) -> List[FriendRequests
 
     Returns
     -------
-    List[FriendRequests]
+    List[FriendRequest]
         Incoming friend request links
     """
     return [link for link in current_user.receiver_links if link.status == "pending"]
@@ -300,7 +359,7 @@ def get_incoming_friend_requests(current_user: User, status: str = "pending") ->
     return [link.sender for link in current_user.receiver_links if link.status == status]
 
 
-def get_friend_links(current_user: User) -> List[Friends]:
+def get_friend_links(current_user: User) -> List[Friend]:
     """
     Get friends links.
 
@@ -311,8 +370,8 @@ def get_friend_links(current_user: User) -> List[Friends]:
 
     Returns
     -------
-    List[Friends]
-        Friends links
+    List[Friend]
+        Friend links
     """
     return [link for link in current_user.friend_1_links if link.status == "confirmed"] + [
         link for link in current_user.friend_2_links if link.status == "confirmed"

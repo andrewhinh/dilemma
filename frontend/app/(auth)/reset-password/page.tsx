@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState } from "react";
@@ -11,6 +12,7 @@ import validator from "validator";
 import Form from "../../ui/Form";
 import Input from "../../ui/Input";
 import { FormButton } from "../../ui/Button";
+import buttonLoading from "@/public/button-loading.svg";
 
 function ResetPassword() {
   const router = useRouter();
@@ -120,12 +122,23 @@ function ResetPassword() {
             autoFocus
             onChange={(e) => setEmail(e.target.value)}
           />
-          <FormButton>Send Email</FormButton>
+          <FormButton>
+            {loading ? (
+              <img
+                src={buttonLoading.src}
+                className="w-6 h-6"
+                alt="Send Email"
+              />
+            ) : (
+              <p>Send Email</p>
+            )}
+          </FormButton>
         </Form>
       ) : (
         <Form onSubmit={verifiedCode ? handlePwdSubmit : handleCodeSubmit}>
           {!verifiedCode ? (
             <>
+              <p>A recovery code has been sent to your email.</p>
               <Input
                 type="text"
                 name="code"
@@ -137,28 +150,37 @@ function ResetPassword() {
             </>
           ) : (
             <>
-              <Input
-                type="password"
-                name="password"
-                value={password}
-                placeholder="New Password"
-                autoFocus
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <Input
-                type="password"
-                name="confirmPassword"
-                value={confirmPassword}
-                placeholder="Confirm New Password"
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
+              <div className="gap-2 flex flex-col text-left">
+                <Input
+                  type="password"
+                  name="password"
+                  value={password}
+                  placeholder="New Password"
+                  autoFocus
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <Input
+                  type="password"
+                  name="confirmPassword"
+                  value={confirmPassword}
+                  placeholder="Confirm New Password"
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
             </>
           )}
           <FormButton>
-            {verifiedCode ? "Reset Password" : "Verify Code"}
+            {loading ? (
+              <img
+                src={buttonLoading.src}
+                className="w-6 h-6"
+                alt={verifiedCode ? "Reset Password" : "Verify Code"}
+              />
+            ) : (
+              <p>{verifiedCode ? "Reset Password" : "Verify Code"}</p>
+            )}
           </FormButton>
           {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
-          {loading && <p>Loading...</p>}
         </Form>
       )}
     </>

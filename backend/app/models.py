@@ -54,8 +54,22 @@ class WebSocketStreamingCallback(AsyncCallbackHandler):
                     await self.websocket.send_json(jsonable_encoder(response))
 
 
-# Friends and Users
-class FriendRequests(SQLModel, table=True):
+# Keys + codes
+class VerificationCode(SQLModel, table=True):
+    """Verification code model."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    email: str = Field(default=None, index=True)
+    code: str = Field(default=None, index=True)
+
+    request_date: datetime = Field(default=None)
+    expiry_date: datetime = Field(default=None)
+    verify_date: Optional[datetime] = Field(default=None)
+    status: str = Field(default="pending")
+
+
+# Friends
+class FriendRequest(SQLModel, table=True):
     """Friend request link model."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -67,18 +81,18 @@ class FriendRequests(SQLModel, table=True):
     sender: "User" = Relationship(
         back_populates="sender_links",
         sa_relationship_kwargs={
-            "foreign_keys": "FriendRequests.user_uid",
+            "foreign_keys": "FriendRequest.user_uid",
         },
     )
     receiver: "User" = Relationship(
         back_populates="receiver_links",
         sa_relationship_kwargs={
-            "foreign_keys": "FriendRequests.friend_uid",
+            "foreign_keys": "FriendRequest.friend_uid",
         },
     )
 
 
-class Friends(SQLModel, table=True):
+class Friend(SQLModel, table=True):
     """Friend link model."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -90,13 +104,13 @@ class Friends(SQLModel, table=True):
     friend_1: "User" = Relationship(
         back_populates="friend_1_links",
         sa_relationship_kwargs={
-            "foreign_keys": "Friends.friend_uid",
+            "foreign_keys": "Friend.friend_uid",
         },
     )
     friend_2: "User" = Relationship(
         back_populates="friend_2_links",
         sa_relationship_kwargs={
-            "foreign_keys": "Friends.user_uid",
+            "foreign_keys": "Friend.user_uid",
         },
     )
 
@@ -121,6 +135,7 @@ class FriendRead(FriendReadBase):
     friendship_date: datetime
 
 
+# Users
 class UserBase(SQLModel):
     """User base model."""
 
@@ -144,35 +159,35 @@ class User(UserBase, table=True):
     refresh_token: Optional[str] = Field(default=None)
     recovery_code: Optional[str] = Field(default=None)
 
-    sender_links: Optional[List["FriendRequests"]] = Relationship(
+    sender_links: Optional[List["FriendRequest"]] = Relationship(
         back_populates="sender",
         sa_relationship_kwargs={
-            "foreign_keys": "FriendRequests.user_uid",
+            "foreign_keys": "FriendRequest.user_uid",
             "lazy": "selectin",
             "cascade": "all, delete",
         },
     )
-    receiver_links: Optional[List["FriendRequests"]] = Relationship(
+    receiver_links: Optional[List["FriendRequest"]] = Relationship(
         back_populates="receiver",
         sa_relationship_kwargs={
-            "foreign_keys": "FriendRequests.friend_uid",
+            "foreign_keys": "FriendRequest.friend_uid",
             "lazy": "selectin",
             "cascade": "all, delete",
         },
     )
 
-    friend_1_links: Optional[List["Friends"]] = Relationship(
+    friend_1_links: Optional[List["Friend"]] = Relationship(
         back_populates="friend_1",
         sa_relationship_kwargs={
-            "foreign_keys": "Friends.user_uid",
+            "foreign_keys": "Friend.user_uid",
             "lazy": "selectin",
             "cascade": "all, delete",
         },
     )
-    friend_2_links: Optional[List["Friends"]] = Relationship(
+    friend_2_links: Optional[List["Friend"]] = Relationship(
         back_populates="friend_2",
         sa_relationship_kwargs={
-            "foreign_keys": "Friends.friend_uid",
+            "foreign_keys": "Friend.friend_uid",
             "lazy": "selectin",
             "cascade": "all, delete",
         },
@@ -190,6 +205,7 @@ class UserCreate(UserBase):
 
     password: str
     confirm_password: Optional[str] = None
+    verify_code: Optional[str] = None
 
 
 class UserRead(UserBase):
@@ -210,6 +226,8 @@ class UserUpdate(SQLModel):
 
     profile_view: Optional[str] = None
     is_sidebar_open: Optional[bool] = None
+
+    recovery_code: Optional[str] = None
 
 
 class Token(BaseModel):
