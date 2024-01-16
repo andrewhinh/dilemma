@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, notFound } from "next/navigation";
 
 import { useConst } from "../../providers";
@@ -34,10 +34,14 @@ function Profile() {
   const updateUser = useUpdateUser();
 
   const { getUserInfo, updateUserErrorMsg, profileView, isSideBarOpen } = state;
+  const [tryCount, setTryCount] = useState(0);
 
   useEffect(() => {
-    if (!isLoggedIn) refreshToken();
-    else {
+    if (!isLoggedIn) {
+      setTryCount((tryCount) => tryCount + 1);
+      refreshToken();
+    } else {
+      setTryCount(0);
       let pathnameUid = pathname.split("/")[2];
       if (pathnameUid !== uid) {
         notFound();
@@ -50,6 +54,13 @@ function Profile() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn, getUserInfo]);
+
+  useEffect(() => {
+    if (tryCount > 2) {
+      logOut();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tryCount]);
 
   return (
     <>

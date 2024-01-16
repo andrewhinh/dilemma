@@ -20,7 +20,6 @@ SMTP_SSL_HOST = SETTINGS.smtp_ssl_host
 SMTP_SSL_PORT = SETTINGS.smtp_ssl_port
 SMTP_SSL_LOGIN = SETTINGS.smtp_ssl_login
 SMTP_SSL_PASSWORD = SETTINGS.smtp_ssl_password
-VERIFY_CODE_EXPIRES = timedelta(minutes=30)
 
 JWT_SECRET = SETTINGS.jwt_secret
 JWT_ALGORITHM = "HS256"

@@ -1,7 +1,7 @@
 """Models for the application."""
 import uuid
 from contextlib import suppress
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, List, Optional
 
 from fastapi import WebSocket
@@ -10,6 +10,8 @@ from langchain.callbacks.base import AsyncCallbackHandler
 from pydantic import BaseModel
 from sqlmodel import Field, Relationship, SQLModel
 from starlette.websockets import WebSocketState
+
+VERIFY_CODE_EXPIRES = timedelta(minutes=30)
 
 
 # Items
@@ -62,8 +64,8 @@ class VerificationCode(SQLModel, table=True):
     email: str = Field(default=None, index=True)
     code: str = Field(default=None, index=True)
 
-    request_date: datetime = Field(default=None)
-    expiry_date: datetime = Field(default=None)
+    request_date: datetime = Field(default_factory=datetime.utcnow)
+    expiry_date: datetime = Field(default_factory=lambda: datetime.utcnow() + VERIFY_CODE_EXPIRES)
     verify_date: Optional[datetime] = Field(default=None)
     status: str = Field(default="pending")
 
@@ -76,7 +78,7 @@ class FriendRequest(SQLModel, table=True):
     user_uid: str = Field(default=None, foreign_key="user.uid")
     friend_uid: str = Field(default=None, foreign_key="user.uid")
 
-    request_date: datetime = Field(default=None)
+    request_date: datetime = Field(default_factory=datetime.utcnow)
     status: str = Field(default="pending")
     sender: "User" = Relationship(
         back_populates="sender_links",
@@ -99,7 +101,7 @@ class Friend(SQLModel, table=True):
     user_uid: str = Field(default=None, foreign_key="user.uid")
     friend_uid: str = Field(default=None, foreign_key="user.uid")
 
-    friendship_date: datetime = Field(default=None)
+    friendship_date: datetime = Field(default_factory=datetime.utcnow)
     status: str = Field(default="confirmed")
     friend_1: "User" = Relationship(
         back_populates="friend_1_links",
@@ -119,6 +121,7 @@ class FriendReadBase(BaseModel):
     """Friend read base model."""
 
     uid: str
+    join_date: datetime
     profile_picture: Optional[str]
     username: str
 
@@ -139,6 +142,7 @@ class FriendRead(FriendReadBase):
 class UserBase(SQLModel):
     """User base model."""
 
+    join_date: datetime = Field(default_factory=datetime.utcnow)
     profile_picture: Optional[str] = Field(default=None)
     email: Optional[str] = Field(default=None, index=True)
     username: Optional[str] = Field(default=None, index=True)
@@ -228,9 +232,3 @@ class UserUpdate(SQLModel):
     is_sidebar_open: Optional[bool] = None
 
     recovery_code: Optional[str] = None
-
-
-class ConfirmLoggedInUser(SQLModel):
-    """Confirm logged in user model."""
-
-    uid: str

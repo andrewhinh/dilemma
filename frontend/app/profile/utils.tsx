@@ -7,12 +7,14 @@ import validator from "validator";
 // Type definitions
 interface User {
   uid: string;
+  join_date: Date;
   profile_picture?: string;
   username: string;
 }
 
 interface FriendRequest {
   uid: string;
+  join_date: Date;
   profile_picture?: string;
   username: string;
   request_date: string;
@@ -20,6 +22,7 @@ interface FriendRequest {
 
 interface Friend {
   uid: string;
+  join_date: Date;
   profile_picture?: string;
   username: string;
   friendship_date: string;

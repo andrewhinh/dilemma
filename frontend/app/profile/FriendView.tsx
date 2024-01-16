@@ -72,7 +72,7 @@ function FriendView() {
   return (
     <Main className="relative z-0 gap-16">
       <Form onSubmit={(e) => handlesendFriendRequest(e)}>
-        <div className="w-60 md:w-80 flex flex-col gap-4">
+        <div className="flex flex-col gap-4 w-48 md:w-60">
           <Input
             id="requestUsername"
             type="text"
@@ -105,7 +105,7 @@ function FriendView() {
       <div className="gap-6 flex flex-col text-center items-center justify-center">
         <div className="w-full">
           <FriendTable
-            title="Sent Friend Requests"
+            title="Sent Requests"
             data={sentFriendRequests}
             type="sent"
           />
@@ -117,7 +117,7 @@ function FriendView() {
       <div className="gap-6 flex flex-col text-center items-center justify-center">
         <div className="w-full">
           <FriendTable
-            title="Incoming Friend Requests"
+            title="Incoming Requests"
             data={incomingFriendRequests}
             type="incoming"
           />

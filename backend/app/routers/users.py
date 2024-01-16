@@ -10,7 +10,6 @@ from app.database import get_session
 from app.dependencies.users import (
     ACCESS_TOKEN_EXPIRES,
     REFRESH_TOKEN_EXPIRES,
-    VERIFY_CODE_EXPIRES,
     authenticate_user,
     create_token,
     get_current_active_user,
@@ -28,7 +27,6 @@ from app.dependencies.users import (
     set_auth_cookies,
 )
 from app.models import (
-    ConfirmLoggedInUser,
     Friend,
     FriendRead,
     FriendRequest,
@@ -114,8 +112,6 @@ async def verify_email(
     verify_code = VerificationCode(
         email=db_user.email,
         code=uuid.uuid4().hex,
-        request_date=datetime.now(),
-        expiry_date=datetime.now() + VERIFY_CODE_EXPIRES,
     )
     session.add(verify_code)
     session.commit()
@@ -126,7 +122,7 @@ async def verify_email(
     return {"message": "Verification email sent"}
 
 
-@router.post("/token/signup", response_model=ConfirmLoggedInUser)
+@router.post("/token/signup", response_model=UserRead)
 async def signup(*, session: Session = Depends(get_session), response: Response, user: UserCreate):
     """Signup.
 
@@ -214,7 +210,7 @@ async def signup(*, session: Session = Depends(get_session), response: Response,
         )
 
     verify_code.status = "verified"
-    verify_code.verify_date = datetime.now()
+    verify_code.verify_date = datetime.utcnow()
     session.add(verify_code)
 
     access_token = create_token(data={"email": user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
@@ -234,10 +230,10 @@ async def signup(*, session: Session = Depends(get_session), response: Response,
     session.refresh(created_user)
 
     set_auth_cookies(access_token=access_token, refresh_token=refresh_token, response=response)
-    return ConfirmLoggedInUser(uid=created_user.uid)
+    return UserRead.model_validate(created_user)
 
 
-@router.post("/token/login", response_model=ConfirmLoggedInUser)
+@router.post("/token/login", response_model=UserRead)
 async def login(
     *,
     session: Session = Depends(get_session),
@@ -301,10 +297,10 @@ async def login(
     session.refresh(verified_user)
 
     set_auth_cookies(access_token=access_token, refresh_token=refresh_token, response=response)
-    return ConfirmLoggedInUser(uid=verified_user.uid)
+    return UserRead.model_validate(verified_user)
 
 
-@router.post("/token/refresh", response_model=ConfirmLoggedInUser)
+@router.post("/token/refresh", response_model=UserRead)
 async def refresh_token(
     *,
     session: Session = Depends(get_session),
@@ -345,7 +341,7 @@ async def refresh_token(
     session.refresh(user)
 
     set_auth_cookies(access_token=access_token, refresh_token=refresh_token, response=response)
-    return ConfirmLoggedInUser(uid=user.uid)
+    return UserRead.model_validate(user)
 
 
 @router.post("/token/logout", response_model=dict[str, str])
@@ -559,7 +555,7 @@ async def read_user(
     return user
 
 
-@router.patch("/user/update", response_model=ConfirmLoggedInUser)
+@router.patch("/user/update", response_model=UserRead)
 async def update_user(
     *,
     session: Session = Depends(get_session),
@@ -644,7 +640,7 @@ async def update_user(
     session.refresh(current_user)
 
     set_auth_cookies(access_token=access_token, refresh_token=refresh_token, response=response)
-    return ConfirmLoggedInUser(uid=current_user.uid)
+    return UserRead.model_validate(current_user)
 
 
 @router.delete("/user/delete", response_model=dict[str, str])
@@ -680,7 +676,7 @@ def send_friend_request(
         if friend in get_friends(current_user):
             raise HTTPException(status_code=400, detail="Friend already added")
 
-        new_friend_request = FriendRequest(sender=current_user, receiver=friend, request_date=datetime.now())
+        new_friend_request = FriendRequest(sender=current_user, receiver=friend)
         session.add(new_friend_request)
         session.commit()
         session.refresh(new_friend_request)
@@ -747,7 +743,7 @@ def accept_friend_request(
         for friend_request, friend_request_link in zip(friend_requests, friend_request_links, strict=False):
             if friend_request.username == friend.username:
                 friend_request_link.status = "accepted"
-                new_friend = Friend(friend_1=current_user, friend_2=friend, friendship_date=datetime.now())
+                new_friend = Friend(friend_1=current_user, friend_2=friend)
                 session.add(current_user)
                 session.add(new_friend)
                 session.commit()
@@ -800,6 +796,7 @@ def read_sent_friend_requests(
     friend_requests = [
         FriendRequestRead(
             uid=friend_request.uid,
+            join_date=friend_request.join_date,
             profile_picture=friend_request.profile_picture,
             username=friend_request.username,
             request_date=link.request_date,
@@ -819,6 +816,7 @@ def read_incoming_friend_requests(
     friend_requests = [
         FriendRequestRead(
             uid=friend_request.uid,
+            join_date=friend_request.join_date,
             profile_picture=friend_request.profile_picture,
             username=friend_request.username,
             status=link.status,
@@ -839,9 +837,9 @@ def read_friends(
     friends = [
         FriendRead(
             uid=friend.uid,
+            join_date=friend.join_date,
             profile_picture=friend.profile_picture,
             username=friend.username,
-            status=link.status,
             friendship_date=link.friendship_date,
         )
         for friend, link in zip(friends, friend_links, strict=False)

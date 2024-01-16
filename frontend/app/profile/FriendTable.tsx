@@ -208,7 +208,7 @@ function FriendTable({
   };
 
   return (
-    <table className="table-auto m-auto w-60 md:w-80">
+    <table className="table-auto m-auto w-48 md:w-60">
       <thead>
         <tr className="bg-slate-300 font-semibold">
           <th className="p-4 text-center whitespace-nowrap">{title}</th>
@@ -219,24 +219,41 @@ function FriendTable({
           <tr key={row.uid} className="border-t border-zinc-500">
             <td className="p-4 flex justify-between">
               <div className="flex flex-1 gap-2 justify-start items-center">
-                <img
-                  src={
-                    row.profile_picture
-                      ? row.profile_picture
-                      : profileOutline.src
-                  }
-                  alt="Picture"
-                  className={`rounded-full w-8 h-8 md:w-10 md:h-10`}
-                />
-                <div className="flex justify-center items-center">
-                  <p className="flex md:hidden flex-col justify-center">
-                    {row.username.slice(0, maxSmallChars)}
-                    {row.username.length > maxSmallChars && "..."}
-                  </p>
-                  <p className="hidden md:flex flex-col justify-center">
-                    {row.username.slice(0, maxLargeChars)}
-                    {row.username.length > maxLargeChars && "..."}
-                  </p>
+                <div className="group relative inline-block">
+                  <img
+                    src={
+                      row.profile_picture
+                        ? row.profile_picture
+                        : profileOutline.src
+                    }
+                    alt="Picture"
+                    className="rounded-full w-8 h-8 md:w-10 md:h-10"
+                  />
+                  <div className="w-24 md:w-44 absolute bottom-full left-1/2 transform -translate-x-1/2 -translate-y-2 bg-cyan-200 text-zinc-500 p-2 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <p className="flex md:hidden justify-center text-cyan-500">
+                      {row.username.slice(0, maxSmallChars)}
+                      {row.username.length > maxSmallChars && "..."}
+                    </p>
+                    <p className="hidden md:flex justify-center text-cyan-500">
+                      {row.username.slice(0, maxLargeChars)}
+                      {row.username.length > maxLargeChars && "..."}
+                    </p>
+                    <p>Joined on </p>
+                    <p className="flex md:hidden justify-center text-cyan-500">
+                      {new Date(row.join_date).toLocaleDateString("en-US", {
+                        month: "numeric",
+                        day: "numeric",
+                        year: "2-digit",
+                      })}
+                    </p>
+                    <p className="hidden md:flex justify-center text-cyan-500">
+                      {new Date(row.join_date).toLocaleDateString("en-US", {
+                        month: "long",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </p>
+                  </div>
                 </div>
               </div>
               <div className="flex gap-1 md:gap-2">
