@@ -12,7 +12,7 @@ from app.dependencies.users import (
     REFRESH_TOKEN_EXPIRES,
     VERIFY_CODE_EXPIRES,
     authenticate_user,
-    create_access_token,
+    create_token,
     get_current_active_user,
     get_friend_links,
     get_friends,
@@ -25,14 +25,14 @@ from app.dependencies.users import (
     get_user_from_token,
     get_verification_code,
     send_email,
-    set_cookie,
+    set_auth_cookies,
 )
 from app.models import (
+    ConfirmLoggedInUser,
     Friend,
     FriendRead,
     FriendRequest,
     FriendRequestRead,
-    Token,
     User,
     UserCreate,
     UserRead,
@@ -126,9 +126,38 @@ async def verify_email(
     return {"message": "Verification email sent"}
 
 
-@router.post("/token/signup", response_model=Token)
+@router.post("/token/signup", response_model=ConfirmLoggedInUser)
 async def signup(*, session: Session = Depends(get_session), response: Response, user: UserCreate):
-    """Signup."""
+    """Signup.
+
+    Parameters
+    ----------
+    session
+        Database session
+    response
+        Response
+    user
+        User signup
+
+    Returns
+    -------
+    Token
+        token_type and uid
+
+    Raises
+    ------
+    HTTPException
+        Email is empty
+        Username is empty
+        Password is empty
+        Confirm password is empty
+        Passwords do not match
+        Code is empty
+        Email is invalid
+        Username is invalid
+        Code is invalid
+        Previous code not found, request new code
+    """
     db_user = UserCreate.model_validate(user)
     if not db_user.email:
         raise HTTPException(
@@ -188,8 +217,8 @@ async def signup(*, session: Session = Depends(get_session), response: Response,
     verify_code.verify_date = datetime.now()
     session.add(verify_code)
 
-    access_token = create_access_token(data={"email": user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
-    refresh_token = create_access_token(data={"email": user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
+    access_token = create_token(data={"email": user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
+    refresh_token = create_token(data={"email": user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
 
     created_user = User(
         profile_picture=db_user.profile_picture,
@@ -204,11 +233,11 @@ async def signup(*, session: Session = Depends(get_session), response: Response,
     session.refresh(verify_code)
     session.refresh(created_user)
 
-    set_cookie(refresh_token=refresh_token, response=response)
-    return Token(access_token=access_token, token_type="bearer", uid=created_user.uid)
+    set_auth_cookies(access_token=access_token, refresh_token=refresh_token, response=response)
+    return ConfirmLoggedInUser(uid=created_user.uid)
 
 
-@router.post("/token/login", response_model=Token)
+@router.post("/token/login", response_model=ConfirmLoggedInUser)
 async def login(
     *,
     session: Session = Depends(get_session),
@@ -229,7 +258,7 @@ async def login(
     Returns
     -------
     Token
-        Access token
+        token_type and uid
 
     Raises
     ------
@@ -254,28 +283,28 @@ async def login(
         verified_user = get_user(session, db_user.email)
     elif db_user.username:
         verified_user = get_user(session, username=db_user.username)
+
     if not verified_user:
         raise HTTPException(status_code=401, detail="Incorrect email or password")
-
     if not authenticate_user(verified_user.email, db_user.password, verified_user.hashed_password, session):
         raise HTTPException(
             status_code=401,
             detail="Incorrect email or password",
         )
 
-    access_token = create_access_token(data={"email": verified_user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
-    refresh_token = create_access_token(data={"email": verified_user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
+    access_token = create_token(data={"email": verified_user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
+    refresh_token = create_token(data={"email": verified_user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
 
     verified_user.refresh_token = refresh_token
     session.add(verified_user)
     session.commit()
     session.refresh(verified_user)
 
-    set_cookie(refresh_token=refresh_token, response=response)
-    return Token(access_token=access_token, token_type="bearer", uid=verified_user.uid)
+    set_auth_cookies(access_token=access_token, refresh_token=refresh_token, response=response)
+    return ConfirmLoggedInUser(uid=verified_user.uid)
 
 
-@router.post("/token/refresh", response_model=Token)
+@router.post("/token/refresh", response_model=ConfirmLoggedInUser)
 async def refresh_token(
     *,
     session: Session = Depends(get_session),
@@ -296,29 +325,27 @@ async def refresh_token(
     Returns
     -------
     Token
-        Access token
+        token_type and uid
 
     Raises
     ------
     HTTPException
         Token expired
     """
-    if not refresh_token:
-        raise HTTPException(status_code=403, detail="Forbidden")
     user = get_user_from_token(refresh_token, session)
     if user.refresh_token != refresh_token:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    access_token = create_access_token(data={"email": user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
-    refresh_token = create_access_token(data={"email": user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
+    access_token = create_token(data={"email": user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
+    refresh_token = create_token(data={"email": user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
 
     user.refresh_token = refresh_token
     session.add(user)
     session.commit()
     session.refresh(user)
 
-    set_cookie(refresh_token=refresh_token, response=response)
-    return Token(access_token=access_token, token_type="bearer", uid=user.uid)
+    set_auth_cookies(access_token=access_token, refresh_token=refresh_token, response=response)
+    return ConfirmLoggedInUser(uid=user.uid)
 
 
 @router.post("/token/logout", response_model=dict[str, str])
@@ -326,6 +353,7 @@ async def logout(
     *,
     session: Session = Depends(get_session),
     response: Response,
+    access_token: Optional[str] = Cookie(default=None),
     refresh_token: Optional[str] = Cookie(default=None),
 ):
     """Logout.
@@ -336,6 +364,8 @@ async def logout(
         Database session
     response
         Response
+    access_token
+        Access token
     refresh_token
         Refresh token
 
@@ -344,13 +374,18 @@ async def logout(
     dict[str, str]
         Message
     """
+    if access_token:
+        response.delete_cookie("access_token")
     if refresh_token:
         response.delete_cookie("refresh_token")
-        user = get_user_from_token(refresh_token, session)
-        user.refresh_token = None
-        session.add(user)
-        session.commit()
-        session.refresh(user)
+        try:
+            user = get_user_from_token(refresh_token, session)
+            user.refresh_token = None
+            session.add(user)
+            session.commit()
+            session.refresh(user)
+        except HTTPException:
+            pass
 
     return {"message": "Logged out"}
 
@@ -524,7 +559,7 @@ async def read_user(
     return user
 
 
-@router.patch("/user/update", response_model=Token)
+@router.patch("/user/update", response_model=ConfirmLoggedInUser)
 async def update_user(
     *,
     session: Session = Depends(get_session),
@@ -547,7 +582,8 @@ async def update_user(
 
     Returns
     -------
-    Union[Token, UserRead]
+    Token
+        token_type and uid
 
     Raises
     ------
@@ -599,16 +635,16 @@ async def update_user(
     session.commit()
     session.refresh(current_user)
 
-    access_token = create_access_token(data={"email": current_user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
-    refresh_token = create_access_token(data={"email": current_user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
+    access_token = create_token(data={"email": current_user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
+    refresh_token = create_token(data={"email": current_user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
 
     current_user.refresh_token = refresh_token
     session.add(current_user)
     session.commit()
     session.refresh(current_user)
 
-    set_cookie(refresh_token=refresh_token, response=response)
-    return Token(access_token=access_token, token_type="bearer", uid=current_user.uid)
+    set_auth_cookies(access_token=access_token, refresh_token=refresh_token, response=response)
+    return ConfirmLoggedInUser(uid=current_user.uid)
 
 
 @router.delete("/user/delete", response_model=dict[str, str])

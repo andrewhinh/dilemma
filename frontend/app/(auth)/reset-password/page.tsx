@@ -3,10 +3,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-import { useConst } from "../../providers";
-import { useSendRequest } from "../../lib/utils";
-
+import { sendRequest } from "../../api/route";
 import validator from "validator";
 
 import Form from "../../ui/Form";
@@ -16,11 +13,6 @@ import buttonLoading from "@/public/button-loading.svg";
 
 function ResetPassword() {
   const router = useRouter();
-  const { apiUrl } = useConst();
-  const sendRequest = useSendRequest();
-  const forgotPasswordUrl = apiUrl + "/forgot-password";
-  const checkCodeUrl = apiUrl + "/check-code";
-  const resetPasswordUrl = apiUrl + "/reset-password";
 
   const [email, setEmail] = useState("");
   const [verifiedEmail, setVerifiedEmail] = useState(false);
@@ -48,7 +40,7 @@ function ResetPassword() {
       return;
     }
 
-    sendRequest(forgotPasswordUrl, "POST", { email: email })
+    sendRequest("/forgot-password", "POST", { email: email })
       .then(() => {
         setVerifiedEmail(true);
       })
@@ -67,7 +59,7 @@ function ResetPassword() {
       return;
     }
 
-    sendRequest(checkCodeUrl, "POST", { email: email, recovery_code: code })
+    sendRequest("/check-code", "POST", { email: email, recovery_code: code })
       .then(() => {
         setVerifiedCode(true);
       })
@@ -98,7 +90,7 @@ function ResetPassword() {
       return;
     }
 
-    sendRequest(resetPasswordUrl, "POST", {
+    sendRequest("/reset-password", "POST", {
       email: email,
       password: password,
       confirm_password: confirmPassword,

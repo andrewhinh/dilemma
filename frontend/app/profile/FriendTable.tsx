@@ -1,8 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { Friend, FriendRequest } from "./utils";
 import { useProfile } from "./providers";
-import { useSendRequest } from "../lib/utils";
-import { useConst } from "../providers";
+import { sendRequest } from "../api/route";
 import { useSetUser } from "./utils";
 
 import Form from "../ui/Form";
@@ -24,8 +23,6 @@ function FriendTable({
   type: "sent" | "incoming" | "friends";
 }) {
   const { state, dispatch } = useProfile();
-  const { apiUrl } = useConst();
-  const sendRequest = useSendRequest();
   const setUser = useSetUser();
 
   const {
@@ -34,11 +31,6 @@ function FriendTable({
     declineRequestLoading,
     deleteFriendLoading,
   } = state;
-
-  const revertFriendRequestUrl = apiUrl + "/friends/revert-request";
-  const acceptFriendRequestUrl = apiUrl + "/friends/accept-request";
-  const declineFriendRequestUrl = apiUrl + "/friends/decline-request";
-  const deleteFriendUrl = apiUrl + "/friends/delete";
 
   const maxSmallChars = 7;
   const maxLargeChars = 12;
@@ -71,7 +63,7 @@ function FriendTable({
       username: formDataObj.username,
     };
 
-    sendRequest(revertFriendRequestUrl, "POST", request)
+    sendRequest("/friends/revert-request", "POST", request)
       .then((data) => {
         setUser({ data });
       })
@@ -114,7 +106,7 @@ function FriendTable({
       username: formDataObj.username,
     };
 
-    sendRequest(acceptFriendRequestUrl, "POST", request)
+    sendRequest("/friends/accept-request", "POST", request)
       .then((data) => {
         setUser({ data });
       })
@@ -157,7 +149,7 @@ function FriendTable({
       username: formDataObj.username,
     };
 
-    sendRequest(declineFriendRequestUrl, "POST", request)
+    sendRequest("/friends/decline-request", "POST", request)
       .then((data) => {
         setUser({ data });
       })
@@ -200,7 +192,7 @@ function FriendTable({
       username: formDataObj.username,
     };
 
-    sendRequest(deleteFriendUrl, "POST", request)
+    sendRequest("/friends/delete", "POST", request)
       .then((data) => {
         setUser({ data });
       })

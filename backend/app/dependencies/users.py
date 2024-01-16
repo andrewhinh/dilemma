@@ -3,10 +3,9 @@ import smtplib
 from datetime import datetime, timedelta
 from email.message import EmailMessage
 from email.utils import formataddr
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 
-from fastapi import Depends, HTTPException, Response
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Cookie, Depends, HTTPException, Response
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlmodel import Session, select
@@ -28,7 +27,6 @@ JWT_ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRES = timedelta(minutes=30)
 REFRESH_TOKEN_EXPIRES = timedelta(days=30)
 PWD_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
-OAUTH2_SCHEME = OAuth2PasswordBearer(tokenUrl="/token")
 
 
 def send_email(email: str, subject: str, body: str):
@@ -116,7 +114,15 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return PWD_CONTEXT.verify(plain_password, hashed_password)
 
 
-def set_cookie(refresh_token: str, response: Response):
+def set_auth_cookies(access_token: str, refresh_token: str, response: Response):
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        max_age=ACCESS_TOKEN_EXPIRES.total_seconds(),
+        secure=True,
+        httponly=True,
+        samesite="none",
+    )
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
@@ -180,9 +186,9 @@ def authenticate_user(email: str, password: str, hashed_password: str, session: 
     return user
 
 
-def create_access_token(data: dict, expires_delta: timedelta) -> str:
+def create_token(data: dict, expires_delta: timedelta) -> str:
     """
-    Create access token.
+    Create token.
 
     Parameters
     ----------
@@ -194,7 +200,7 @@ def create_access_token(data: dict, expires_delta: timedelta) -> str:
     Returns
     -------
     str
-        Access token
+        token
     """
     to_encode = data.copy()
     expire = datetime.utcnow() + expires_delta
@@ -203,7 +209,7 @@ def create_access_token(data: dict, expires_delta: timedelta) -> str:
     return encoded_jwt
 
 
-def get_user_from_token(token: str, session: Session) -> User:
+def get_user_from_token(token: Optional[str], session: Session) -> User:
     """
     Verify token.
 
@@ -227,8 +233,9 @@ def get_user_from_token(token: str, session: Session) -> User:
     credentials_exception = HTTPException(
         status_code=401,
         detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
     )
+    if token is None:
+        raise credentials_exception
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         email: str = payload.get("email")
@@ -245,7 +252,7 @@ def get_user_from_token(token: str, session: Session) -> User:
 async def get_current_user(
     *,
     session: Session = Depends(get_session),
-    token: Annotated[str, Depends(OAUTH2_SCHEME)],
+    access_token: Optional[str] = Cookie(default=None),
 ) -> User:
     """
     Get current user.
@@ -262,7 +269,7 @@ async def get_current_user(
     User
         Current user
     """
-    return get_user_from_token(token, session)
+    return get_user_from_token(access_token, session)
 
 
 async def get_current_active_user(

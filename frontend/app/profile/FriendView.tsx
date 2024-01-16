@@ -2,8 +2,7 @@
 "use client";
 
 import { useProfile } from "./providers";
-import { useSendRequest } from "../lib/utils";
-import { useConst } from "../providers";
+import { sendRequest } from "../api/route";
 import { useSetUser } from "./utils";
 
 import Main from "../ui/Main";
@@ -11,13 +10,10 @@ import Form from "../ui/Form";
 import Input from "../ui/Input";
 import { FormButton } from "../ui/Button";
 import FriendTable from "./FriendTable";
-
 import buttonLoading from "@/public/button-loading.svg";
 
 function FriendView() {
   const { state, dispatch } = useProfile();
-  const { apiUrl } = useConst();
-  const sendRequest = useSendRequest();
   const setUser = useSetUser();
 
   const {
@@ -32,8 +28,6 @@ function FriendView() {
     friends,
     deleteFriendErrorMsg,
   } = state;
-
-  const sendFriendRequestUrl = apiUrl + "/friends/send-request";
 
   const handlesendFriendRequest = (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
@@ -55,7 +49,7 @@ function FriendView() {
       username: requestUsername,
     };
 
-    sendRequest(sendFriendRequestUrl, "POST", request)
+    sendRequest("/friends/send-request", "POST", request)
       .then((data) => {
         setUser({ data });
         dispatch({

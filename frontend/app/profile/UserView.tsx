@@ -2,8 +2,8 @@
 "use client";
 
 import { useState } from "react";
-import { useLogOut, useSendRequest } from "../lib/utils";
-import { useConst } from "../providers";
+import { useLogOut } from "../lib/utils";
+import { sendRequest } from "../api/route";
 import { useProfile } from "./providers";
 import { useUpdateUser } from "./utils";
 
@@ -16,8 +16,6 @@ import buttonLoading from "@/public/button-loading.svg";
 
 function UserView() {
   const { state, dispatch } = useProfile();
-  const { apiUrl } = useConst();
-  const sendRequest = useSendRequest();
   const logOut = useLogOut();
   const updateUser = useUpdateUser();
 
@@ -42,9 +40,6 @@ function UserView() {
   const [tempEmail, setTempEmail] = useState(email);
   const [tempUsername, setTempUsername] = useState(username);
   const [tempFullname, setTempFullname] = useState(fullname);
-
-  const updateUserUrl = apiUrl + "/user/update";
-  const deleteUserUrl = apiUrl + "/user/delete";
 
   const deleteAccountPhrase = "delete my account";
 
@@ -152,7 +147,7 @@ function UserView() {
       return;
     }
 
-    sendRequest(updateUserUrl, "PATCH", {
+    sendRequest("/user/update", "PATCH", {
       password: password,
       confirm_password: confirmPassword,
     })
@@ -190,7 +185,7 @@ function UserView() {
       return;
     }
 
-    sendRequest(deleteUserUrl, "DELETE")
+    sendRequest("/user/delete", "DELETE")
       .then(() => logOut())
       .catch((error) =>
         dispatch({

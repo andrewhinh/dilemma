@@ -1,30 +1,20 @@
 import { useRouter } from "next/navigation";
 import { useConst } from "../providers";
+import { sendRequest } from "../api/route";
 
 const useToProfile = () => {
   const router = useRouter();
-  const { setToken, setUid } = useConst();
+  const { setIsLoggedIn, setUid } = useConst();
 
   return (
-    url: string,
+    route: string,
     formDataObj: object,
     onSuccess: () => void,
     onError: (error: string) => void
   ) => {
-    fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify(formDataObj),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          return response.json().then((data) => Promise.reject(data));
-        }
-        return response.json();
-      })
+    sendRequest(route, "POST", formDataObj)
       .then((data) => {
-        setToken(data.access_token);
+        setIsLoggedIn(true);
         setUid(data.uid);
         onSuccess();
         router.push("/profile/" + data.uid);
@@ -37,16 +27,11 @@ const useToProfile = () => {
 
 const useLogOut = () => {
   const router = useRouter();
-  const { apiUrl, setToken, setUid } = useConst();
-  const logOutUrl = apiUrl + "/token/logout";
+  const { setIsLoggedIn, setUid } = useConst();
 
   return (noNavigate = false) => {
-    fetch(logOutUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-    }).then(() => {
-      setToken("");
+    sendRequest("/token/logout", "POST").then(() => {
+      setIsLoggedIn(false);
       setUid("");
       if (!noNavigate) router.push("/");
     });
@@ -54,110 +39,14 @@ const useLogOut = () => {
 };
 
 const useRefreshToken = () => {
-  const { apiUrl, setToken, setUid } = useConst();
-  const refreshTokenUrl = apiUrl + "/token/refresh";
+  const { setIsLoggedIn, setUid } = useConst();
 
   return () => {
-    return new Promise((resolve) => {
-      fetch(refreshTokenUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-      })
-        .then((response) => {
-          if (!response.ok) {
-            // If response is not OK, throw an error to catch
-            return response.json().then((data) => {
-              Promise.reject(data);
-              resolve(false); // Resolve to false in case of error
-            });
-          }
-          return response.json();
-        })
-        .then((data) => {
-          setToken(data.access_token);
-          setUid(data.uid);
-          resolve(true); // Resolve to true for success
-        })
-        .catch(() => {
-          resolve(false); // Resolve to false in case of an error
-        });
+    sendRequest("/token/refresh", "POST").then((data) => {
+      setIsLoggedIn(true);
+      setUid(data.uid);
     });
   };
 };
 
-const useSendRequest = () => {
-  const { token } = useConst();
-
-  return async (url: string, method: string, data: any = null) => {
-    const response = await fetch(url, {
-      method: method,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      credentials: "include",
-      body:
-        data !== null && (method === "PATCH" || method === "POST")
-          ? JSON.stringify(data)
-          : null,
-    });
-
-    if (!response.ok) {
-      return response.json().then((data) => Promise.reject(data));
-    }
-    return response.json();
-  };
-};
-
-const useSendWebsocket = () => {
-  return (
-    websocket: WebSocket,
-    setText: (value: string | ((prevValue: string) => string)) => void
-  ) => {
-    let timeout: number | NodeJS.Timeout | null | undefined = null;
-
-    websocket.onopen = () => {
-      timeout = setTimeout(() => {
-        websocket.close(1011, "timeout");
-      }, 15000);
-    };
-
-    websocket.onmessage = (event: MessageEvent) => {
-      if (timeout !== null) {
-        clearTimeout(timeout);
-      }
-      const data = JSON.parse(event.data);
-
-      if (data.status === "ERROR") {
-        websocket.close(1011, "error");
-      } else if (data.status === "DONE") {
-        setText(data.result);
-        websocket.close(1000, "success");
-      } else {
-        setText((prevMessage: string) => prevMessage + data.message);
-      }
-    };
-
-    websocket.onclose = (event) => {
-      if (timeout !== null) {
-        clearTimeout(timeout);
-      }
-      if (event.code !== 1000) {
-        setText("There was an error. Please try again later.");
-      }
-    };
-
-    websocket.onerror = () => {
-      websocket.close(1011, "error");
-    };
-  };
-};
-
-export {
-  useToProfile,
-  useLogOut,
-  useRefreshToken,
-  useSendRequest,
-  useSendWebsocket,
-};
+export { useToProfile, useLogOut, useRefreshToken };

@@ -3,10 +3,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-
-import { useConst } from "../../providers";
 import { useToProfile } from "../../lib/utils";
-
 import validator from "validator";
 
 import Form from "../../ui/Form";
@@ -15,11 +12,7 @@ import { FormButton } from "../../ui/Button";
 import buttonLoading from "@/public/button-loading.svg";
 
 function Login() {
-  const { apiUrl } = useConst();
   const toProfile = useToProfile();
-
-  const loginUrl = apiUrl + "/token/login";
-
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -56,7 +49,7 @@ function Login() {
     }
 
     toProfile(
-      loginUrl,
+      "/token/login",
       formDataObj,
       () => setLoading(false),
       (error) => {

@@ -3,10 +3,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useSendRequest } from "../../lib/utils";
-import { useConst } from "../../providers";
+import { sendRequest } from "../../api/route";
 import { useToProfile } from "../../lib/utils";
-
 import validator from "validator";
 
 import Form from "../../ui/Form";
@@ -16,12 +14,7 @@ import { FormButton } from "../../ui/Button";
 import buttonLoading from "@/public/button-loading.svg";
 
 function SignUp() {
-  const { apiUrl } = useConst();
   const toProfile = useToProfile();
-  const sendRequest = useSendRequest();
-
-  const verifyEmailUrl = apiUrl + "/verify-email";
-  const signUpUrl = apiUrl + "/token/signup";
 
   const [pic, setPic] = useState<string>("");
   const [email, setEmail] = useState<string>("");
@@ -131,7 +124,7 @@ function SignUp() {
       password: password,
       confirm_password: confirmPassword,
     };
-    sendRequest(verifyEmailUrl, "POST", request)
+    sendRequest("/verify-email", "POST", request)
       .then(() => {
         setVerifiedEmail(true);
       })
@@ -196,7 +189,7 @@ function SignUp() {
       verify_code: code,
     };
     toProfile(
-      signUpUrl,
+      "/token/signup",
       request,
       () => setLoading(false),
       (error) => {

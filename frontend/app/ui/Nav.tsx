@@ -2,6 +2,8 @@
 "use client";
 
 import React, { ReactNode, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 import { useConst } from "../providers";
@@ -51,17 +53,17 @@ function LoggedOutNav({ showLogin = true, showSignUp = true }) {
   );
 }
 
-function LoggedInNav() {
-  const { token, uid } = useConst();
+function MainNav() {
+  const { isLoggedIn, uid } = useConst();
   const refreshToken = useRefreshToken();
   const logOut = useLogOut();
 
   useEffect(() => {
-    if (!token) refreshToken();
+    if (!isLoggedIn) refreshToken();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [isLoggedIn]);
 
-  return token ? (
+  return isLoggedIn ? (
     <Nav>
       <div className="gap-4 justify-end flex flex-1">
         <Link
@@ -83,4 +85,26 @@ function LoggedInNav() {
   );
 }
 
-export { LoggedOutNav, LoggedInNav };
+function AuthNav() {
+  const { isLoggedIn, uid } = useConst();
+  const router = useRouter();
+  const refreshToken = useRefreshToken();
+  const pathname = usePathname();
+  const route = pathname.split("/")[1];
+
+  useEffect(() => {
+    if (!isLoggedIn) refreshToken();
+    else router.push("profile/" + uid);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn]);
+
+  return (
+    <>
+      {route === "login" && <LoggedOutNav showLogin={false} />}
+      {route === "signup" && <LoggedOutNav showSignUp={false} />}
+      {route === "reset-password" && <LoggedOutNav />}
+    </>
+  );
+}
+
+export { LoggedOutNav, MainNav, AuthNav };

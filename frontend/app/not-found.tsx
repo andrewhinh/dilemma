@@ -1,16 +1,13 @@
 /* eslint-disable @next/next/no-img-element */
-import { Suspense } from "react";
 import Link from "next/link";
-import { LoggedOutNav, LoggedInNav } from "./ui/Nav";
+import { MainNav } from "./ui/Nav";
 import Header from "./ui/Header";
 import Main from "./ui/Main";
 
 const ErrorPage = () => {
   return (
     <>
-      <Suspense fallback={<LoggedOutNav />}>
-        <LoggedInNav />
-      </Suspense>
+      <MainNav />
       <Main>
         <Header>
           <h1 className="text-4xl md:text-6xl">404</h1>

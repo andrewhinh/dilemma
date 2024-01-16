@@ -1,4 +1,4 @@
-import AuthNav from "./AuthNav";
+import { AuthNav } from "../ui/Nav";
 import Main from "../ui/Main";
 import Title from "./Title";
 

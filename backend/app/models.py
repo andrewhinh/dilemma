@@ -230,9 +230,7 @@ class UserUpdate(SQLModel):
     recovery_code: Optional[str] = None
 
 
-class Token(BaseModel):
-    """Token model."""
+class ConfirmLoggedInUser(SQLModel):
+    """Confirm logged in user model."""
 
-    access_token: str
-    token_type: str
     uid: str

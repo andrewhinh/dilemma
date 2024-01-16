@@ -1,7 +1,5 @@
-"use client";
-
 import { useConst } from "../providers";
-import { useSendRequest } from "../lib/utils";
+import { sendRequest } from "../api/route";
 import { useProfile } from "./providers";
 
 import validator from "validator";
@@ -72,13 +70,10 @@ export type { User, FriendRequest, Friend, Action, State };
 
 // Helper functions
 const useGetSentFriendRequests = () => {
-  const { apiUrl } = useConst();
-  const sendRequest = useSendRequest();
   const { dispatch } = useProfile();
-  const getSentFriendRequestsUrl = apiUrl + "/friends/requests/sent";
 
   return () => {
-    sendRequest(getSentFriendRequestsUrl, "GET").then((data) => {
+    sendRequest("/friends/requests/sent", "GET").then((data) => {
       dispatch({
         type: "SET_FIELD",
         field: "sentFriendRequests",
@@ -89,13 +84,10 @@ const useGetSentFriendRequests = () => {
 };
 
 const useGetIncomingFriendRequests = () => {
-  const { apiUrl } = useConst();
-  const sendRequest = useSendRequest();
   const { dispatch } = useProfile();
-  const getIncomingFriendRequestsUrl = apiUrl + "/friends/requests/incoming";
 
   return () => {
-    sendRequest(getIncomingFriendRequestsUrl, "GET").then((data) => {
+    sendRequest("/friends/requests/incoming", "GET").then((data) => {
       dispatch({
         type: "SET_FIELD",
         field: "incomingFriendRequests",
@@ -106,13 +98,10 @@ const useGetIncomingFriendRequests = () => {
 };
 
 const useGetFriends = () => {
-  const { apiUrl } = useConst();
-  const sendRequest = useSendRequest();
   const { dispatch } = useProfile();
-  const getFriendsUrl = apiUrl + "/friends/";
 
   return () => {
-    sendRequest(getFriendsUrl, "GET").then((data) => {
+    sendRequest("/friends/", "GET").then((data) => {
       dispatch({
         type: "SET_FIELD",
         field: "friends",
@@ -173,18 +162,14 @@ const useSetUser = () => {
 };
 
 const useGetUser = () => {
-  const { apiUrl } = useConst();
-  const sendRequest = useSendRequest();
   const { dispatch } = useProfile();
   const setUser = useSetUser();
-
-  const getUserUrl = apiUrl + "/user/";
 
   return () => {
     dispatch({ type: "SET_UPDATE_USER_ERROR_MSG", payload: "" });
     dispatch({ type: "SET_UPDATE_USER_LOADING", payload: true });
 
-    sendRequest(getUserUrl, "GET")
+    sendRequest("/user/", "GET")
       .then((data) => {
         setUser({ data });
       })
@@ -202,8 +187,7 @@ const useGetUser = () => {
 };
 
 const useUpdateUser = () => {
-  const { apiUrl, setToken } = useConst();
-  const sendRequest = useSendRequest();
+  const { setIsLoggedIn } = useConst();
   const { state, dispatch } = useProfile();
 
   const {
@@ -215,8 +199,6 @@ const useUpdateUser = () => {
     isSideBarOpen,
     canUpdateUser,
   } = state;
-
-  const updateUserUrl = apiUrl + "/user/update";
 
   return (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
@@ -257,13 +239,13 @@ const useUpdateUser = () => {
       profile_view: profileView,
       is_sidebar_open: isSideBarOpen,
     };
-    sendRequest(updateUserUrl, "PATCH", request)
+    sendRequest("/user/update", "PATCH", request)
       .then((response) => {
         dispatch({
           type: "SET_GET_USER_INFO",
           payload: false,
         });
-        setToken(response.access_token);
+        setIsLoggedIn(true);
         if (showUpdateUser) {
           dispatch({ type: "SET_UPDATE_USER_LOADING", payload: false });
         }
