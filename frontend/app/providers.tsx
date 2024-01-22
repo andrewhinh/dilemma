@@ -1,51 +1,129 @@
 "use client";
 
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useMemo,
-  useCallback,
-} from "react";
-import PropTypes from "prop-types";
+import React, { createContext, useReducer, useContext } from "react";
 
-// Adjust the context's default value to match the expected types
-const ConstContext = createContext({
+interface User {
+  joinDate: Date;
+  profilePicture: string;
+  email: string;
+  username: string;
+  fullname: string;
+  profileView: string;
+  isSideBarOpen: boolean;
+  uid: string;
+}
+
+// Type for the user object that is returned from the backend
+interface UserBackend {
+  join_date: string;
+  profile_picture: string;
+  email: string;
+  username: string;
+  fullname: string;
+  profile_view: string;
+  is_sidebar_open: boolean;
+  uid: string;
+}
+
+interface FriendBase {
+  uid: string;
+  join_date: Date;
+  profile_picture?: string;
+  username: string;
+}
+
+interface FriendRequest extends FriendBase {
+  request_date: string;
+}
+
+interface Friend extends FriendBase {
+  friendship_date: string;
+}
+
+interface UserWithFriends extends User {
+  sentFriendRequests: FriendRequest[];
+  incomingFriendRequests: FriendRequest[];
+  friends: Friend[];
+}
+
+export type { UserBackend, FriendRequest, Friend };
+
+interface State extends UserWithFriends {
+  isLoggedIn: boolean;
+}
+
+const initialState: State = {
   isLoggedIn: false,
-  setIsLoggedIn: (isLoggedIn: boolean) => {},
+  joinDate: new Date(),
+  profilePicture: "",
+  email: "",
+  username: "",
+  fullname: "",
+  profileView: "",
+  isSideBarOpen: false,
   uid: "",
-  setUid: (uid: string) => {},
+  sentFriendRequests: [],
+  incomingFriendRequests: [],
+  friends: [],
+};
+
+interface Action {
+  type: string;
+  field?: keyof State;
+  payload?: any;
+}
+
+interface ConstContextType {
+  state: State;
+  dispatch: React.Dispatch<Action>;
+}
+
+const ConstContext = createContext<ConstContextType>({
+  state: initialState,
+  dispatch: () => undefined,
 });
+
+const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case "SET_LOGGED_IN":
+      return { ...state, isLoggedIn: action.payload };
+    case "SET_JOIN_DATE":
+      return { ...state, joinDate: action.payload };
+    case "SET_PROFILE_PICTURE":
+      return { ...state, profilePicture: action.payload };
+    case "SET_EMAIL":
+      return { ...state, email: action.payload };
+    case "SET_USERNAME":
+      return { ...state, username: action.payload };
+    case "SET_FULLNAME":
+      return { ...state, fullname: action.payload };
+    case "SET_PROFILE_VIEW":
+      return { ...state, profileView: action.payload };
+    case "SET_IS_SIDEBAR_OPEN":
+      return { ...state, isSideBarOpen: action.payload };
+    case "SET_UID":
+      return { ...state, uid: action.payload };
+    case "SET_SENT_FRIEND_REQUESTS":
+      return { ...state, sentFriendRequests: action.payload };
+    case "SET_INCOMING_FRIEND_REQUESTS":
+      return { ...state, incomingFriendRequests: action.payload };
+    case "SET_FRIENDS":
+      return { ...state, friends: action.payload };
+    default:
+      return state;
+  }
+};
 
 export const useConst = () => useContext(ConstContext);
 
-const ConstProvider = ({ children }: { children: React.ReactNode }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [uid, setUid] = useState<string>("");
+export const ConstProvider = ({ children }: any) => {
+  const [state, dispatch] = useReducer(reducer, initialState);
 
-  const memoizedSetIsLoggedIn = useCallback(
-    (newIsLoggedIn: boolean) => setIsLoggedIn(newIsLoggedIn),
-    []
-  );
-  const memoizedSetUid = useCallback((newUid: string) => setUid(newUid), []);
-
-  const value = useMemo(
-    () => ({
-      isLoggedIn,
-      setIsLoggedIn: memoizedSetIsLoggedIn,
-      uid,
-      setUid: memoizedSetUid,
-    }),
-    [isLoggedIn, memoizedSetIsLoggedIn, uid, memoizedSetUid]
-  );
+  const contextValue = { state, dispatch };
 
   return (
-    <ConstContext.Provider value={value}>{children}</ConstContext.Provider>
+    <ConstContext.Provider value={contextValue}>
+      {children}
+    </ConstContext.Provider>
   );
 };
-
-ConstProvider.propTypes = {
-  children: PropTypes.node.isRequired,
-};
-
-export default ConstProvider;

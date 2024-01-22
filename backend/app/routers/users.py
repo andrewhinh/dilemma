@@ -3,10 +3,11 @@ import uuid
 from datetime import datetime
 from typing import Annotated, List, Optional
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, Security
 from sqlmodel import Session
 
 from app.database import get_session
+from app.dependencies.auth import verify_api_key
 from app.dependencies.users import (
     ACCESS_TOKEN_EXPIRES,
     REFRESH_TOKEN_EXPIRES,
@@ -48,6 +49,7 @@ router = APIRouter(
 @router.post("/verify-email", response_model=dict[str, str])
 async def verify_email(
     *,
+    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     user: UserCreate,
 ):
@@ -111,19 +113,33 @@ async def verify_email(
 
     verify_code = VerificationCode(
         email=db_user.email,
-        code=uuid.uuid4().hex,
+        code=uuid.uuid4().hex[:6],
     )
     session.add(verify_code)
     session.commit()
     session.refresh(verify_code)
 
-    body = f"Welcome!\n\nHead back to the website and enter the following code to continue:\n\n{verify_code.code}"
+    body = f"""
+## Welcome!
+
+Head back to the website and enter the following code to continue:
+
+## {verify_code.code}
+
+If you did not request this code, please ignore this email.
+    """
     send_email(db_user.email, subject="Verify Email", body=body)
     return {"message": "Verification email sent"}
 
 
 @router.post("/token/signup", response_model=UserRead)
-async def signup(*, session: Session = Depends(get_session), response: Response, user: UserCreate):
+async def signup(
+    *,
+    has_valid_api_key: bool = Security(verify_api_key),
+    session: Session = Depends(get_session),
+    response: Response,
+    user: UserCreate,
+):
     """Signup.
 
     Parameters
@@ -236,6 +252,7 @@ async def signup(*, session: Session = Depends(get_session), response: Response,
 @router.post("/token/login", response_model=UserRead)
 async def login(
     *,
+    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     response: Response,
     user: UserCreate,
@@ -268,7 +285,6 @@ async def login(
             status_code=400,
             detail="Username or email is empty",
         )
-
     if not db_user.password:
         raise HTTPException(
             status_code=400,
@@ -303,6 +319,7 @@ async def login(
 @router.post("/token/refresh", response_model=UserRead)
 async def refresh_token(
     *,
+    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     response: Response,
     refresh_token: Optional[str] = Cookie(default=None),
@@ -330,7 +347,7 @@ async def refresh_token(
     """
     user = get_user_from_token(refresh_token, session)
     if user.refresh_token != refresh_token:
-        raise HTTPException(status_code=403, detail="Forbidden")
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
 
     access_token = create_token(data={"email": user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
     refresh_token = create_token(data={"email": user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
@@ -347,6 +364,7 @@ async def refresh_token(
 @router.post("/token/logout", response_model=dict[str, str])
 async def logout(
     *,
+    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     response: Response,
     access_token: Optional[str] = Cookie(default=None),
@@ -389,6 +407,7 @@ async def logout(
 @router.post("/forgot-password", response_model=dict[str, str])
 async def forgot_password(
     *,
+    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     user: UserUpdate,
 ):
@@ -412,18 +431,34 @@ async def forgot_password(
         User not found
     """
     db_user = UserUpdate.model_validate(user)
-    if not db_user.email:
-        raise HTTPException(status_code=400, detail="Email is empty")
 
-    verified_user = get_user(session, db_user.email)
+    if not db_user.email and not db_user.username:
+        raise HTTPException(
+            status_code=400,
+            detail="Username or email is empty",
+        )
+
+    if db_user.email:
+        verified_user = get_user(session, db_user.email)
+    elif db_user.username:
+        verified_user = get_user(session, username=db_user.username)
+
     if verified_user:
-        recovery_code = uuid.uuid4().hex
+        recovery_code = uuid.uuid4().hex[:6]
         verified_user.recovery_code = recovery_code
         session.add(verified_user)
         session.commit()
         session.refresh(verified_user)
 
-        body = f"You've requested a password reset.\n\nHead back to the website and enter the following code to continue:\n\n{recovery_code}"
+        body = f"""
+## You've requested a password reset.
+
+Head back to the website and enter the following code to continue:
+
+## {recovery_code}
+
+If you did not request this code, please ignore this email.
+        """
         send_email(verified_user.email, subject="Password Recovery", body=body)
 
     return {"message": "Password recovery email sent"}
@@ -432,6 +467,7 @@ async def forgot_password(
 @router.post("/check-code", response_model=dict[str, str])
 async def check_code(
     *,
+    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     user: UserUpdate,
 ):
@@ -455,12 +491,21 @@ async def check_code(
         Code not found
     """
     db_user = UserUpdate.model_validate(user)
-    if not db_user.email:
-        raise HTTPException(status_code=400, detail="Email is empty")
+
+    if not db_user.email and not db_user.username:
+        raise HTTPException(
+            status_code=400,
+            detail="Username or email is empty",
+        )
+
     if not db_user.recovery_code:
         raise HTTPException(status_code=400, detail="Code is empty")
 
-    verified_user = get_user(session, db_user.email)
+    if db_user.email:
+        verified_user = get_user(session, db_user.email)
+    elif db_user.username:
+        verified_user = get_user(session, username=db_user.username)
+
     if not verified_user:
         raise HTTPException(status_code=400, detail="Email is invalid")
     if not verified_user.recovery_code:
@@ -476,9 +521,10 @@ async def check_code(
     return {"message": "Code is valid"}
 
 
-@router.post("/reset-password", response_model=UserRead)
+@router.post("/reset-password", response_model=dict[str, str])
 async def reset_password(
     *,
+    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     user: UserUpdate,
 ):
@@ -502,8 +548,12 @@ async def reset_password(
         Passwords do not match
     """
     db_user = UserUpdate.model_validate(user)
-    if not db_user.email:
-        raise HTTPException(status_code=400, detail="Email is empty")
+    if not db_user.email and not db_user.username:
+        raise HTTPException(
+            status_code=400,
+            detail="Username or email is empty",
+        )
+
     if not db_user.password:
         raise HTTPException(status_code=400, detail="Password is empty")
     if not db_user.confirm_password:
@@ -511,7 +561,11 @@ async def reset_password(
     if db_user.password != db_user.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match")
 
-    verified_user = get_user(session, db_user.email)
+    if db_user.email:
+        verified_user = get_user(session, db_user.email)
+    elif db_user.username:
+        verified_user = get_user(session, username=db_user.username)
+
     if not verified_user:
         raise HTTPException(status_code=400, detail="Email is invalid")
 
@@ -520,14 +574,13 @@ async def reset_password(
     session.commit()
     session.refresh(verified_user)
 
-    read_user = UserRead.model_validate(verified_user)
-    return read_user
+    return {"message": "Password reset"}
 
 
 @router.get("/user/", response_model=UserRead)
 async def read_user(
     *,
-    session: Session = Depends(get_session),
+    has_valid_api_key: bool = Security(verify_api_key),
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     """Get current user.
@@ -549,8 +602,6 @@ async def read_user(
     HTTPException
         User not found
     """
-    if not get_user(session, current_user.email):
-        raise HTTPException(status_code=404, detail="User not found")
     user = UserRead.model_validate(current_user)
     return user
 
@@ -558,6 +609,7 @@ async def read_user(
 @router.patch("/user/update", response_model=UserRead)
 async def update_user(
     *,
+    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
     response: Response,
@@ -646,6 +698,7 @@ async def update_user(
 @router.delete("/user/delete", response_model=dict[str, str])
 def delete_user(
     *,
+    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
 ) -> dict[str, str]:
@@ -657,6 +710,7 @@ def delete_user(
 @router.post("/friends/send-request", response_model=UserRead)
 def send_friend_request(
     *,
+    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
     friend: UserReference,
@@ -688,6 +742,7 @@ def send_friend_request(
 @router.post("/friends/revert-request", response_model=UserRead)
 def revert_friend_request(
     *,
+    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
     friend: UserReference,
@@ -721,6 +776,7 @@ def revert_friend_request(
 @router.post("/friends/accept-request", response_model=UserRead)
 def accept_friend_request(
     *,
+    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
     friend: UserReference,
@@ -756,6 +812,7 @@ def accept_friend_request(
 @router.post("/friends/decline-request", response_model=UserRead)
 def decline_friend_request(
     *,
+    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
     friend: UserReference,
@@ -789,6 +846,7 @@ def decline_friend_request(
 @router.get("/friends/requests/sent", response_model=List[FriendRequestRead])
 def read_sent_friend_requests(
     *,
+    has_valid_api_key: bool = Security(verify_api_key),
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     friend_request_links = get_sent_friend_request_links(current_user)
@@ -809,6 +867,7 @@ def read_sent_friend_requests(
 @router.get("/friends/requests/incoming", response_model=List[FriendRequestRead])
 def read_incoming_friend_requests(
     *,
+    has_valid_api_key: bool = Security(verify_api_key),
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     friend_request_links = get_incoming_friend_request_links(current_user)
@@ -830,6 +889,7 @@ def read_incoming_friend_requests(
 @router.get("/friends/", response_model=List[FriendRead])
 def read_friends(
     *,
+    has_valid_api_key: bool = Security(verify_api_key),
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     friend_links = get_friend_links(current_user)
@@ -850,6 +910,7 @@ def read_friends(
 @router.post("/friends/delete", response_model=UserRead)
 def delete_friend(
     *,
+    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
     friend: UserReference,

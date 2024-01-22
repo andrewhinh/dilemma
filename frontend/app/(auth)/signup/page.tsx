@@ -1,10 +1,10 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { sendRequest } from "../../api/route";
-import { useToProfile } from "../../lib/utils";
+import { sendRequest } from "../../lib/api";
+import { useToProfile } from "../../lib/callbacks";
 import validator from "validator";
 
 import Form from "../../ui/Form";
@@ -25,55 +25,6 @@ function SignUp() {
   const [code, setCode] = useState("");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  const handlePicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const fileType = file.type.split("/")[0];
-    if (fileType !== "image") {
-      setErrorMsg("File type must be image");
-      return;
-    }
-
-    const fileExtension = file.type.split("/")[1];
-    if (!["png", "jpg", "jpeg"].includes(fileExtension)) {
-      setErrorMsg("File type must be png, jpg, or jpeg");
-      return;
-    }
-
-    const fileSize = file.size;
-    if (fileSize > 3 * 1024 * 1024) {
-      setErrorMsg("File size must be less than 3MB");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target && event.target.result) {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            const size = Math.min(img.width, img.height);
-            const startX = (img.width - size) / 2;
-            const startY = (img.height - size) / 2;
-
-            // Update ProfilePicture if this is changed
-            canvas.width = 96;
-            canvas.height = 96;
-
-            ctx.drawImage(img, startX, startY, size, size, 0, 0, 96, 96);
-            const croppedImageDataURL = canvas.toDataURL(file.type);
-            setPic(croppedImageDataURL);
-          }
-        };
-        img.src = event.target.result as string;
-      }
-    };
-    reader.readAsDataURL(file);
-  };
 
   const handleSendEmail = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -124,12 +75,11 @@ function SignUp() {
       password: password,
       confirm_password: confirmPassword,
     };
-    sendRequest("/verify-email", "POST", request)
-      .then(() => {
-        setVerifiedEmail(true);
-      })
-      .catch((error) => setErrorMsg(error.detail || error))
-      .finally(() => setLoading(false));
+    sendRequest("/verify-email", "POST", request).then((data) => {
+      if (data.detail) setErrorMsg(data.detail);
+      else setVerifiedEmail(true);
+      setLoading(false);
+    });
   };
 
   const handleCodeSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -203,7 +153,11 @@ function SignUp() {
     <>
       {!verifiedEmail ? (
         <Form onSubmit={handleSendEmail}>
-          <ProfilePicture picture={pic} handleUpload={handlePicUpload} />
+          <ProfilePicture
+            picture={pic}
+            setErrorMsg={setErrorMsg}
+            setPicture={setPic}
+          />
           <div className="gap-2 flex flex-col text-left">
             <Input
               type="email"
@@ -243,7 +197,7 @@ function SignUp() {
           </div>
           <FormButton>
             {loading ? (
-              <img src={buttonLoading.src} className="w-6 h-6" alt="Sign Up" />
+              <Image src={buttonLoading} className="w-6 h-6" alt="Sign Up" />
             ) : (
               <p>Sign Up</p>
             )}
@@ -263,8 +217,8 @@ function SignUp() {
           />
           <FormButton>
             {loading ? (
-              <img
-                src={buttonLoading.src}
+              <Image
+                src={buttonLoading}
                 className="w-6 h-6"
                 alt="Verify Code"
               />

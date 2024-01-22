@@ -1,9 +1,9 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { sendRequest } from "../../api/route";
+import { sendRequest } from "../../lib/api";
 import validator from "validator";
 
 import Form from "../../ui/Form";
@@ -14,8 +14,9 @@ import buttonLoading from "@/public/button-loading.svg";
 function ResetPassword() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("");
-  const [verifiedEmail, setVerifiedEmail] = useState(false);
+  const [id, setId] = useState("");
+  const [isEmail, setIsEmail] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
   const [code, setCode] = useState("");
   const [verifiedCode, setVerifiedCode] = useState(false);
   const [password, setPassword] = useState("");
@@ -28,24 +29,26 @@ function ResetPassword() {
     setErrorMsg(null);
     setLoading(true);
 
-    if (email === "") {
-      setErrorMsg("Email cannot be empty");
+    if (id === "") {
+      setErrorMsg("Username or email cannot be empty");
       setLoading(false);
       return;
     }
 
-    if (!validator.isEmail(email)) {
-      setErrorMsg("Email is not valid");
-      setLoading(false);
-      return;
+    if (validator.isEmail(id)) {
+      setIsEmail(true);
+    } else {
+      setIsEmail(false);
     }
 
-    sendRequest("/forgot-password", "POST", { email: email })
-      .then(() => {
-        setVerifiedEmail(true);
-      })
-      .catch((error) => setErrorMsg(error.detail || error))
-      .finally(() => setLoading(false));
+    let request = {
+      ...(isEmail ? { email: id } : { username: id }),
+    };
+    sendRequest("/forgot-password", "POST", request).then((data) => {
+      if (data.detail) setErrorMsg(data.detail);
+      else setIsVerified(true);
+      setLoading(false);
+    });
   };
 
   const handleCodeSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -59,12 +62,15 @@ function ResetPassword() {
       return;
     }
 
-    sendRequest("/check-code", "POST", { email: email, recovery_code: code })
-      .then(() => {
-        setVerifiedCode(true);
-      })
-      .catch((error) => setErrorMsg(error.detail || error))
-      .finally(() => setLoading(false));
+    let request = {
+      ...(isEmail ? { email: id } : { username: id }),
+      recovery_code: code,
+    };
+    sendRequest("/check-code", "POST", request).then((data) => {
+      if (data.detail) setErrorMsg(data.detail);
+      else setVerifiedCode(true);
+      setLoading(false);
+    });
   };
 
   const handlePwdSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -90,37 +96,33 @@ function ResetPassword() {
       return;
     }
 
-    sendRequest("/reset-password", "POST", {
-      email: email,
+    let request = {
+      ...(isEmail ? { email: id } : { username: id }),
+      recovery_code: code,
       password: password,
       confirm_password: confirmPassword,
-    })
-      .then(() => {
-        router.push("/login");
-      })
-      .catch((error) => setErrorMsg(error.detail || error))
-      .finally(() => setLoading(false));
+    };
+    sendRequest("/reset-password", "POST", request).then((data) => {
+      if (data.detail) setErrorMsg(data.detail);
+      else router.push("/login");
+      setLoading(false);
+    });
   };
 
   return (
     <>
-      {!verifiedEmail ? (
+      {!isVerified ? (
         <Form onSubmit={handleSendEmail}>
           <Input
-            type="email"
-            name="email"
-            value={email}
-            placeholder="Email"
+            type="id"
+            name="id"
+            placeholder="Username or email"
             autoFocus
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => setId(e.target.value)}
           />
           <FormButton>
             {loading ? (
-              <img
-                src={buttonLoading.src}
-                className="w-6 h-6"
-                alt="Send Email"
-              />
+              <Image src={buttonLoading} className="w-6 h-6" alt="Send Email" />
             ) : (
               <p>Send Email</p>
             )}
@@ -163,8 +165,8 @@ function ResetPassword() {
           )}
           <FormButton>
             {loading ? (
-              <img
-                src={buttonLoading.src}
+              <Image
+                src={buttonLoading}
                 className="w-6 h-6"
                 alt={verifiedCode ? "Reset Password" : "Verify Code"}
               />

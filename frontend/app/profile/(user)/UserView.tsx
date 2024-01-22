@@ -1,201 +1,110 @@
-/* eslint-disable @next/next/no-img-element */
-"use client";
-
+import Image from "next/image";
 import { useState } from "react";
-import { useLogOut } from "../lib/utils";
-import { sendRequest } from "../api/route";
-import { useProfile } from "./providers";
-import { useUpdateUser } from "./utils";
+import { useProfile } from "../providers";
+import { useConst } from "../../providers";
+import { sendRequest } from "../../lib/api";
+import { useLogOut } from "../../lib/callbacks";
+import { useUpdateUser } from "../utils";
 
-import Main from "../ui/Main";
-import Form from "../ui/Form";
-import { ProfilePicture } from "../ui/Upload";
-import Input from "../ui/Input";
-import { FormButton } from "../ui/Button";
+import Main from "../../ui/Main";
+import Form from "../../ui/Form";
+import { ProfilePicture } from "../../ui/Upload";
+import Input from "../../ui/Input";
+import { FormButton } from "../../ui/Button";
 import buttonLoading from "@/public/button-loading.svg";
 
 function UserView() {
-  const { state, dispatch } = useProfile();
+  const { state: constState, dispatch: constDispatch } = useConst();
+  const { state: profileState, dispatch: profileDispatch } = useProfile();
   const logOut = useLogOut();
   const updateUser = useUpdateUser();
 
-  const {
-    profilePicture,
-    email,
-    username,
-    fullname,
-    password,
-    confirmPassword,
-    deleteAccountConfirm,
-    canUpdateUser,
-    updateUserErrorMsg,
-    updateUserLoading,
-    pwdErrorMsg,
-    pwdLoading,
-    pwdSuccessMsg,
-    deleteAccountErrorMsg,
-    deleteAccountLoading,
-  } = state;
+  const { joinDate, profilePicture, email, username, fullname } = constState;
+  const { canUpdateUser, updateUserErrorMsg, updateUserLoading } = profileState;
+
   const [tempProfilePicture, setTempProfilePicture] = useState(profilePicture);
   const [tempEmail, setTempEmail] = useState(email);
   const [tempUsername, setTempUsername] = useState(username);
   const [tempFullname, setTempFullname] = useState(fullname);
 
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [pwdErrorMsg, setPwdErrorMsg] = useState("");
+  const [pwdLoading, setPwdLoading] = useState(false);
+  const [pwdSuccessMsg, setPwdSuccessMsg] = useState("");
+
+  const [deleteAccountErrorMsg, setDeleteAccountErrorMsg] = useState("");
+  const [deleteAccountLoading, setDeleteAccountLoading] = useState(false);
+  const [deleteAccountConfirm, setDeleteAccountConfirm] = useState("");
+
   const deleteAccountPhrase = "delete my account";
-
-  const handlePicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const fileType = file.type.split("/")[0];
-    if (fileType !== "image") {
-      dispatch({
-        type: "SET_UPDATE_USER_ERROR_MSG",
-        payload: "File type must be image",
-      });
-      return;
-    }
-
-    const fileExtension = file.type.split("/")[1];
-    if (!["png", "jpg", "jpeg"].includes(fileExtension)) {
-      dispatch({
-        type: "SET_UPDATE_USER_ERROR_MSG",
-        payload: "File type must be png, jpg, or jpeg",
-      });
-      return;
-    }
-
-    const fileSize = file.size;
-    if (fileSize > 3 * 1024 * 1024) {
-      dispatch({
-        type: "SET_UPDATE_USER_ERROR_MSG",
-        payload: "File size must be less than 3MB",
-      });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target && event.target.result) {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            const size = Math.min(img.width, img.height);
-            const startX = (img.width - size) / 2;
-            const startY = (img.height - size) / 2;
-
-            // Update ProfilePicture if this is changed
-            canvas.width = 96;
-            canvas.height = 96;
-
-            ctx.drawImage(img, startX, startY, size, size, 0, 0, 96, 96);
-            const croppedImageDataURL = canvas.toDataURL(file.type);
-            setTempProfilePicture(croppedImageDataURL);
-            if (croppedImageDataURL !== profilePicture) {
-              dispatch({
-                type: "SET_CAN_UPDATE_USER",
-                payload: true,
-              });
-            } else {
-              dispatch({
-                type: "SET_CAN_UPDATE_USER",
-                payload: false,
-              });
-            }
-          }
-        };
-        img.src = event.target.result as string;
-      }
-    };
-    reader.readAsDataURL(file);
-  };
 
   const handleUpdatePassword = (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     e.preventDefault();
-    dispatch({ type: "SET_PWD_ERROR_MSG", payload: null });
-    dispatch({ type: "SET_PWD_LOADING", payload: true });
-    dispatch({ type: "SET_PWD_SUCCESS_MSG", payload: null });
+    setPwdErrorMsg("");
+    setPwdLoading(true);
+    setPwdSuccessMsg("");
 
     if (password === "") {
-      dispatch({
-        type: "SET_PWD_ERROR_MSG",
-        payload: "Password cannot be empty",
-      });
-      dispatch({ type: "SET_PWD_LOADING", payload: false });
+      setPwdErrorMsg("Password cannot be empty");
+      setPwdLoading(false);
       return;
     }
 
     if (confirmPassword === "") {
-      dispatch({
-        type: "SET_PWD_ERROR_MSG",
-        payload: "Confirm password cannot be empty",
-      });
-      dispatch({ type: "SET_PWD_LOADING", payload: false });
+      setPwdErrorMsg("Confirm password cannot be empty");
+      setPwdLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
-      dispatch({
-        type: "SET_PWD_ERROR_MSG",
-        payload: "Passwords do not match",
-      });
-      dispatch({ type: "SET_PWD_LOADING", payload: false });
+      setPwdErrorMsg("Passwords do not match");
+      setPwdLoading(false);
       return;
     }
 
     sendRequest("/user/update", "PATCH", {
       password: password,
       confirm_password: confirmPassword,
-    })
-      .then(() =>
-        dispatch({ type: "SET_PWD_SUCCESS_MSG", payload: "Password updated!" })
-      )
-      .catch((error) =>
-        dispatch({ type: "SET_PWD_ERROR_MSG", payload: error.detail || error })
-      )
-      .finally(() => dispatch({ type: "SET_PWD_LOADING", payload: false }));
+    }).then((data) => {
+      if (data.detail) setPwdErrorMsg(data.detail);
+      else {
+        setPassword("");
+        setConfirmPassword("");
+        setPwdSuccessMsg("Password updated!");
+      }
+      setPwdLoading(false);
+    });
   };
 
   const handleDeleteAccount = (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     e.preventDefault();
-    dispatch({ type: "SET_DELETE_ACCOUNT_ERROR_MSG", payload: null });
-    dispatch({ type: "SET_DELETE_ACCOUNT_LOADING", payload: true });
+    setDeleteAccountErrorMsg("");
+    setDeleteAccountLoading(true);
 
     if (deleteAccountConfirm === "") {
-      dispatch({
-        type: "SET_DELETE_ACCOUNT_ERROR_MSG",
-        payload: "You must enter the phrase to delete your account",
-      });
-      dispatch({ type: "SET_DELETE_ACCOUNT_LOADING", payload: false });
+      setDeleteAccountErrorMsg(
+        "You must enter the phrase to delete your account"
+      );
+      setDeleteAccountLoading(false);
       return;
     }
 
     if (deleteAccountConfirm !== deleteAccountPhrase) {
-      dispatch({
-        type: "SET_DELETE_ACCOUNT_ERROR_MSG",
-        payload: "Incorrect phrase to delete your account",
-      });
-      dispatch({ type: "SET_DELETE_ACCOUNT_LOADING", payload: false });
+      setDeleteAccountErrorMsg("Incorrect phrase to delete your account");
+      setDeleteAccountLoading(false);
       return;
     }
 
-    sendRequest("/user/delete", "DELETE")
-      .then(() => logOut())
-      .catch((error) =>
-        dispatch({
-          type: "SET_DELETE_ACCOUNT_ERROR_MSG",
-          payload: error.detail || error.message,
-        })
-      )
-      .finally(() =>
-        dispatch({ type: "SET_DELETE_ACCOUNT_LOADING", payload: false })
-      );
+    sendRequest("/user/delete", "DELETE").then((data) => {
+      if (data.detail) setDeleteAccountErrorMsg(data.detail);
+      else logOut();
+      setDeleteAccountLoading(false);
+    });
   };
 
   return (
@@ -203,8 +112,37 @@ function UserView() {
       <Form onSubmit={(e) => updateUser(e)}>
         <ProfilePicture
           picture={tempProfilePicture}
-          handleUpload={handlePicUpload}
+          setErrorMsg={(msg) =>
+            profileDispatch({
+              type: "SET_UPDATE_USER_ERROR_MSG",
+              payload: msg,
+            })
+          }
+          setPicture={(pic) => setTempProfilePicture(pic)}
+          onChange={(pic) => {
+            if (pic !== profilePicture) {
+              profileDispatch({
+                type: "SET_CAN_UPDATE_USER",
+                payload: true,
+              });
+            } else {
+              profileDispatch({
+                type: "SET_CAN_UPDATE_USER",
+                payload: false,
+              });
+            }
+          }}
         />
+        <div className="flex flex-col">
+          <p>Joined on</p>
+          <p className="text-cyan-500">
+            {new Date(joinDate).toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </p>
+        </div>
         <div className="flex flex-col gap-4 w-48 md:w-60">
           <div className="flex flex-col gap-2">
             <Input
@@ -216,18 +154,18 @@ function UserView() {
                 setTempEmail(e.target.value);
                 if (e.target.value !== email) {
                   if (e.target.value === "" && email === null) {
-                    dispatch({
+                    profileDispatch({
                       type: "SET_CAN_UPDATE_USER",
                       payload: false,
                     });
                   } else {
-                    dispatch({
+                    profileDispatch({
                       type: "SET_CAN_UPDATE_USER",
                       payload: true,
                     });
                   }
                 } else {
-                  dispatch({
+                  profileDispatch({
                     type: "SET_CAN_UPDATE_USER",
                     payload: false,
                   });
@@ -243,18 +181,18 @@ function UserView() {
                 setTempUsername(e.target.value);
                 if (e.target.value !== username) {
                   if (e.target.value === "" && username === null) {
-                    dispatch({
+                    profileDispatch({
                       type: "SET_CAN_UPDATE_USER",
                       payload: false,
                     });
                   } else {
-                    dispatch({
+                    profileDispatch({
                       type: "SET_CAN_UPDATE_USER",
                       payload: true,
                     });
                   }
                 } else {
-                  dispatch({
+                  profileDispatch({
                     type: "SET_CAN_UPDATE_USER",
                     payload: false,
                   });
@@ -270,18 +208,18 @@ function UserView() {
                 setTempFullname(e.target.value);
                 if (e.target.value !== fullname) {
                   if (e.target.value === "" && fullname === null) {
-                    dispatch({
+                    profileDispatch({
                       type: "SET_CAN_UPDATE_USER",
                       payload: false,
                     });
                   } else {
-                    dispatch({
+                    profileDispatch({
                       type: "SET_CAN_UPDATE_USER",
                       payload: true,
                     });
                   }
                 } else {
-                  dispatch({
+                  profileDispatch({
                     type: "SET_CAN_UPDATE_USER",
                     payload: false,
                   });
@@ -292,31 +230,27 @@ function UserView() {
           <FormButton
             noHover={canUpdateUser}
             onClick={() => {
-              dispatch({
-                type: "SET_FIELD",
-                field: "profilePicture",
+              constDispatch({
+                type: "SET_PROFILE_PICTURE",
                 payload: tempProfilePicture,
               });
-              dispatch({
-                type: "SET_FIELD",
-                field: "email",
+              constDispatch({
+                type: "SET_EMAIL",
                 payload: tempEmail,
               });
-              dispatch({
-                type: "SET_FIELD",
-                field: "username",
+              constDispatch({
+                type: "SET_USERNAME",
                 payload: tempUsername,
               });
-              dispatch({
-                type: "SET_FIELD",
-                field: "fullname",
+              constDispatch({
+                type: "SET_FULLNAME",
                 payload: tempFullname,
               });
             }}
           >
             {updateUserLoading ? (
-              <img
-                src={buttonLoading.src}
+              <Image
+                src={buttonLoading}
                 className="w-6 h-6"
                 alt="Update Profile"
               />
@@ -337,31 +271,19 @@ function UserView() {
               type="password"
               value={password}
               placeholder="New Password"
-              onChange={(e) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "password",
-                  payload: e.target.value,
-                })
-              }
+              onChange={(e) => setPassword(e.target.value)}
             />
             <Input
               id="confirmPassword"
               type="password"
               value={confirmPassword}
               placeholder="Confirm New Password"
-              onChange={(e) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "confirmPassword",
-                  payload: e.target.value,
-                })
-              }
+              onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </div>
           <FormButton>
             {pwdLoading ? (
-              <img src={buttonLoading.src} className="w-6 h-6" alt="Update" />
+              <Image src={buttonLoading} className="w-6 h-6" alt="Update" />
             ) : (
               <p>Update Password</p>
             )}
@@ -386,18 +308,12 @@ function UserView() {
               type="text"
               value={deleteAccountConfirm}
               placeholder={deleteAccountPhrase}
-              onChange={(e) =>
-                dispatch({
-                  type: "SET_FIELD",
-                  field: "deleteAccountConfirm",
-                  payload: e.target.value,
-                })
-              }
+              onChange={(e) => setDeleteAccountConfirm(e.target.value)}
             />
           </div>
           <FormButton className="bg-rose-500">
             {deleteAccountLoading ? (
-              <img src={buttonLoading.src} className="w-6 h-6" alt="Delete" />
+              <Image src={buttonLoading} className="w-6 h-6" alt="Delete" />
             ) : (
               <p>Delete Account</p>
             )}

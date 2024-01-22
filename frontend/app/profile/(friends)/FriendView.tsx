@@ -1,47 +1,46 @@
-/* eslint-disable @next/next/no-img-element */
-"use client";
+import { useState } from "react";
+import Image from "next/image";
+import { useConst } from "@/app/providers";
+import { useProfile } from "../providers";
+import { sendRequest } from "../../lib/api";
+import { useGetSentFriendRequests, useSetUser } from "../../utils";
 
-import { useProfile } from "./providers";
-import { sendRequest } from "../api/route";
-import { useSetUser } from "./utils";
-
-import Main from "../ui/Main";
-import Form from "../ui/Form";
-import Input from "../ui/Input";
-import { FormButton } from "../ui/Button";
+import Main from "../../ui/Main";
+import Form from "../../ui/Form";
+import Input from "../../ui/Input";
+import { FormButton } from "../../ui/Button";
 import FriendTable from "./FriendTable";
 import buttonLoading from "@/public/button-loading.svg";
 
 function FriendView() {
-  const { state, dispatch } = useProfile();
+  const { state: constState } = useConst();
+  const { state: profileState } = useProfile();
   const setUser = useSetUser();
+  const getSentFriendRequests = useGetSentFriendRequests();
+
+  const { sentFriendRequests, incomingFriendRequests, friends } = constState;
 
   const {
-    requestUsername,
-    sentFriendRequests,
-    sendRequestErrorMsg,
-    sendRequestLoading,
     revertRequestErrorMsg,
-    incomingFriendRequests,
     acceptRequestErrorMsg,
     declineRequestErrorMsg,
-    friends,
     deleteFriendErrorMsg,
-  } = state;
+  } = profileState;
+
+  const [requestUsername, setRequestUsername] = useState("");
+  const [sendRequestErrorMsg, setSendRequestErrorMsg] = useState("");
+  const [sendRequestLoading, setSendRequestLoading] = useState(false);
 
   const handlesendFriendRequest = (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
   ) => {
     e.preventDefault();
-    dispatch({ type: "SET_SEND_REQUEST_ERROR_MSG", payload: null });
-    dispatch({ type: "SET_SEND_REQUEST_LOADING", payload: true });
+    setSendRequestErrorMsg("");
+    setSendRequestLoading(true);
 
     if (requestUsername === "") {
-      dispatch({
-        type: "SET_SEND_REQUEST_ERROR_MSG",
-        payload: "Username cannot be empty",
-      });
-      dispatch({ type: "SET_SEND_REQUEST_LOADING", payload: false });
+      setSendRequestErrorMsg("Username cannot be empty");
+      setSendRequestLoading(false);
       return;
     }
 
@@ -49,24 +48,15 @@ function FriendView() {
       username: requestUsername,
     };
 
-    sendRequest("/friends/send-request", "POST", request)
-      .then((data) => {
-        setUser({ data });
-        dispatch({
-          type: "SET_FIELD",
-          field: "requestUsername",
-          payload: "",
-        });
-      })
-      .catch((error) => {
-        dispatch({
-          type: "SET_SEND_REQUEST_ERROR_MSG",
-          payload: error.detail || error.message,
-        });
-      })
-      .finally(() => {
-        dispatch({ type: "SET_SEND_REQUEST_LOADING", payload: false });
-      });
+    sendRequest("/friends/send-request", "POST", request).then((data) => {
+      if (data.detail) setSendRequestErrorMsg(data.detail);
+      else {
+        setUser(data);
+        getSentFriendRequests();
+        setRequestUsername("");
+      }
+      setSendRequestLoading(false);
+    });
   };
 
   return (
@@ -78,19 +68,13 @@ function FriendView() {
             type="text"
             value={requestUsername}
             placeholder="Username"
-            onChange={(e) =>
-              dispatch({
-                type: "SET_FIELD",
-                field: "requestUsername",
-                payload: e.target.value,
-              })
-            }
+            onChange={(e) => setRequestUsername(e.target.value)}
           />
           <FormButton className="whitespace-nowrap">
             {sendRequestLoading ? (
-              <img
+              <Image
                 className="w-6 h-6"
-                src={buttonLoading.src}
+                src={buttonLoading}
                 alt="Send Request"
               />
             ) : (

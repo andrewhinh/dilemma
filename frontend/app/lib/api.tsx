@@ -1,4 +1,8 @@
-// "use server";
+"use server";
+
+import { cookies } from "next/headers";
+
+// Helper vars and functions
 
 // const removeProtocol = (url: string | undefined) =>
 //   url ? url.replace(/(^\w+:|^)\/\//, "") : "";
@@ -11,10 +15,8 @@ const removeTrailingSlash = (url: string | undefined) =>
 // const websocketURL = `${websocketUrlBase}${websocketUrlPort}`;
 
 // Only add port for localhost
-const apiUrlBase = removeTrailingSlash(process.env.NEXT_PUBLIC_API_URL);
-const apiUrlPort = process.env.NEXT_PUBLIC_API_PORT
-  ? `:${process.env.NEXT_PUBLIC_API_PORT}`
-  : "";
+const apiUrlBase = removeTrailingSlash(process.env.API_URL);
+const apiUrlPort = process.env.API_PORT ? `:${process.env.API_PORT}` : "";
 const apiUrl = `${apiUrlBase}${apiUrlPort}`;
 
 const sendRequest = async (route: string, method: string, data: any = null) => {
@@ -22,6 +24,8 @@ const sendRequest = async (route: string, method: string, data: any = null) => {
     method: method,
     headers: {
       "Content-Type": "application/json",
+      "X-API-Key": process.env.API_KEY || "",
+      Cookie: cookies().toString(),
     },
     credentials: "include",
   };
@@ -35,10 +39,24 @@ const sendRequest = async (route: string, method: string, data: any = null) => {
   }
 
   const response = await fetch(`${apiUrl}${route}`, request);
-  if (!response.ok) {
-    return response.json().then((data) => Promise.reject(data));
+  const result = await response.json();
+
+  const receivedCookies = response.headers.getSetCookie();
+  if (receivedCookies) {
+    receivedCookies.forEach((cookie) => {
+      cookies().set({
+        name: cookie.split("=")[0],
+        value: cookie.split("=")[1].split(";")[0],
+        httpOnly: true,
+        maxAge: parseInt(cookie.split(";")[2].split("=")[1]),
+        path: "/",
+        sameSite: "none",
+        secure: true,
+      });
+    });
   }
-  return response.json();
+
+  return result; // can't check if response.ok here because server errors aren't passed to client components
 };
 
 // const sendWebsocket = (

@@ -70,74 +70,6 @@ class VerificationCode(SQLModel, table=True):
     status: str = Field(default="pending")
 
 
-# Friends
-class FriendRequest(SQLModel, table=True):
-    """Friend request link model."""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    user_uid: str = Field(default=None, foreign_key="user.uid")
-    friend_uid: str = Field(default=None, foreign_key="user.uid")
-
-    request_date: datetime = Field(default_factory=datetime.utcnow)
-    status: str = Field(default="pending")
-    sender: "User" = Relationship(
-        back_populates="sender_links",
-        sa_relationship_kwargs={
-            "foreign_keys": "FriendRequest.user_uid",
-        },
-    )
-    receiver: "User" = Relationship(
-        back_populates="receiver_links",
-        sa_relationship_kwargs={
-            "foreign_keys": "FriendRequest.friend_uid",
-        },
-    )
-
-
-class Friend(SQLModel, table=True):
-    """Friend link model."""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-    user_uid: str = Field(default=None, foreign_key="user.uid")
-    friend_uid: str = Field(default=None, foreign_key="user.uid")
-
-    friendship_date: datetime = Field(default_factory=datetime.utcnow)
-    status: str = Field(default="confirmed")
-    friend_1: "User" = Relationship(
-        back_populates="friend_1_links",
-        sa_relationship_kwargs={
-            "foreign_keys": "Friend.friend_uid",
-        },
-    )
-    friend_2: "User" = Relationship(
-        back_populates="friend_2_links",
-        sa_relationship_kwargs={
-            "foreign_keys": "Friend.user_uid",
-        },
-    )
-
-
-class FriendReadBase(BaseModel):
-    """Friend read base model."""
-
-    uid: str
-    join_date: datetime
-    profile_picture: Optional[str]
-    username: str
-
-
-class FriendRequestRead(FriendReadBase):
-    """Friend request read model."""
-
-    request_date: datetime
-
-
-class FriendRead(FriendReadBase):
-    """Friend read model."""
-
-    friendship_date: datetime
-
-
 # Users
 class UserBase(SQLModel):
     """User base model."""
@@ -199,7 +131,7 @@ class User(UserBase, table=True):
 
 
 class UserReference(UserBase):
-    """UserReference model."""
+    """Model for referencing a user."""
 
     username: str
 
@@ -232,3 +164,71 @@ class UserUpdate(SQLModel):
     is_sidebar_open: Optional[bool] = None
 
     recovery_code: Optional[str] = None
+
+
+# Friends
+class FriendRequest(SQLModel, table=True):
+    """Friend request link model."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_uid: str = Field(default=None, foreign_key="user.uid")
+    friend_uid: str = Field(default=None, foreign_key="user.uid")
+
+    request_date: datetime = Field(default_factory=datetime.utcnow)
+    status: str = Field(default="pending")
+    sender: User = Relationship(
+        back_populates="sender_links",
+        sa_relationship_kwargs={
+            "foreign_keys": "FriendRequest.user_uid",
+        },
+    )
+    receiver: User = Relationship(
+        back_populates="receiver_links",
+        sa_relationship_kwargs={
+            "foreign_keys": "FriendRequest.friend_uid",
+        },
+    )
+
+
+class Friend(SQLModel, table=True):
+    """Friend link model."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_uid: str = Field(default=None, foreign_key="user.uid")
+    friend_uid: str = Field(default=None, foreign_key="user.uid")
+
+    friendship_date: datetime = Field(default_factory=datetime.utcnow)
+    status: str = Field(default="confirmed")
+    friend_1: User = Relationship(
+        back_populates="friend_1_links",
+        sa_relationship_kwargs={
+            "foreign_keys": "Friend.friend_uid",
+        },
+    )
+    friend_2: User = Relationship(
+        back_populates="friend_2_links",
+        sa_relationship_kwargs={
+            "foreign_keys": "Friend.user_uid",
+        },
+    )
+
+
+class FriendReadBase(BaseModel):
+    """Friend read base model."""
+
+    uid: str
+    join_date: datetime
+    profile_picture: Optional[str]
+    username: str
+
+
+class FriendRequestRead(FriendReadBase):
+    """Friend request read model."""
+
+    request_date: datetime
+
+
+class FriendRead(FriendReadBase):
+    """Friend read model."""
+
+    friendship_date: datetime

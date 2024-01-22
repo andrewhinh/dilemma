@@ -1,12 +1,17 @@
-/* eslint-disable @next/next/no-img-element */
-import { Friend, FriendRequest } from "./utils";
-import { useProfile } from "./providers";
-import { sendRequest } from "../api/route";
-import { useSetUser } from "./utils";
+import Image from "next/image";
+import { FriendRequest, Friend } from "@/app/providers";
+import { useProfile } from "../providers";
+import { sendRequest } from "../../lib/api";
+import {
+  useGetSentFriendRequests,
+  useGetIncomingFriendRequests,
+  useGetFriends,
+  useSetUser,
+} from "../../utils";
 
-import Form from "../ui/Form";
-import Input from "../ui/Input";
-import { Button } from "../ui/Button";
+import Form from "../../ui/Form";
+import Input from "../../ui/Input";
+import { Button } from "../../ui/Button";
 import check from "@/public/check.svg";
 import x from "@/public/x.svg";
 import trash from "@/public/trash.svg";
@@ -24,6 +29,9 @@ function FriendTable({
 }) {
   const { state, dispatch } = useProfile();
   const setUser = useSetUser();
+  const getSentFriendRequests = useGetSentFriendRequests();
+  const getIncomingFriendRequests = useGetIncomingFriendRequests();
+  const getFriends = useGetFriends();
 
   const {
     revertRequestLoading,
@@ -63,19 +71,18 @@ function FriendTable({
       username: formDataObj.username,
     };
 
-    sendRequest("/friends/revert-request", "POST", request)
-      .then((data) => {
-        setUser({ data });
-      })
-      .catch((error) => {
+    sendRequest("/friends/revert-request", "POST", request).then((data) => {
+      if (data.detail)
         dispatch({
           type: "SET_REVERT_REQUEST_ERROR_MSG",
-          payload: error.detail || error.message,
+          payload: data.detail,
         });
-      })
-      .finally(() => {
-        dispatch({ type: "SET_REVERT_REQUEST_LOADING", payload: false });
-      });
+      else {
+        setUser(data);
+        getSentFriendRequests();
+      }
+      dispatch({ type: "SET_REVERT_REQUEST_LOADING", payload: false });
+    });
   };
 
   const handleAcceptFriendRequest = (
@@ -106,19 +113,19 @@ function FriendTable({
       username: formDataObj.username,
     };
 
-    sendRequest("/friends/accept-request", "POST", request)
-      .then((data) => {
-        setUser({ data });
-      })
-      .catch((error) => {
+    sendRequest("/friends/accept-request", "POST", request).then((data) => {
+      if (data.detail)
         dispatch({
           type: "SET_ACCEPT_REQUEST_ERROR_MSG",
-          payload: error.detail || error.message,
+          payload: data.detail,
         });
-      })
-      .finally(() => {
-        dispatch({ type: "SET_ACCEPT_REQUEST_LOADING", payload: false });
-      });
+      else {
+        setUser(data);
+        getIncomingFriendRequests();
+        getFriends();
+      }
+      dispatch({ type: "SET_ACCEPT_REQUEST_LOADING", payload: false });
+    });
   };
 
   const handleDeclineFriendRequest = (
@@ -149,19 +156,18 @@ function FriendTable({
       username: formDataObj.username,
     };
 
-    sendRequest("/friends/decline-request", "POST", request)
-      .then((data) => {
-        setUser({ data });
-      })
-      .catch((error) => {
+    sendRequest("/friends/decline-request", "POST", request).then((data) => {
+      if (data.detail)
         dispatch({
           type: "SET_DECLINE_REQUEST_ERROR_MSG",
-          payload: error.detail || error.message,
+          payload: data.detail,
         });
-      })
-      .finally(() => {
-        dispatch({ type: "SET_DECLINE_REQUEST_LOADING", payload: false });
-      });
+      else {
+        setUser(data);
+        getIncomingFriendRequests();
+      }
+      dispatch({ type: "SET_DECLINE_REQUEST_LOADING", payload: false });
+    });
   };
 
   const handleDeleteFriend = (
@@ -192,19 +198,18 @@ function FriendTable({
       username: formDataObj.username,
     };
 
-    sendRequest("/friends/delete", "POST", request)
-      .then((data) => {
-        setUser({ data });
-      })
-      .catch((error) => {
+    sendRequest("/friends/delete", "POST", request).then((data) => {
+      if (data.detail)
         dispatch({
           type: "SET_DELETE_FRIEND_ERROR_MSG",
-          payload: error.detail || error.message,
+          payload: data.detail,
         });
-      })
-      .finally(() => {
-        dispatch({ type: "SET_DELETE_FRIEND_LOADING", payload: false });
-      });
+      else {
+        setUser(data);
+        getFriends();
+      }
+      dispatch({ type: "SET_DELETE_FRIEND_LOADING", payload: false });
+    });
   };
 
   return (
@@ -220,21 +225,21 @@ function FriendTable({
             <td className="p-4 flex justify-between">
               <div className="flex flex-1 gap-2 justify-start items-center">
                 <div className="group relative inline-block">
-                  <img
+                  <Image
                     src={
-                      row.profile_picture
-                        ? row.profile_picture
-                        : profileOutline.src
+                      row.profile_picture ? row.profile_picture : profileOutline
                     }
-                    alt="Picture"
+                    width={0} // since set by CSS
+                    height={0}
+                    alt="Profile Picture"
                     className="rounded-full w-8 h-8 md:w-10 md:h-10"
                   />
                   <div className="w-24 md:w-44 absolute bottom-full left-1/2 transform -translate-x-1/2 -translate-y-2 bg-cyan-200 text-zinc-500 p-2 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    <p className="flex md:hidden justify-center text-cyan-500">
+                    <p className="flex md:hidden justify-center font-semibold">
                       {row.username.slice(0, maxSmallChars)}
                       {row.username.length > maxSmallChars && "..."}
                     </p>
-                    <p className="hidden md:flex justify-center text-cyan-500">
+                    <p className="hidden md:flex justify-center font-semibold">
                       {row.username.slice(0, maxLargeChars)}
                       {row.username.length > maxLargeChars && "..."}
                     </p>
@@ -270,13 +275,13 @@ function FriendTable({
                       className="bg-rose-500 rounded-full w-8 h-8 md:w-10 md:h-10"
                     >
                       {revertRequestLoading ? (
-                        <img
+                        <Image
                           className="w-4 h-4"
-                          src={buttonLoading.src}
+                          src={buttonLoading}
                           alt="Revert"
                         />
                       ) : (
-                        <img className="w-4 h-4" src={x.src} alt="Revert" />
+                        <Image className="w-4 h-4" src={x} alt="Revert" />
                       )}
                     </Button>
                   </Form>
@@ -295,17 +300,13 @@ function FriendTable({
                         className="rounded-full w-8 h-8 md:w-10 md:h-10"
                       >
                         {acceptRequestLoading ? (
-                          <img
+                          <Image
                             className="w-4 h-4"
-                            src={buttonLoading.src}
+                            src={buttonLoading}
                             alt="Accept"
                           />
                         ) : (
-                          <img
-                            className="w-4 h-4"
-                            src={check.src}
-                            alt="Accept"
-                          />
+                          <Image className="w-4 h-4" src={check} alt="Accept" />
                         )}
                       </Button>
                     </Form>
@@ -321,13 +322,13 @@ function FriendTable({
                         className="bg-rose-500 rounded-full w-8 h-8 md:w-10 md:h-10"
                       >
                         {declineRequestLoading ? (
-                          <img
+                          <Image
                             className="w-4 h-4"
-                            src={buttonLoading.src}
+                            src={buttonLoading}
                             alt="Decline"
                           />
                         ) : (
-                          <img className="w-4 h-4" src={x.src} alt="Decline" />
+                          <Image className="w-4 h-4" src={x} alt="Decline" />
                         )}
                       </Button>
                     </Form>
@@ -346,13 +347,13 @@ function FriendTable({
                       className="bg-rose-500 rounded-full w-8 h-8 md:w-10 md:h-10"
                     >
                       {deleteFriendLoading ? (
-                        <img
+                        <Image
                           className="w-4 h-4"
-                          src={buttonLoading.src}
+                          src={buttonLoading}
                           alt="Delete"
                         />
                       ) : (
-                        <img className="w-4 h-4" src={trash.src} alt="Delete" />
+                        <Image className="w-4 h-4" src={trash} alt="Delete" />
                       )}
                     </Button>
                   </Form>

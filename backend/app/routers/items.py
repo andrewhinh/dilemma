@@ -1,8 +1,9 @@
 """Feature routes."""
-from fastapi import APIRouter, WebSocket
+from fastapi import APIRouter, Security, WebSocket
 from fastapi.encoders import jsonable_encoder
 from langchain.chains import LLMChain
 
+from app.dependencies.auth import verify_api_key
 from app.dependencies.items import create_llm, create_prompt  # create_dspy
 from app.models import DoneResponse, ErrorResponse, WebSocketStreamingCallback
 
@@ -11,13 +12,13 @@ router = APIRouter()
 
 
 # @router.post("/dspy")
-# async def dspy(question: str) -> dict:
+# async def dspy(question: str, has_valid_api_key: bool = Security(verify_api_key)) -> dict:
 #     """Endpoint for generating an answer using dspy."""
 #     return dspy_model(question)
 
 
 @router.websocket("/fact")
-async def fact_websocket(websocket: WebSocket) -> None:
+async def fact_websocket(websocket: WebSocket, has_valid_api_key: bool = Security(verify_api_key)) -> None:
     """Websocket endpoint for generating a fun fact."""
     model = "gpt-3.5-turbo-1106"
     temperature = 1.0
@@ -47,7 +48,7 @@ async def fact_websocket(websocket: WebSocket) -> None:
 
 
 @router.websocket("/lost")
-async def lost_websocket(websocket: WebSocket) -> None:
+async def lost_websocket(websocket: WebSocket, has_valid_api_key: bool = Security(verify_api_key)) -> None:
     """Websocket endpoint for generating a message for lost users."""
     model = "gpt-3.5-turbo-1106"
     temperature = 1.0
@@ -77,7 +78,7 @@ async def lost_websocket(websocket: WebSocket) -> None:
 
 
 @router.websocket("/no-user")
-async def no_user_websocket(websocket: WebSocket) -> None:
+async def no_user_websocket(websocket: WebSocket, has_valid_api_key: bool = Security(verify_api_key)) -> None:
     """Websocket endpoint for generating a message for users who don't exist."""
     model = "gpt-3.5-turbo-1106"
     temperature = 1.0

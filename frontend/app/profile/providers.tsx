@@ -1,39 +1,39 @@
 "use client";
 
 import React, { createContext, useReducer, useContext } from "react";
-import { Action, State } from "./utils";
+
+interface Action {
+  type: string;
+  field?: keyof State;
+  payload?: any;
+}
+
+interface State {
+  getUserInfo: boolean;
+  canUpdateUser: boolean;
+  updateUserErrorMsg: string;
+  updateUserLoading: boolean;
+  revertRequestErrorMsg: string;
+  revertRequestLoading: boolean;
+  acceptRequestErrorMsg: string;
+  acceptRequestLoading: boolean;
+  declineRequestErrorMsg: string;
+  declineRequestLoading: boolean;
+  deleteFriendErrorMsg: string;
+  deleteFriendLoading: boolean;
+}
 
 const initialState: State = {
   getUserInfo: true,
-  profileView: "",
-  isSideBarOpen: false,
-  profilePicture: "",
-  email: "",
-  username: "",
-  fullname: "",
-  password: "",
-  confirmPassword: "",
   canUpdateUser: false,
   updateUserErrorMsg: "",
   updateUserLoading: false,
-  pwdErrorMsg: "",
-  pwdSuccessMsg: "",
-  pwdLoading: false,
-  deleteAccountErrorMsg: "",
-  deleteAccountLoading: false,
-  deleteAccountConfirm: "",
-  requestUsername: "",
-  sentFriendRequests: [],
-  sendRequestErrorMsg: "",
-  sendRequestLoading: false,
   revertRequestErrorMsg: "",
   revertRequestLoading: false,
-  incomingFriendRequests: [],
   acceptRequestErrorMsg: "",
   acceptRequestLoading: false,
   declineRequestErrorMsg: "",
   declineRequestLoading: false,
-  friends: [],
   deleteFriendErrorMsg: "",
   deleteFriendLoading: false,
 };
@@ -50,11 +50,6 @@ const ProfileContext = createContext<ProfileContextType>({
 
 const reducer = (state: State, action: Action) => {
   switch (action.type) {
-    case "SET_FIELD":
-      if (action.field) {
-        return { ...state, [action.field]: action.payload };
-      }
-      return state;
     case "SET_GET_USER_INFO":
       return { ...state, getUserInfo: action.payload };
     case "SET_CAN_UPDATE_USER":
@@ -63,20 +58,6 @@ const reducer = (state: State, action: Action) => {
       return { ...state, updateUserErrorMsg: action.payload };
     case "SET_UPDATE_USER_LOADING":
       return { ...state, updateUserLoading: action.payload };
-    case "SET_PWD_ERROR_MSG":
-      return { ...state, pwdErrorMsg: action.payload };
-    case "SET_PWD_LOADING":
-      return { ...state, pwdLoading: action.payload };
-    case "SET_PWD_SUCCESS_MSG":
-      return { ...state, pwdSuccessMsg: action.payload };
-    case "SET_DELETE_ACCOUNT_ERROR_MSG":
-      return { ...state, deleteAccountErrorMsg: action.payload };
-    case "SET_DELETE_ACCOUNT_LOADING":
-      return { ...state, deleteAccountLoading: action.payload };
-    case "SET_SEND_REQUEST_ERROR_MSG":
-      return { ...state, sendRequestErrorMsg: action.payload };
-    case "SET_SEND_REQUEST_LOADING":
-      return { ...state, sendRequestLoading: action.payload };
     case "SET_REVERT_REQUEST_ERROR_MSG":
       return { ...state, revertRequestErrorMsg: action.payload };
     case "SET_REVERT_REQUEST_LOADING":

@@ -1,12 +1,14 @@
 """Dependencies for user endpoints."""
 import smtplib
 from datetime import datetime, timedelta
-from email.message import EmailMessage
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from email.utils import formataddr
 from typing import Annotated, List, Optional
 
 from fastapi import Cookie, Depends, HTTPException, Response
 from jose import JWTError, jwt
+from markdown import markdown
 from passlib.context import CryptContext
 from sqlmodel import Session, select
 
@@ -18,6 +20,7 @@ SETTINGS = get_settings()
 
 SMTP_SSL_HOST = SETTINGS.smtp_ssl_host
 SMTP_SSL_PORT = SETTINGS.smtp_ssl_port
+SMTP_SSL_SENDER = SETTINGS.smtp_ssl_sender
 SMTP_SSL_LOGIN = SETTINGS.smtp_ssl_login
 SMTP_SSL_PASSWORD = SETTINGS.smtp_ssl_password
 
@@ -47,11 +50,12 @@ def send_email(email: str, subject: str, body: str):
         s.ehlo()
         s.login(SMTP_SSL_LOGIN, SMTP_SSL_PASSWORD)
 
-        msg = EmailMessage()
-        msg["From"] = formataddr(("Andrew Hinh", SMTP_SSL_LOGIN))
+        msg = MIMEMultipart("alternative")
+        msg["From"] = formataddr((SMTP_SSL_SENDER, SMTP_SSL_LOGIN))
         msg["To"] = email
         msg["Subject"] = subject
-        msg.set_content(body)
+        msg.attach(MIMEText(body, "plain"))
+        msg.attach(MIMEText(markdown(body), "html"))
         s.send_message(msg)
 
 
@@ -244,7 +248,7 @@ def get_user_from_token(token: Optional[str], session: Session) -> User:
         raise credentials_exception from None
     db_user = get_user(session, email)
     if db_user is None:
-        raise credentials_exception
+        raise HTTPException(status_code=404, detail="User not found")
     return db_user
 
 

@@ -1,5 +1,5 @@
-/* eslint-disable @next/next/no-img-element */
 import React, { ReactNode } from "react";
+import NextImage from "next/image"; // HTMLImageElement conflicts with Image from next/image
 import Input from "./Input";
 import profileOutline from "@/public/profile-outline.svg";
 
@@ -25,20 +25,82 @@ function Upload({ children, className }: UploadProps) {
 }
 
 interface ProfilePictureProps {
-  picture?: string;
-  handleUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  picture: string;
+  setErrorMsg: (msg: string) => void;
+  setPicture: (pic: string) => void;
+  onChange?: (pic: string) => void;
 }
 
-function ProfilePicture({ picture, handleUpload }: ProfilePictureProps) {
+function ProfilePicture({
+  picture,
+  setErrorMsg,
+  setPicture,
+  onChange,
+}: ProfilePictureProps) {
+  const handlePicUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const fileType = file.type.split("/")[0];
+    if (fileType !== "image") {
+      setErrorMsg("File type must be image");
+      return;
+    }
+
+    const fileExtension = file.type.split("/")[1];
+    if (!["png", "jpg", "jpeg"].includes(fileExtension)) {
+      setErrorMsg("File type must be png, jpg, or jpeg");
+      return;
+    }
+
+    const fileSize = file.size;
+    if (fileSize > 3 * 1024 * 1024) {
+      setErrorMsg("File size must be less than 3MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      if (event.target && event.target.result) {
+        const img = new Image();
+
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            const size = Math.min(img.width, img.height);
+            const startX = (img.width - size) / 2;
+            const startY = (img.height - size) / 2;
+
+            // Update picture css below if this is changed
+            canvas.width = 96;
+            canvas.height = 96;
+
+            ctx.drawImage(img, startX, startY, size, size, 0, 0, 96, 96);
+            const croppedImageDataURL = canvas.toDataURL(file.type);
+            setPicture(croppedImageDataURL);
+            if (onChange) {
+              onChange(croppedImageDataURL);
+            }
+          }
+        };
+        img.src = event.target.result as string;
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <Upload className="rounded-full p-12 w-24 h-24">
       <label
         htmlFor="pic-upload"
         className="absolute inset-0 cursor-pointer flex items-center justify-center"
       >
-        <img
-          src={picture ? picture : profileOutline.src}
+        <NextImage
+          src={picture || profileOutline}
           alt="Profile Picture"
+          width={0}
+          height={0}
           className={`rounded-full ${picture ? "w-24 h-24" : "w-8 h-8"}`}
         />
       </label>
@@ -46,7 +108,7 @@ function ProfilePicture({ picture, handleUpload }: ProfilePictureProps) {
         id="pic-upload"
         type="file"
         className="hidden"
-        onChange={handleUpload}
+        onChange={handlePicUpload}
         accept="image/png, image/jpg, image/jpg"
       />
     </Upload>

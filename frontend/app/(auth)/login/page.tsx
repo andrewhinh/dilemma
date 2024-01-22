@@ -1,9 +1,9 @@
-/* eslint-disable @next/next/no-img-element */
 "use client";
 
 import { useState } from "react";
 import Link from "next/link";
-import { useToProfile } from "../../lib/utils";
+import Image from "next/image";
+import { useToProfile } from "../../lib/callbacks";
 import validator from "validator";
 
 import Form from "../../ui/Form";
@@ -73,7 +73,7 @@ function Login() {
       </div>
       <FormButton>
         {loading ? (
-          <img src={buttonLoading.src} className="w-6 h-6" alt="Login" />
+          <Image src={buttonLoading} className="w-6 h-6" alt="Login" />
         ) : (
           <p>Login</p>
         )}
