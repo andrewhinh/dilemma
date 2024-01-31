@@ -104,8 +104,10 @@ function ResetPassword() {
     };
     sendRequest("/reset-password", "POST", request).then((data) => {
       if (data.detail) setErrorMsg(data.detail);
-      else router.push("/login");
-      setLoading(false);
+      else {
+        setLoading(false);
+        router.push(data.url);
+      }
     });
   };
 

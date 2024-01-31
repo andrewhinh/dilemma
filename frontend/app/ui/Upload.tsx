@@ -72,9 +72,8 @@ function ProfilePicture({
             const startX = (img.width - size) / 2;
             const startY = (img.height - size) / 2;
 
-            // Update picture css below if this is changed
-            canvas.width = 96;
-            canvas.height = 96;
+            canvas.width = 96; // w-24
+            canvas.height = 96; // h-24
 
             ctx.drawImage(img, startX, startY, size, size, 0, 0, 96, 96);
             const croppedImageDataURL = canvas.toDataURL(file.type);
@@ -99,8 +98,8 @@ function ProfilePicture({
         <NextImage
           src={picture || profileOutline}
           alt="Profile Picture"
-          width={0}
-          height={0}
+          width={96}
+          height={96}
           className={`rounded-full ${picture ? "w-24 h-24" : "w-8 h-8"}`}
         />
       </label>

@@ -24,7 +24,7 @@ const useToProfile = () => {
           payload: data.uid,
         });
         onSuccess();
-        router.push("/profile/" + data.uid);
+        router.push("/profile" + data.uid);
       }
     });
   };
@@ -40,10 +40,6 @@ const useLogOut = () => {
         dispatch({
           type: "SET_LOGGED_IN",
           payload: false,
-        });
-        dispatch({
-          type: "SET_UID",
-          payload: "",
         });
         router.push(navigateTo);
       }

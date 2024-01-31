@@ -39,7 +39,14 @@ const sendRequest = async (route: string, method: string, data: any = null) => {
   }
 
   const response = await fetch(`${apiUrl}${route}`, request);
-  const result = await response.json();
+  let result = null;
+  if (response.redirected) {
+    result = {
+      url: response.url,
+    };
+  } else {
+    result = await response.json();
+  }
 
   const receivedCookies = response.headers.getSetCookie();
   if (receivedCookies) {
@@ -56,7 +63,8 @@ const sendRequest = async (route: string, method: string, data: any = null) => {
     });
   }
 
-  return result; // can't check if response.ok here because server errors aren't passed to client components
+  // can't check if response.ok here because server errors aren't passed to client components
+  return result;
 };
 
 // const sendWebsocket = (

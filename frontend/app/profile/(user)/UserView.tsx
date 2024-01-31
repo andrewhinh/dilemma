@@ -102,8 +102,10 @@ function UserView() {
 
     sendRequest("/user/delete", "DELETE").then((data) => {
       if (data.detail) setDeleteAccountErrorMsg(data.detail);
-      else logOut();
-      setDeleteAccountLoading(false);
+      else {
+        setDeleteAccountLoading(false);
+        logOut();
+      }
     });
   };
 
@@ -277,7 +279,7 @@ function UserView() {
               id="confirmPassword"
               type="password"
               value={confirmPassword}
-              placeholder="Confirm New Password"
+              placeholder="Confirm Password"
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </div>

@@ -32,8 +32,10 @@ Set up the conda environment:
 Create a `.env` file:
 
    ```bash
-   # Get an OpenAI API key: https://platform.openai.com/signup
+   # Get your OpenAI API key: https://platform.openai.com/signup
    # Get your SMTP_SSL_PASSWORD: https://myaccount.google.com/apppasswords
+   # Get your GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET: https://console.cloud.google.com/apis/credentials
+   API_URL=<backend URL here>
    API_KEY=$(openssl rand -hex 32)
    DB_URL=sqlite:///data.db
    DB_ECHO=True
@@ -41,9 +43,13 @@ Create a `.env` file:
    JWT_SECRET=$(openssl rand -hex 32)
    SMTP_SSL_HOST=smtp.gmail.com
    SMTP_SSL_PORT=587
+   SMTP_SSL_SENDER=<your name here>
    SMTP_SSL_LOGIN=<your email here>
    SMTP_SSL_PASSWORD=<your password here>
    FRONTEND_URL=<frontend URL here>
+   GOOGLE_CLIENT_ID=<your client ID here>
+   GOOGLE_CLIENT_SECRET=<your client secret here>
+   echo "API_URL=$API_URL" >> .env
    echo "API_KEY=$API_KEY" >> .env
    echo "DB_URL=$DB_URL" >> .env
    echo "DB_ECHO=$DB_ECHO" >> .env
@@ -51,9 +57,12 @@ Create a `.env` file:
    echo "JWT_SECRET=$JWT_SECRET" >> .env
    echo "SMTP_SSL_HOST=$SMTP_SSL_HOST" >> .env
    echo "SMTP_SSL_PORT=$SMTP_SSL_PORT" >> .env
+   echo "SMTP_SSL_SENDER=$SMTP_SSL_SENDER" >> .env
    echo "SMTP_SSL_LOGIN=$SMTP_SSL_LOGIN" >> .env
    echo "SMTP_SSL_PASSWORD=$SMTP_SSL_PASSWORD" >> .env
    echo "FRONTEND_URL=$FRONTEND_URL" >> .env
+   echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" >> .env
+   echo "GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET" >> .env
    ```
 
 ## Development

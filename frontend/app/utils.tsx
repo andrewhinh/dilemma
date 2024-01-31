@@ -28,14 +28,6 @@ const useSetUser = () => {
   return (data: UserBackend) => {
     constDispatch({ type: "SET_JOIN_DATE", payload: data.join_date });
     constDispatch({
-      type: "SET_PROFILE_VIEW",
-      payload: data.profile_view,
-    });
-    constDispatch({
-      type: "SET_IS_SIDEBAR_OPEN",
-      payload: data.is_sidebar_open,
-    });
-    constDispatch({
       type: "SET_PROFILE_PICTURE",
       payload: data.profile_picture,
     });
@@ -47,6 +39,18 @@ const useSetUser = () => {
     constDispatch({
       type: "SET_FULLNAME",
       payload: data.fullname,
+    });
+    constDispatch({
+      type: "SET_PROFILE_VIEW",
+      payload: data.profile_view,
+    });
+    constDispatch({
+      type: "SET_IS_SIDEBAR_OPEN",
+      payload: data.is_sidebar_open,
+    });
+    constDispatch({
+      type: "SET_UID",
+      payload: data.uid,
     });
   };
 };

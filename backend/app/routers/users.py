@@ -4,18 +4,22 @@ from datetime import datetime
 from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, Security
+from fastapi.responses import RedirectResponse
 from sqlmodel import Session
 
 from app.database import get_session
-from app.dependencies.auth import verify_api_key
+from app.dependencies.system import verify_api_key
 from app.dependencies.users import (
     ACCESS_TOKEN_EXPIRES,
+    CREDENTIALS_EXCEPTION,
     REFRESH_TOKEN_EXPIRES,
-    authenticate_user,
     create_token,
+    delete_auth_cookies,
+    generate_username_from_email,
     get_current_active_user,
     get_friend_links,
     get_friends,
+    get_google_auth_url,
     get_incoming_friend_request_links,
     get_incoming_friend_requests,
     get_password_hash,
@@ -24,14 +28,23 @@ from app.dependencies.users import (
     get_user,
     get_user_from_token,
     get_verification_code,
+    google_decode_refresh_token,
+    google_encode_refresh_token,
+    google_get_new_access_token,
+    google_get_tokens_from_code,
+    google_get_user_from_user_info,
+    google_get_user_info_from_access_token,
     send_email,
     set_auth_cookies,
+    set_redirect_fe,
+    verify_password,
 )
-from app.models import (
+from app.models.users import (
     Friend,
     FriendRead,
     FriendRequest,
     FriendRequestRead,
+    GoogleAuth,
     User,
     UserCreate,
     UserRead,
@@ -42,6 +55,7 @@ from app.models import (
 
 router = APIRouter(
     tags=["users"],
+    dependencies=[Security(verify_api_key)],
     responses={404: {"description": "Not found"}},
 )
 
@@ -49,7 +63,6 @@ router = APIRouter(
 @router.post("/verify-email", response_model=dict[str, str])
 async def verify_email(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     user: UserCreate,
 ):
@@ -57,8 +70,6 @@ async def verify_email(
 
     Parameters
     ----------
-    session
-        Database session
     user
         UserUpdate
 
@@ -79,11 +90,6 @@ async def verify_email(
             status_code=400,
             detail="Email is empty",
         )
-    if not db_user.username:
-        raise HTTPException(
-            status_code=400,
-            detail="Username is empty",
-        )
     if not db_user.password:
         raise HTTPException(
             status_code=400,
@@ -100,15 +106,10 @@ async def verify_email(
             detail="Passwords do not match",
         )
 
-    if get_user(session, db_user.email):
+    if get_user(session, email=db_user.email):
         raise HTTPException(
             status_code=400,
             detail="Email is invalid",
-        )
-    if get_user(session, username=db_user.username):
-        raise HTTPException(
-            status_code=400,
-            detail="Username is invalid",
         )
 
     verify_code = VerificationCode(
@@ -132,10 +133,35 @@ If you did not request this code, please ignore this email.
     return {"message": "Verification email sent"}
 
 
+@router.post("/verify-email/google", response_class=RedirectResponse)
+async def verify_email_google(
+    *,
+    auth: GoogleAuth,
+):
+    """Get Google login page URL.
+
+    Parameters
+    ----------
+    auth
+        GoogleAuth
+
+    Returns
+    -------
+    RedirectResponse
+        Redirect to Google login page
+    """
+    if not auth.state:
+        raise HTTPException(
+            status_code=400,
+            detail="State is empty",
+        )
+    response = RedirectResponse(get_google_auth_url(auth.state))
+    return response
+
+
 @router.post("/token/signup", response_model=UserRead)
 async def signup(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     response: Response,
     user: UserCreate,
@@ -144,17 +170,13 @@ async def signup(
 
     Parameters
     ----------
-    session
-        Database session
-    response
-        Response
     user
         User signup
 
     Returns
     -------
-    Token
-        token_type and uid
+    RedirectResponse
+        Redirect to profile page
 
     Raises
     ------
@@ -171,62 +193,38 @@ async def signup(
         Previous code not found, request new code
     """
     db_user = UserCreate.model_validate(user)
-    if not db_user.email:
-        raise HTTPException(
-            status_code=400,
-            detail="Email is empty",
-        )
-    if not db_user.username:
-        raise HTTPException(
-            status_code=400,
-            detail="Username is empty",
-        )
-    if not db_user.password:
-        raise HTTPException(
-            status_code=400,
-            detail="Password is empty",
-        )
-    if not db_user.confirm_password:
-        raise HTTPException(
-            status_code=400,
-            detail="Confirm password is empty",
-        )
-    if db_user.password != db_user.confirm_password:
-        raise HTTPException(
-            status_code=400,
-            detail="Passwords do not match",
-        )
+
     if not db_user.verify_code:
         raise HTTPException(
             status_code=400,
             detail="Code is empty",
         )
-
-    if get_user(session, db_user.email):
-        raise HTTPException(
-            status_code=400,
-            detail="Email is invalid",
-        )
-    if get_user(session, username=db_user.username):
-        raise HTTPException(
-            status_code=400,
-            detail="Username is invalid",
-        )
-
     verify_code = get_verification_code(session, db_user.email)
+    now = datetime.utcnow()
+
     if not verify_code:
         raise HTTPException(
             status_code=404,
             detail="Previous code not found, request new code",
         )
-    if verify_code.code != db_user.verify_code:
+    if verify_code.code != db_user.verify_code or verify_code.status == "verified":
         raise HTTPException(
             status_code=400,
             detail="Code is invalid",
         )
+    if verify_code.expire_date < now or verify_code.status == "expired":
+        if verify_code.status != "expired":
+            verify_code.status = "expired"
+            session.add(verify_code)
+            session.commit()
+            session.refresh(verify_code)
+        raise HTTPException(
+            status_code=400,
+            detail="Code is expired, request new code",
+        )
 
     verify_code.status = "verified"
-    verify_code.verify_date = datetime.utcnow()
+    verify_code.verify_date = now
     session.add(verify_code)
 
     access_token = create_token(data={"email": user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
@@ -235,7 +233,7 @@ async def signup(
     created_user = User(
         profile_picture=db_user.profile_picture,
         email=db_user.email,
-        username=db_user.username,
+        username=generate_username_from_email(session, db_user.email),
         fullname=db_user.fullname,
         hashed_password=get_password_hash(db_user.password),
         refresh_token=refresh_token,
@@ -245,14 +243,13 @@ async def signup(
     session.refresh(verify_code)
     session.refresh(created_user)
 
-    set_auth_cookies(access_token=access_token, refresh_token=refresh_token, response=response)
+    set_auth_cookies(response, access_token, refresh_token, created_user.provider)
     return UserRead.model_validate(created_user)
 
 
 @router.post("/token/login", response_model=UserRead)
 async def login(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     response: Response,
     user: UserCreate,
@@ -261,26 +258,27 @@ async def login(
 
     Parameters
     ----------
-    session
-        Database session
     user
         User login
-    response
-        Response
 
     Returns
     -------
-    Token
-        token_type and uid
+    RedirectResponse
+        Redirect to profile page
 
     Raises
     ------
     HTTPException
         Incorrect email or password
     """
+    provider = "dilemma"
     db_user = UserCreate.model_validate(user)
 
-    if not db_user.email and not db_user.username:
+    if db_user.email:
+        verified_user = get_user(session, provider, email=db_user.email)
+    elif db_user.username:
+        verified_user = get_user(session, provider, username=db_user.username)
+    else:
         raise HTTPException(
             status_code=400,
             detail="Username or email is empty",
@@ -290,19 +288,8 @@ async def login(
             status_code=400,
             detail="Password is empty",
         )
-
-    if db_user.email:
-        verified_user = get_user(session, db_user.email)
-    elif db_user.username:
-        verified_user = get_user(session, username=db_user.username)
-
-    if not verified_user:
+    if not verified_user or not verify_password(db_user.password, verified_user.hashed_password):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
-    if not authenticate_user(verified_user.email, db_user.password, verified_user.hashed_password, session):
-        raise HTTPException(
-            status_code=401,
-            detail="Incorrect email or password",
-        )
 
     access_token = create_token(data={"email": verified_user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
     refresh_token = create_token(data={"email": verified_user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
@@ -312,17 +299,101 @@ async def login(
     session.commit()
     session.refresh(verified_user)
 
-    set_auth_cookies(access_token=access_token, refresh_token=refresh_token, response=response)
+    set_auth_cookies(response, access_token, refresh_token, provider)
     return UserRead.model_validate(verified_user)
+
+
+@router.post("/token/google")
+async def auth_google(
+    *,
+    session: Session = Depends(get_session),
+    response: Response,
+    auth: GoogleAuth,
+):
+    """Signup/login with Google.
+
+    Parameters
+    ----------
+    auth
+        GoogleAuth
+
+    Returns
+    -------
+    dict[str, str]
+        URL to redirect to
+
+    Raises
+    ------
+    HTTPException
+        Email is empty
+        Username is empty
+        Password is empty
+        Confirm password is empty
+        Passwords do not match
+        Code is empty
+        Email is invalid
+        Username is invalid
+        Code is invalid
+    """
+    provider = "google"
+
+    if not auth.code:
+        raise HTTPException(
+            status_code=400,
+            detail="Code is empty",
+        )
+    if not auth.state:
+        raise HTTPException(
+            status_code=400,
+            detail="State is empty",
+        )
+
+    tokens = google_get_tokens_from_code(auth.code)
+    access_token = tokens["access_token"]
+    refresh_token = tokens["refresh_token"]
+    enc_refresh_token = google_encode_refresh_token(refresh_token)
+
+    if not access_token:
+        raise CREDENTIALS_EXCEPTION
+    user_info = google_get_user_info_from_access_token(access_token)
+    db_user = google_get_user_from_user_info(session, user_info)
+
+    if not db_user and auth.state == "signup":
+        db_user = User(
+            profile_picture=user_info["picture"],
+            email=user_info["email"],
+            username=generate_username_from_email(session, user_info["email"]),
+            fullname=user_info["name"],
+            refresh_token=enc_refresh_token,
+            provider=provider,
+        )
+    elif db_user and auth.state == "login":
+        db_user.refresh_token = enc_refresh_token
+    elif db_user and auth.state == "signup":
+        response = set_redirect_fe(response, "/login")
+        return response
+    elif not db_user and auth.state == "login":
+        response = set_redirect_fe(response, "/signup")
+        return response
+    else:  # shouldn't happen
+        raise CREDENTIALS_EXCEPTION
+
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
+
+    set_auth_cookies(response, access_token, enc_refresh_token, provider)
+    return UserRead.model_validate(db_user)
 
 
 @router.post("/token/refresh", response_model=UserRead)
 async def refresh_token(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     response: Response,
+    access_token: Optional[str] = Cookie(default=None),
     refresh_token: Optional[str] = Cookie(default=None),
+    provider: Optional[str] = Cookie(default=None),
 ):
     """Refresh token.
 
@@ -345,30 +416,44 @@ async def refresh_token(
     HTTPException
         Token expired
     """
-    user = get_user_from_token(refresh_token, session)
-    if user.refresh_token != refresh_token:
-        raise HTTPException(status_code=401, detail="Could not validate credentials")
+    # Check if access token is valid
+    try:
+        if not access_token:
+            raise CREDENTIALS_EXCEPTION
+        user = get_user_from_token(session, provider, access_token)
+        if user:
+            return UserRead.model_validate(user)
+    except HTTPException:
+        pass
 
-    access_token = create_token(data={"email": user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
-    refresh_token = create_token(data={"email": user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
+    # If not, check if refresh token is valid
+    if not refresh_token:
+        raise CREDENTIALS_EXCEPTION
+    user = get_user_from_token(session, provider, refresh_token)
+    if not user or user.refresh_token != refresh_token:
+        raise CREDENTIALS_EXCEPTION
 
-    user.refresh_token = refresh_token
-    session.add(user)
-    session.commit()
-    session.refresh(user)
+    # If valid, create new access token
+    if provider == "dilemma":
+        access_token = create_token(data={"email": user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
+    elif provider == "google":
+        dec_refresh_token = google_decode_refresh_token(refresh_token)
+        access_token = google_get_new_access_token(dec_refresh_token)
+    else:
+        raise CREDENTIALS_EXCEPTION
 
-    set_auth_cookies(access_token=access_token, refresh_token=refresh_token, response=response)
+    set_auth_cookies(response, access_token, refresh_token, provider)
     return UserRead.model_validate(user)
 
 
 @router.post("/token/logout", response_model=dict[str, str])
 async def logout(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     response: Response,
     access_token: Optional[str] = Cookie(default=None),
     refresh_token: Optional[str] = Cookie(default=None),
+    provider: Optional[str] = Cookie(default=None),
 ):
     """Logout.
 
@@ -382,32 +467,44 @@ async def logout(
         Access token
     refresh_token
         Refresh token
+    provider
+        Provider
 
     Returns
     -------
     dict[str, str]
         Message
     """
-    if access_token:
-        response.delete_cookie("access_token")
-    if refresh_token:
-        response.delete_cookie("refresh_token")
+    # Try to remove refresh token from database
+    if provider:
+        # Try to get user from access token
         try:
-            user = get_user_from_token(refresh_token, session)
+            if not access_token:
+                raise CREDENTIALS_EXCEPTION
+            user = get_user_from_token(session, provider, access_token)
             user.refresh_token = None
             session.add(user)
             session.commit()
             session.refresh(user)
-        except HTTPException:
-            pass
+        except HTTPException:  # If not, try to get user from refresh token
+            try:
+                if not refresh_token:
+                    raise CREDENTIALS_EXCEPTION
+                user = get_user_from_token(session, provider, refresh_token)
+                user.refresh_token = None
+                session.add(user)
+                session.commit()
+                session.refresh(user)
+            except HTTPException:
+                pass
 
-    return {"message": "Logged out"}
+    delete_auth_cookies(response)
+    return {"message": "Logout successful"}
 
 
 @router.post("/forgot-password", response_model=dict[str, str])
 async def forgot_password(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     user: UserUpdate,
 ):
@@ -430,18 +527,18 @@ async def forgot_password(
     HTTPException
         User not found
     """
+    provider = "dilemma"
     db_user = UserUpdate.model_validate(user)
 
-    if not db_user.email and not db_user.username:
+    if db_user.email:
+        verified_user = get_user(session, provider, email=db_user.email)
+    elif db_user.username:
+        verified_user = get_user(session, provider, username=db_user.username)
+    else:
         raise HTTPException(
             status_code=400,
             detail="Username or email is empty",
         )
-
-    if db_user.email:
-        verified_user = get_user(session, db_user.email)
-    elif db_user.username:
-        verified_user = get_user(session, username=db_user.username)
 
     if verified_user:
         recovery_code = uuid.uuid4().hex[:6]
@@ -467,7 +564,6 @@ If you did not request this code, please ignore this email.
 @router.post("/check-code", response_model=dict[str, str])
 async def check_code(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     user: UserUpdate,
 ):
@@ -490,21 +586,21 @@ async def check_code(
     HTTPException
         Code not found
     """
+    provider = "dilemma"
     db_user = UserUpdate.model_validate(user)
-
-    if not db_user.email and not db_user.username:
-        raise HTTPException(
-            status_code=400,
-            detail="Username or email is empty",
-        )
 
     if not db_user.recovery_code:
         raise HTTPException(status_code=400, detail="Code is empty")
 
     if db_user.email:
-        verified_user = get_user(session, db_user.email)
+        verified_user = get_user(session, provider, email=db_user.email)
     elif db_user.username:
-        verified_user = get_user(session, username=db_user.username)
+        verified_user = get_user(session, provider, username=db_user.username)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Username or email is empty",
+        )
 
     if not verified_user:
         raise HTTPException(status_code=400, detail="Email is invalid")
@@ -521,10 +617,9 @@ async def check_code(
     return {"message": "Code is valid"}
 
 
-@router.post("/reset-password", response_model=dict[str, str])
+@router.post("/reset-password", response_class=RedirectResponse)
 async def reset_password(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     user: UserUpdate,
 ):
@@ -547,12 +642,9 @@ async def reset_password(
     HTTPException
         Passwords do not match
     """
+    provider = "dilemma"
+    response = RedirectResponse("/")
     db_user = UserUpdate.model_validate(user)
-    if not db_user.email and not db_user.username:
-        raise HTTPException(
-            status_code=400,
-            detail="Username or email is empty",
-        )
 
     if not db_user.password:
         raise HTTPException(status_code=400, detail="Password is empty")
@@ -562,9 +654,14 @@ async def reset_password(
         raise HTTPException(status_code=400, detail="Passwords do not match")
 
     if db_user.email:
-        verified_user = get_user(session, db_user.email)
+        verified_user = get_user(session, provider, email=db_user.email)
     elif db_user.username:
-        verified_user = get_user(session, username=db_user.username)
+        verified_user = get_user(session, provider, username=db_user.username)
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="Username or email is empty",
+        )
 
     if not verified_user:
         raise HTTPException(status_code=400, detail="Email is invalid")
@@ -574,13 +671,13 @@ async def reset_password(
     session.commit()
     session.refresh(verified_user)
 
-    return {"message": "Password reset"}
+    response = set_redirect_fe(response, "/login")
+    return response
 
 
 @router.get("/user/", response_model=UserRead)
 async def read_user(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     """Get current user.
@@ -607,12 +704,13 @@ async def read_user(
 
 
 @router.patch("/user/update", response_model=UserRead)
-async def update_user(
+async def update_user(  # noqa: C901
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
-    session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
     response: Response,
+    refresh_token: Optional[str] = Cookie(default=None),
+    provider: Optional[str] = Cookie(default=None),
     new_user: UserUpdate,
 ):
     """Update user with new field(s).
@@ -639,17 +737,30 @@ async def update_user(
         User not found
     """
     user_data = new_user.model_dump(exclude_unset=True)
+    identity_changed = False
 
     if "email" in user_data.keys():
+        if not user_data["email"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Email is empty",
+            )
         if current_user.email != user_data["email"]:
-            if get_user(session, user_data["email"]):
+            identity_changed = True
+            if get_user(session, email=user_data["email"]):
                 raise HTTPException(
                     status_code=400,
                     detail="Email is invalid",
                 )
 
     if "username" in user_data.keys():
+        if not user_data["username"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Username is empty",
+            )
         if current_user.username != user_data["username"]:
+            identity_changed = True
             if get_user(session, username=user_data["username"]):
                 raise HTTPException(
                     status_code=400,
@@ -678,27 +789,26 @@ async def update_user(
 
     for key, value in user_data.items():
         setattr(current_user, key, value)
-
     session.add(current_user)
     session.commit()
     session.refresh(current_user)
 
-    access_token = create_token(data={"email": current_user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
-    refresh_token = create_token(data={"email": current_user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
+    if identity_changed:
+        if provider == "dilemma":
+            access_token = create_token(data={"email": current_user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
+        elif provider == "google":
+            dec_refresh_token = google_decode_refresh_token(refresh_token)
+            access_token = google_get_new_access_token(dec_refresh_token)
+        else:
+            raise CREDENTIALS_EXCEPTION
+        set_auth_cookies(response, access_token, refresh_token, provider)
 
-    current_user.refresh_token = refresh_token
-    session.add(current_user)
-    session.commit()
-    session.refresh(current_user)
-
-    set_auth_cookies(access_token=access_token, refresh_token=refresh_token, response=response)
     return UserRead.model_validate(current_user)
 
 
 @router.delete("/user/delete", response_model=dict[str, str])
 def delete_user(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
 ) -> dict[str, str]:
@@ -710,7 +820,6 @@ def delete_user(
 @router.post("/friends/send-request", response_model=UserRead)
 def send_friend_request(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
     friend: UserReference,
@@ -742,7 +851,6 @@ def send_friend_request(
 @router.post("/friends/revert-request", response_model=UserRead)
 def revert_friend_request(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
     friend: UserReference,
@@ -776,7 +884,6 @@ def revert_friend_request(
 @router.post("/friends/accept-request", response_model=UserRead)
 def accept_friend_request(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
     friend: UserReference,
@@ -812,7 +919,6 @@ def accept_friend_request(
 @router.post("/friends/decline-request", response_model=UserRead)
 def decline_friend_request(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
     friend: UserReference,
@@ -846,7 +952,6 @@ def decline_friend_request(
 @router.get("/friends/requests/sent", response_model=List[FriendRequestRead])
 def read_sent_friend_requests(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     friend_request_links = get_sent_friend_request_links(current_user)
@@ -867,7 +972,6 @@ def read_sent_friend_requests(
 @router.get("/friends/requests/incoming", response_model=List[FriendRequestRead])
 def read_incoming_friend_requests(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     friend_request_links = get_incoming_friend_request_links(current_user)
@@ -889,7 +993,6 @@ def read_incoming_friend_requests(
 @router.get("/friends/", response_model=List[FriendRead])
 def read_friends(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     friend_links = get_friend_links(current_user)
@@ -910,7 +1013,6 @@ def read_friends(
 @router.post("/friends/delete", response_model=UserRead)
 def delete_friend(
     *,
-    has_valid_api_key: bool = Security(verify_api_key),
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
     friend: UserReference,

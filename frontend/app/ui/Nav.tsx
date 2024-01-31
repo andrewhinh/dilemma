@@ -1,23 +1,27 @@
 "use client";
 
-import React, { ReactNode, useEffect } from "react";
+import React, { ReactNode, useEffect, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
-import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { useRouter, usePathname } from "next/navigation";
 
 import { useConst } from "../providers";
 import { useRefreshToken, useLogOut } from "../lib/callbacks";
+
+import { Button } from "./Button";
 import homeURL from "@/public/opengraph-image.jpg";
+import profileOutline from "@/public/profile-outline.svg";
+import buttonLoading from "@/public/button-loading.svg";
 
 function Nav({ children }: { children: ReactNode }) {
   return (
     <nav className="p-4 bg-cyan-200 text-zinc-500 flex">
-      <div className="flex flex-1 justify-start">
-        <Link href="/">
-          <div className="relative h-6 w-6 hover:opacity-50 transition ease-in-out duration-300">
-            <Image src={homeURL} alt="Home Link" className="object-contain" />
-          </div>
+      <div className="flex flex-1 justify-start md:pl-2">
+        <Link
+          href="/"
+          className="relative w-10 h-10 hover:opacity-50 transition ease-in-out duration-300"
+        >
+          <Image src={homeURL} alt="Home Link" className="object-contain" />
         </Link>
       </div>
       {children}
@@ -26,24 +30,30 @@ function Nav({ children }: { children: ReactNode }) {
 }
 
 function LoggedOutNav({ showLogin = true, showSignUp = true }) {
+  const router = useRouter();
+
   return (
     <Nav>
-      <div className="gap-4 justify-end flex flex-1">
+      <div className="gap-2 md:gap-4 md:pr-2 justify-end flex flex-1 items-center">
         {showLogin && (
-          <Link
-            href="/login"
-            className="hover:opacity-50 transition 300ms ease-in-out"
+          <Button
+            onClick={() => {
+              router.push("/login");
+            }}
+            className="md:w-28 p-2"
           >
-            Login
-          </Link>
+            <p>Login</p>
+          </Button>
         )}
         {showSignUp && (
-          <Link
-            href="/signup"
-            className="hover:opacity-50 transition 300ms ease-in-out"
+          <Button
+            onClick={() => {
+              router.push("/signup");
+            }}
+            className="md:w-28 p-2 whitespace-nowrap"
           >
-            Sign Up
-          </Link>
+            <p>Sign Up</p>
+          </Button>
         )}
       </div>
     </Nav>
@@ -51,25 +61,67 @@ function LoggedOutNav({ showLogin = true, showSignUp = true }) {
 }
 
 function LoggedInNav() {
+  const router = useRouter();
   const { state } = useConst();
-  const { uid } = state;
+  const { profilePicture, uid } = state;
   const logOut = useLogOut();
+
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [logOutLoading, setLogOutLoading] = useState(false);
 
   return (
     <Nav>
-      <div className="gap-4 justify-end flex flex-1">
-        <Link
-          href={"/profile/" + uid}
-          className="hover:opacity-50 whitespace-nowrap"
+      <div
+        onMouseLeave={() => setShowDropdown(false)}
+        className="relative flex flex-1 justify-end md:pr-2"
+      >
+        <Button
+          onClick={() => {
+            setShowDropdown(!showDropdown);
+          }}
+          className="bg-transparent"
         >
-          My Profile
-        </Link>
-        <button
-          className="hover:opacity-50 whitespace-nowrap"
-          onClick={() => logOut()}
-        >
-          Log Out
-        </button>
+          <Image
+            src={profilePicture || profileOutline}
+            alt="Profile Link"
+            width={40}
+            height={40}
+            className="rounded-full object-contain"
+          />
+        </Button>
+        {showDropdown && (
+          <div
+            className="absolute z-10 right-0 bg-slate-300 rounded-lg shadow-xl gap-1 p-2 flex flex-col"
+            style={{ top: "100%" }} // Directly at the bottom of the button
+          >
+            <Button
+              className="p-3"
+              onClick={() => {
+                router.push("/profile/" + uid);
+              }}
+            >
+              My Profile
+            </Button>
+            <Button
+              className="p-3 bg-rose-500 whitespace-nowrap"
+              onClick={() => {
+                setLogOutLoading(true);
+                logOut();
+              }}
+            >
+              {logOutLoading ? (
+                <Image
+                  src={buttonLoading}
+                  alt="Loading"
+                  width={24} // Tailwind w-6 equivalent
+                  height={24} // Tailwind h-6 equivalent
+                />
+              ) : (
+                "Log Out"
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     </Nav>
   );
@@ -102,35 +154,15 @@ function AuthNav() {
 function MainNav() {
   const { state } = useConst();
   const refreshToken = useRefreshToken();
-  const logOut = useLogOut();
 
-  const { isLoggedIn, uid } = state;
+  const { isLoggedIn } = state;
 
   useEffect(() => {
     if (!isLoggedIn) refreshToken();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn]);
 
-  return isLoggedIn ? (
-    <Nav>
-      <div className="gap-4 justify-end flex flex-1">
-        <Link
-          href={"/profile/" + uid}
-          className="hover:opacity-50 whitespace-nowrap"
-        >
-          My Profile
-        </Link>
-        <button
-          className="hover:opacity-50 whitespace-nowrap"
-          onClick={() => logOut()}
-        >
-          Log Out
-        </button>
-      </div>
-    </Nav>
-  ) : (
-    <LoggedOutNav />
-  );
+  return isLoggedIn ? <LoggedInNav /> : <LoggedOutNav />;
 }
 
 export { LoggedOutNav, LoggedInNav, AuthNav, MainNav };

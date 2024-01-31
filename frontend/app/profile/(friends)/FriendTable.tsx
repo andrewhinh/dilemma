@@ -229,8 +229,8 @@ function FriendTable({
                     src={
                       row.profile_picture ? row.profile_picture : profileOutline
                     }
-                    width={0} // since set by CSS
-                    height={0}
+                    width={40}
+                    height={40}
                     alt="Profile Picture"
                     className="rounded-full w-8 h-8 md:w-10 md:h-10"
                   />

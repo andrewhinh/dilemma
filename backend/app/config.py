@@ -17,7 +17,9 @@ class Settings(BaseSettings):
     smtp_ssl_login: str = ""
     smtp_ssl_password: str = ""
     frontend_url: str = ""
-    www_frontend_url: str = ""
+    google_client_id: str = ""
+    google_client_secret: str = ""
+    google_redirect_uri: str = ""
 
     model_config = SettingsConfigDict(env_file=".env")
 

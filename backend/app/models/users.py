@@ -1,62 +1,15 @@
 """Models for the application."""
 import uuid
-from contextlib import suppress
 from datetime import datetime, timedelta
-from typing import Any, List, Optional
+from typing import List, Optional
 
-from fastapi import WebSocket
-from fastapi.encoders import jsonable_encoder
-from langchain.callbacks.base import AsyncCallbackHandler
 from pydantic import BaseModel
 from sqlmodel import Field, Relationship, SQLModel
-from starlette.websockets import WebSocketState
 
 VERIFY_CODE_EXPIRES = timedelta(minutes=30)
 
 
-# Items
-class MessageResponse(BaseModel):
-    """Response model for messages."""
-
-    message: str
-
-
-class StatusResponse(BaseModel):
-    """Response model for status."""
-
-    status: str
-
-
-class ErrorResponse(StatusResponse):
-    """Response model for errors."""
-
-    error_message: str
-
-
-class DoneResponse(StatusResponse):
-    """Response model for done."""
-
-    result: str
-
-
-class WebSocketStreamingCallback(AsyncCallbackHandler):
-    """Callback handler for streaming LLM responses."""
-
-    def __init__(self, websocket: WebSocket):
-        self.websocket = websocket
-
-    async def on_llm_new_token(self, token: str, **_: Any) -> None:
-        """Run when LLM generates a new token."""
-        with suppress(
-            Exception
-        ):  # Suppresses `Error in WebSocketStreamingCallback.on_llm_new_token callback: received 1000 (OK); then sent 1000 (OK)`
-            if self.websocket.client_state == WebSocketState.CONNECTED:
-                if token != "":
-                    response = MessageResponse(message=token)
-                    await self.websocket.send_json(jsonable_encoder(response))
-
-
-# Keys + codes
+# Misc auth
 class VerificationCode(SQLModel, table=True):
     """Verification code model."""
 
@@ -65,9 +18,16 @@ class VerificationCode(SQLModel, table=True):
     code: str = Field(default=None, index=True)
 
     request_date: datetime = Field(default_factory=datetime.utcnow)
-    expiry_date: datetime = Field(default_factory=lambda: datetime.utcnow() + VERIFY_CODE_EXPIRES)
+    expire_date: datetime = Field(default_factory=lambda: datetime.utcnow() + VERIFY_CODE_EXPIRES)
     verify_date: Optional[datetime] = Field(default=None)
     status: str = Field(default="pending")
+
+
+class GoogleAuth(BaseModel):
+    """Google auth model."""
+
+    code: Optional[str] = None
+    state: str
 
 
 # Users
@@ -89,9 +49,10 @@ class User(UserBase, table=True):
     """User model."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    uid: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()), index=True)
+    uid: str = Field(default_factory=lambda: str(uuid.uuid4()), index=True)
+    provider: str = Field(default="dilemma")
 
-    hashed_password: str
+    hashed_password: Optional[str] = Field(default=None)
     refresh_token: Optional[str] = Field(default=None)
     recovery_code: Optional[str] = Field(default=None)
 
