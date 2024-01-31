@@ -27,8 +27,13 @@ setup:
 test:
 	pytest tests -s
 
+# Generate migration script
+script:
+	alembic revision --autogenerate -m "$(m)"
+
 # Run app
 dev:
+	alembic upgrade head
 	python app/main.py
 
 # Start linting server

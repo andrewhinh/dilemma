@@ -5,13 +5,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.database import create_db_and_tables
 from app.dependencies.users import WWW_URL
 from app.internal import admin
 from app.routers import items, users
-
-# Create database and tables
-create_db_and_tables()
 
 # Settings
 SETTINGS = get_settings()

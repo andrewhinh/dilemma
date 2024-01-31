@@ -15,12 +15,12 @@ class VerificationCode(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str = Field(default=None, index=True)
-    code: str = Field(default=None, index=True)
+    code: str = Field(default=None)
 
     request_date: datetime = Field(default_factory=datetime.utcnow)
     expire_date: datetime = Field(default_factory=lambda: datetime.utcnow() + VERIFY_CODE_EXPIRES)
     verify_date: Optional[datetime] = Field(default=None)
-    status: str = Field(default="pending")
+    status: str = Field(default="pending", index=True)
 
 
 class GoogleAuth(BaseModel):
@@ -38,7 +38,7 @@ class UserBase(SQLModel):
     profile_picture: Optional[str] = Field(default=None)
     email: Optional[str] = Field(default=None, index=True)
     username: Optional[str] = Field(default=None, index=True)
-    fullname: Optional[str] = Field(default=None, index=True)
+    fullname: Optional[str] = Field(default=None)
     disabled: Optional[bool] = False
 
     profile_view: Optional[str] = Field(default="user")
@@ -49,8 +49,8 @@ class User(UserBase, table=True):
     """User model."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    uid: str = Field(default_factory=lambda: str(uuid.uuid4()), index=True)
-    provider: str = Field(default="dilemma")
+    uid: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    provider: str = Field(default="dilemma", index=True)
 
     hashed_password: Optional[str] = Field(default=None)
     refresh_token: Optional[str] = Field(default=None)

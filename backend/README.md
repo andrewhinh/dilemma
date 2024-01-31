@@ -73,6 +73,12 @@ To run all tests:
    make test
    ```
 
+To generate a database migration script:
+
+   ```bash
+   make script message="<your message here>"
+   ```
+
 To run the backend locally:
 
    ```bash
