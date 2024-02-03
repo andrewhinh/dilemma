@@ -115,13 +115,13 @@ async def verify_email(
         session.commit()
 
         body = f"""
-    ## Welcome!
+## Welcome!
 
-    Head back to the website and enter the following code to continue:
+Head back to the website and enter the following code to continue:
 
-    ## {verify_code.code}
+## {verify_code.code}
 
-    If you did not request this code, please ignore this email.
+If you did not request this code, please ignore this email.
         """
         send_email(db_user.email, subject="Verify Email", body=body)
 
@@ -473,13 +473,13 @@ async def forgot_password(
         session.commit()
 
         body = f"""
-    ## You've requested a password reset.
+## You've requested a password reset.
 
-    Head back to the website and enter the following code to continue:
+Head back to the website and enter the following code to continue:
 
-    ## {recovery_code.code}
+## {recovery_code.code}
 
-    If you did not request this code, please ignore this email.
+If you did not request this code, please ignore this email.
         """
         send_email(verified_user.email, subject="Password Recovery", body=body)
 
@@ -624,13 +624,13 @@ async def verify_email_update(
         session.commit()
 
         body = f"""
-    ## You've requested to update your email.
+## You've requested to update your email.
 
-    Head back to the website and enter the following code to continue:
+Head back to the website and enter the following code to continue:
 
-    ## {verify_code.code}
+## {verify_code.code}
 
-    If you did not request this code, please ignore this email.
+If you did not request this code, please ignore this email.
         """
         send_email(db_user.email, subject="Verify Email", body=body)
 
