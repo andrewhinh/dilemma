@@ -1,23 +1,34 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useToProfile } from "../../lib/callbacks";
+import { useSearchParams } from "next/navigation";
 import validator from "validator";
 
+import { useToAccount } from "../../lib/callbacks";
+
+import Header from "../../ui/Header";
 import GoogleButton from "../GoogleButton";
 import Form from "../../ui/Form";
 import Input from "../../ui/Input";
 import { FormButton } from "../../ui/Button";
 import buttonLoading from "@/public/button-loading.svg";
 
-function Login() {
-  const toProfile = useToProfile();
-  const router = useRouter();
+function Base() {
+  const searchParams = useSearchParams();
+  const toAccount = useToAccount();
+
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error) {
+      setErrorMsg(error);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -51,7 +62,7 @@ function Login() {
       return;
     }
 
-    toProfile(
+    toAccount(
       "/token/login",
       formDataObj,
       () => setLoading(false),
@@ -63,36 +74,49 @@ function Login() {
   };
 
   return (
-    <div className="flex flex-col gap-8">
-      <GoogleButton action="login" />
-      <p>--- or ---</p>
-      <Form onSubmit={handleSubmit}>
-        <div className="gap-2 flex flex-col text-left">
-          <Input
-            type="id"
-            name="id"
-            placeholder="Username or email"
-            autoFocus
-          />
-          <Input type="password" name="password" placeholder="Password" />
-          <Link
-            href="/reset-password"
-            className="text-md underline hover:opacity-50 transition 300ms ease-in-out"
-          >
-            Forgot Password?
-          </Link>
-        </div>
-        <FormButton>
-          {loading ? (
-            <Image src={buttonLoading} className="w-6 h-6" alt="Login" />
-          ) : (
-            <p>Login</p>
-          )}
-        </FormButton>
-        {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
-      </Form>
-    </div>
+    <>
+      <Header>
+        <h1 className="p-2 text-4xl md:text-6xl">Login</h1>
+      </Header>
+      <div className="flex flex-col gap-8">
+        <GoogleButton action="login" />
+        <p>--- or ---</p>
+        <Form onSubmit={handleSubmit}>
+          <div className="gap-2 flex flex-col text-left">
+            <Input
+              type="id"
+              name="id"
+              placeholder="Username or email"
+              autoFocus
+            />
+            <Input type="password" name="password" placeholder="Password" />
+            <Link
+              href="/reset-password"
+              className="text-md underline hover:opacity-50 transition 300ms ease-in-out"
+            >
+              Forgot Password?
+            </Link>
+          </div>
+          <FormButton>
+            {loading ? (
+              <Image src={buttonLoading} className="w-6 h-6" alt="Login" />
+            ) : (
+              <p>Login</p>
+            )}
+          </FormButton>
+          {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
+        </Form>
+      </div>
+    </>
   );
 }
+
+const Login = () => {
+  return (
+    <Suspense>
+      <Base />
+    </Suspense>
+  );
+};
 
 export default Login;

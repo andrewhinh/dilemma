@@ -1,36 +1,35 @@
 """Models for the application."""
-import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Optional
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel
 from sqlmodel import Field, Relationship, SQLModel
 
-VERIFY_CODE_EXPIRES = timedelta(minutes=30)
-
 
 # Misc auth
-class VerificationCode(SQLModel, table=True):
+class AuthCode(SQLModel, table=True):
     """Verification code model."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str = Field(default=None, index=True)
-    code: str = Field(default=None)
+    code: str = Field(default_factory=lambda: uuid4().hex[:6])
 
-    request_date: datetime = Field(default_factory=datetime.utcnow)
-    expire_date: datetime = Field(default_factory=lambda: datetime.utcnow() + VERIFY_CODE_EXPIRES)
-    verify_date: Optional[datetime] = Field(default=None)
     status: str = Field(default="pending", index=True)
+    request_type: str = Field(default=None, index=True)
+    request_date: datetime = Field(default_factory=datetime.utcnow)
+    expire_date: datetime = Field(default=None)
+    usage_date: Optional[datetime] = Field(default=None)
 
 
-class GoogleAuth(BaseModel):
+class GoogleAuth(SQLModel):
     """Google auth model."""
 
     code: Optional[str] = None
     state: str
 
 
-# Users
+# User
 class UserBase(SQLModel):
     """User base model."""
 
@@ -41,7 +40,7 @@ class UserBase(SQLModel):
     fullname: Optional[str] = Field(default=None)
     disabled: Optional[bool] = False
 
-    profile_view: Optional[str] = Field(default="user")
+    account_view: Optional[str] = Field(default="profile")
     is_sidebar_open: Optional[bool] = Field(default=True)
 
 
@@ -49,12 +48,11 @@ class User(UserBase, table=True):
     """User model."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    uid: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    uid: UUID = Field(default_factory=lambda: uuid4(), unique=True)
     provider: str = Field(default="dilemma", index=True)
 
     hashed_password: Optional[str] = Field(default=None)
     refresh_token: Optional[str] = Field(default=None)
-    recovery_code: Optional[str] = Field(default=None)
 
     sender_links: Optional[List["FriendRequest"]] = Relationship(
         back_populates="sender",
@@ -102,17 +100,19 @@ class UserCreate(UserBase):
 
     password: str
     confirm_password: Optional[str] = None
-    verify_code: Optional[str] = None
+    code: Optional[str] = None
 
 
 class UserRead(UserBase):
     """User read model."""
 
-    uid: str
+    uid: UUID
 
 
 class UserUpdate(SQLModel):
     """User update model."""
+
+    code: Optional[str] = None
 
     profile_picture: Optional[str] = None
     email: Optional[str] = None
@@ -121,10 +121,8 @@ class UserUpdate(SQLModel):
     password: Optional[str] = None
     confirm_password: Optional[str] = None
 
-    profile_view: Optional[str] = None
+    account_view: Optional[str] = None
     is_sidebar_open: Optional[bool] = None
-
-    recovery_code: Optional[str] = None
 
 
 # Friends
@@ -132,8 +130,8 @@ class FriendRequest(SQLModel, table=True):
     """Friend request link model."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_uid: str = Field(default=None, foreign_key="user.uid")
-    friend_uid: str = Field(default=None, foreign_key="user.uid")
+    user_uid: UUID = Field(default=None, foreign_key="user.uid")
+    friend_uid: UUID = Field(default=None, foreign_key="user.uid")
 
     request_date: datetime = Field(default_factory=datetime.utcnow)
     status: str = Field(default="pending")
@@ -155,8 +153,8 @@ class Friend(SQLModel, table=True):
     """Friend link model."""
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_uid: str = Field(default=None, foreign_key="user.uid")
-    friend_uid: str = Field(default=None, foreign_key="user.uid")
+    user_uid: UUID = Field(default=None, foreign_key="user.uid")
+    friend_uid: UUID = Field(default=None, foreign_key="user.uid")
 
     friendship_date: datetime = Field(default_factory=datetime.utcnow)
     status: str = Field(default="confirmed")
@@ -177,7 +175,7 @@ class Friend(SQLModel, table=True):
 class FriendReadBase(BaseModel):
     """Friend read base model."""
 
-    uid: str
+    uid: UUID
     join_date: datetime
     profile_picture: Optional[str]
     username: str

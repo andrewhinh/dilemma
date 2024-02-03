@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { sendRequest } from "../../lib/api";
-import { useToProfile } from "../../lib/callbacks";
+import { useSearchParams } from "next/navigation";
 import validator from "validator";
 
+import { sendRequest } from "../../lib/api";
+import { useToAccount } from "../../lib/callbacks";
+
+import Header from "../../ui/Header";
 import GoogleButton from "../GoogleButton";
 import Form from "../../ui/Form";
 import { ProfilePicture } from "../../ui/Upload";
@@ -14,17 +17,28 @@ import Input from "../../ui/Input";
 import { FormButton } from "../../ui/Button";
 import buttonLoading from "@/public/button-loading.svg";
 
-function SignUp() {
-  const toProfile = useToProfile();
+function Base() {
+  const searchParams = useSearchParams();
+  const toAccount = useToAccount();
 
   const [pic, setPic] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
-  const [verifiedEmail, setVerifiedEmail] = useState(false);
+
+  const [verifiedEmailMessage, setVerifiedEmailMessage] = useState("");
   const [code, setCode] = useState("");
+
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error) {
+      setErrorMsg(error);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSendEmail = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -70,7 +84,7 @@ function SignUp() {
     };
     sendRequest("/verify-email", "POST", request).then((data) => {
       if (data.detail) setErrorMsg(data.detail);
-      else setVerifiedEmail(true);
+      else setVerifiedEmailMessage(data.message);
       setLoading(false);
     });
   };
@@ -80,36 +94,6 @@ function SignUp() {
 
     setLoading(true);
     setErrorMsg("");
-
-    if (email === "") {
-      setErrorMsg("Email cannot be empty");
-      setLoading(false);
-      return;
-    }
-
-    if (!validator.isEmail(email)) {
-      setErrorMsg("Email is not valid");
-      setLoading(false);
-      return;
-    }
-
-    if (password === "") {
-      setErrorMsg("Password cannot be empty");
-      setLoading(false);
-      return;
-    }
-
-    if (confirmPassword === "") {
-      setErrorMsg("Confirm password cannot be empty");
-      setLoading(false);
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setErrorMsg("Passwords do not match");
-      setLoading(false);
-      return;
-    }
 
     if (code === "") {
       setErrorMsg("Code cannot be empty");
@@ -122,9 +106,10 @@ function SignUp() {
       email: email,
       password: password,
       confirm_password: confirmPassword,
-      verify_code: code,
+      code: code,
     };
-    toProfile(
+
+    toAccount(
       "/token/signup",
       request,
       () => setLoading(false),
@@ -137,7 +122,10 @@ function SignUp() {
 
   return (
     <>
-      {!verifiedEmail ? (
+      <Header>
+        <h1 className="p-2 text-4xl md:text-6xl whitespace-nowrap">Sign Up</h1>
+      </Header>
+      {!verifiedEmailMessage ? (
         <div className="flex flex-col gap-8">
           <GoogleButton action="signup" />
           <p>--- or ---</p>
@@ -184,12 +172,11 @@ function SignUp() {
                 <p>Sign Up</p>
               )}
             </FormButton>
-            {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
           </Form>
         </div>
       ) : (
         <Form onSubmit={handleCodeSubmit}>
-          <p>A verification code has been sent to your email.</p>
+          <p>{verifiedEmailMessage}</p>
           <Input
             type="text"
             name="code"
@@ -209,11 +196,19 @@ function SignUp() {
               <p>Verify Code</p>
             )}
           </FormButton>
-          {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
         </Form>
       )}
+      {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
     </>
   );
 }
+
+const SignUp = () => {
+  return (
+    <Suspense>
+      <Base />
+    </Suspense>
+  );
+};
 
 export default SignUp;

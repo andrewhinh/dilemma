@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useConst } from "@/app/providers";
-import { useProfile } from "../providers";
+import { useAccount } from "../providers";
 import { sendRequest } from "../../lib/api";
 import { useGetSentFriendRequests, useSetUser } from "../../utils";
 
@@ -14,7 +14,7 @@ import buttonLoading from "@/public/button-loading.svg";
 
 function FriendView() {
   const { state: constState } = useConst();
-  const { state: profileState } = useProfile();
+  const { state: accountState } = useAccount();
   const setUser = useSetUser();
   const getSentFriendRequests = useGetSentFriendRequests();
 
@@ -25,7 +25,7 @@ function FriendView() {
     acceptRequestErrorMsg,
     declineRequestErrorMsg,
     deleteFriendErrorMsg,
-  } = profileState;
+  } = accountState;
 
   const [requestUsername, setRequestUsername] = useState("");
   const [sendRequestErrorMsg, setSendRequestErrorMsg] = useState("");

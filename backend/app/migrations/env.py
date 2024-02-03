@@ -8,7 +8,7 @@ from app.config import get_settings
 from app.models import items, users  # noqa: F401
 
 SETTINGS = get_settings()
-DB_URL = SETTINGS.db_url
+DB_URI = SETTINGS.database_uri
 
 
 # this is the Alembic Config object, which provides
@@ -45,7 +45,7 @@ def run_migrations_offline() -> None:
 
     """
     context.configure(
-        url=DB_URL,
+        url=DB_URI,
         target_metadata=target_metadata,
         literal_binds=True,
         compare_type=True,
@@ -63,7 +63,7 @@ def run_migrations_online() -> None:
 
     """
     configuration = config.get_section(config.config_ini_section)
-    configuration["sqlalchemy.url"] = DB_URL
+    configuration["sqlalchemy.url"] = DB_URI
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",

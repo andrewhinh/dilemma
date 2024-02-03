@@ -23,7 +23,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased`}>
+      <body
+        className={`${inter.className} antialiased bg-zinc-50 text-zinc-500 flex flex-col min-h-screen`}
+      >
         <ConstProvider>{children}</ConstProvider>
         <Analytics />
         <SpeedInsights />

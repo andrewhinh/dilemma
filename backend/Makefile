@@ -23,23 +23,31 @@ setup:
 	mv localhost+2-key.pem certificates/localhost+2-key.pem
 	mv localhost+2.pem certificates/localhost+2.pem
 
-# Test
-test:
-	pytest tests -s
-
 # Generate migration script
 script:
 	alembic revision --autogenerate -m "$(m)"
 
+# Apply migration
+migrate:
+	alembic upgrade head
+
+# Test
+test:
+	pytest tests -s
+
 # Run app
 dev:
-	alembic upgrade head
+	make script m="init"
+	make migrate
 	python app/main.py
+
+# Connect to database
+db:
+	sudo -u postgres psql
 
 # Start linting server
 lint:
 	ruff check . --watch --fix
-
 
 # Lint and format
 fix:

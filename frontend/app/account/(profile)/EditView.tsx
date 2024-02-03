@@ -1,31 +1,30 @@
 import Image from "next/image";
 import { useState } from "react";
-import { useProfile } from "../providers";
+import { useAccount } from "../providers";
 import { useConst } from "../../providers";
 import { sendRequest } from "../../lib/api";
 import { useLogOut } from "../../lib/callbacks";
-import { useUpdateUser } from "../utils";
+import validator from "validator";
 
 import Main from "../../ui/Main";
 import Form from "../../ui/Form";
-import { ProfilePicture } from "../../ui/Upload";
 import Input from "../../ui/Input";
 import { FormButton } from "../../ui/Button";
 import buttonLoading from "@/public/button-loading.svg";
 
-function UserView() {
+function EditView() {
   const { state: constState, dispatch: constDispatch } = useConst();
-  const { state: profileState, dispatch: profileDispatch } = useProfile();
+  const { state: accountState, dispatch: accountDispatch } = useAccount();
   const logOut = useLogOut();
-  const updateUser = useUpdateUser();
 
-  const { joinDate, profilePicture, email, username, fullname } = constState;
-  const { canUpdateUser, updateUserErrorMsg, updateUserLoading } = profileState;
+  const { email } = constState;
+  const { canUpdateUser } = accountState;
 
-  const [tempProfilePicture, setTempProfilePicture] = useState(profilePicture);
   const [tempEmail, setTempEmail] = useState(email);
-  const [tempUsername, setTempUsername] = useState(username);
-  const [tempFullname, setTempFullname] = useState(fullname);
+  const [verifiedEmailMessage, setVerifiedEmailMessage] = useState("");
+  const [code, setCode] = useState("");
+  const [updateEmailLoading, setUpdateEmailLoading] = useState(false);
+  const [updateEmailErrorMsg, setUpdateEmailErrorMsg] = useState("");
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -38,6 +37,64 @@ function UserView() {
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState("");
 
   const deleteAccountPhrase = "delete my account";
+
+  const handleSendEmail = (
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent>
+  ) => {
+    e.preventDefault();
+    setUpdateEmailErrorMsg("");
+    setUpdateEmailLoading(true);
+
+    if (tempEmail === "") {
+      setUpdateEmailErrorMsg("Email cannot be empty");
+      setUpdateEmailLoading(false);
+      return;
+    }
+
+    if (!validator.isEmail(tempEmail)) {
+      setUpdateEmailErrorMsg("Invalid email");
+      setUpdateEmailLoading(false);
+      return;
+    }
+
+    sendRequest("/verify-email/update", "POST", { email: tempEmail }).then(
+      (data) => {
+        if (data.detail) setUpdateEmailErrorMsg(data.detail);
+        else setVerifiedEmailMessage(data.message);
+        setUpdateEmailLoading(false);
+      }
+    );
+  };
+
+  const handleCodeSubmit = (
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent>
+  ) => {
+    e.preventDefault();
+    setUpdateEmailErrorMsg("");
+    setUpdateEmailLoading(true);
+
+    if (code === "") {
+      setUpdateEmailErrorMsg("Code cannot be empty");
+      setUpdateEmailLoading(false);
+      return;
+    }
+
+    let request = {
+      email: tempEmail,
+      code: code,
+    };
+    sendRequest("/update-email", "POST", request).then((data) => {
+      if (data.detail) setUpdateEmailErrorMsg(data.detail);
+      else {
+        setVerifiedEmailMessage("");
+        accountDispatch({
+          type: "SET_CAN_UPDATE_USER",
+          payload: false,
+        });
+      }
+      setUpdateEmailLoading(false);
+    });
+  };
 
   const handleUpdatePassword = (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
@@ -111,160 +168,89 @@ function UserView() {
 
   return (
     <Main className="relative z-0 gap-16">
-      <Form onSubmit={(e) => updateUser(e)}>
-        <ProfilePicture
-          picture={tempProfilePicture}
-          setErrorMsg={(msg) =>
-            profileDispatch({
-              type: "SET_UPDATE_USER_ERROR_MSG",
-              payload: msg,
-            })
-          }
-          setPicture={(pic) => setTempProfilePicture(pic)}
-          onChange={(pic) => {
-            if (pic !== profilePicture) {
-              profileDispatch({
-                type: "SET_CAN_UPDATE_USER",
-                payload: true,
-              });
-            } else {
-              profileDispatch({
-                type: "SET_CAN_UPDATE_USER",
-                payload: false,
-              });
-            }
-          }}
-        />
-        <div className="flex flex-col">
-          <p>Joined on</p>
-          <p className="text-cyan-500">
-            {new Date(joinDate).toLocaleDateString("en-US", {
-              month: "long",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 w-48 md:w-60">
-          <div className="flex flex-col gap-2">
-            <Input
-              id="email"
-              type="text"
-              value={tempEmail}
-              placeholder="Email"
-              onChange={(e) => {
-                setTempEmail(e.target.value);
-                if (e.target.value !== email) {
-                  if (e.target.value === "" && email === null) {
-                    profileDispatch({
+      {!verifiedEmailMessage ? (
+        <Form onSubmit={handleSendEmail}>
+          <div className="flex flex-col gap-4 w-48 md:w-60">
+            <div className="flex flex-col gap-2">
+              <Input
+                id="email"
+                type="text"
+                value={tempEmail}
+                placeholder="Email"
+                onChange={(e) => {
+                  setTempEmail(e.target.value);
+                  if (e.target.value !== email) {
+                    if (e.target.value === "" && email === null) {
+                      accountDispatch({
+                        type: "SET_CAN_UPDATE_USER",
+                        payload: false,
+                      });
+                    } else {
+                      accountDispatch({
+                        type: "SET_CAN_UPDATE_USER",
+                        payload: true,
+                      });
+                    }
+                  } else {
+                    accountDispatch({
                       type: "SET_CAN_UPDATE_USER",
                       payload: false,
                     });
-                  } else {
-                    profileDispatch({
-                      type: "SET_CAN_UPDATE_USER",
-                      payload: true,
-                    });
                   }
-                } else {
-                  profileDispatch({
-                    type: "SET_CAN_UPDATE_USER",
-                    payload: false,
-                  });
-                }
+                }}
+              />
+            </div>
+            <FormButton
+              noHover={canUpdateUser}
+              onClick={() => {
+                constDispatch({
+                  type: "SET_EMAIL",
+                  payload: tempEmail,
+                });
               }}
-            />
-            <Input
-              id="username"
-              type="text"
-              value={tempUsername}
-              placeholder="Username"
-              onChange={(e) => {
-                setTempUsername(e.target.value);
-                if (e.target.value !== username) {
-                  if (e.target.value === "" && username === null) {
-                    profileDispatch({
-                      type: "SET_CAN_UPDATE_USER",
-                      payload: false,
-                    });
-                  } else {
-                    profileDispatch({
-                      type: "SET_CAN_UPDATE_USER",
-                      payload: true,
-                    });
-                  }
-                } else {
-                  profileDispatch({
-                    type: "SET_CAN_UPDATE_USER",
-                    payload: false,
-                  });
-                }
-              }}
-            />
-            <Input
-              id="fullname"
-              type="text"
-              value={tempFullname}
-              placeholder="Full Name"
-              onChange={(e) => {
-                setTempFullname(e.target.value);
-                if (e.target.value !== fullname) {
-                  if (e.target.value === "" && fullname === null) {
-                    profileDispatch({
-                      type: "SET_CAN_UPDATE_USER",
-                      payload: false,
-                    });
-                  } else {
-                    profileDispatch({
-                      type: "SET_CAN_UPDATE_USER",
-                      payload: true,
-                    });
-                  }
-                } else {
-                  profileDispatch({
-                    type: "SET_CAN_UPDATE_USER",
-                    payload: false,
-                  });
-                }
-              }}
-            />
+            >
+              {updateEmailLoading ? (
+                <Image
+                  src={buttonLoading}
+                  className="w-6 h-6"
+                  alt="Update Email"
+                />
+              ) : (
+                <p>Update Email</p>
+              )}
+            </FormButton>
+            {updateEmailErrorMsg && (
+              <p className="text-rose-500">{updateEmailErrorMsg}</p>
+            )}
           </div>
-          <FormButton
-            noHover={canUpdateUser}
-            onClick={() => {
-              constDispatch({
-                type: "SET_PROFILE_PICTURE",
-                payload: tempProfilePicture,
-              });
-              constDispatch({
-                type: "SET_EMAIL",
-                payload: tempEmail,
-              });
-              constDispatch({
-                type: "SET_USERNAME",
-                payload: tempUsername,
-              });
-              constDispatch({
-                type: "SET_FULLNAME",
-                payload: tempFullname,
-              });
-            }}
-          >
-            {updateUserLoading ? (
+        </Form>
+      ) : (
+        <Form onSubmit={handleCodeSubmit}>
+          <p>{verifiedEmailMessage}</p>
+          <Input
+            type="text"
+            name="code"
+            value={code}
+            placeholder="Code"
+            autoFocus
+            onChange={(e) => setCode(e.target.value)}
+          />
+          <FormButton>
+            {updateEmailLoading ? (
               <Image
                 src={buttonLoading}
                 className="w-6 h-6"
-                alt="Update Profile"
+                alt="Verify Code"
               />
             ) : (
-              <p>Update Profile</p>
+              <p>Verify Code</p>
             )}
           </FormButton>
-        </div>
-        {updateUserErrorMsg && (
-          <p className="text-rose-500">{updateUserErrorMsg}</p>
-        )}
-      </Form>
+          {updateEmailErrorMsg && (
+            <p className="text-rose-500">{updateEmailErrorMsg}</p>
+          )}
+        </Form>
+      )}
       <Form onSubmit={(e) => handleUpdatePassword(e)}>
         <div className="flex flex-col gap-4 w-48 md:w-60">
           <div className="flex flex-col gap-2">
@@ -329,4 +315,4 @@ function UserView() {
   );
 }
 
-export default UserView;
+export default EditView;

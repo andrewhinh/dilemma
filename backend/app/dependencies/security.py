@@ -1,4 +1,4 @@
-"""API key dependency."""
+"""Dependencies for security endpoints."""
 from fastapi import HTTPException, Security
 from fastapi.security import APIKeyHeader
 

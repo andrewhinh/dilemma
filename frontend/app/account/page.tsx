@@ -9,9 +9,9 @@ import { useRefreshToken, useLogOut } from "../lib/callbacks";
 
 import { LoggedInNav } from "../ui/Nav";
 import Main from "../ui/Main";
-import profileLoading from "@/public/profile-loading.svg";
+import accountLoading from "@/public/account-loading.svg";
 
-const Redirect = () => {
+const Base = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { state, dispatch } = useConst();
@@ -29,9 +29,13 @@ const Redirect = () => {
         code: authCode,
         state: authState,
       }).then((data) => {
-        if (data.detail) router.push("/login");
-        else if (data.url) router.push(data.url);
-        else {
+        if (data.detail) {
+          if (authState == "signup") {
+            router.push("/signup?error=" + data.detail);
+          } else {
+            router.push("/login?error=" + data.detail);
+          }
+        } else {
           dispatch({
             type: "SET_LOGGED_IN",
             payload: true,
@@ -40,7 +44,7 @@ const Redirect = () => {
             type: "SET_UID",
             payload: data.uid,
           });
-          router.push("/profile" + data.uid);
+          router.push("/account/" + data.uid);
         }
       });
     } else {
@@ -49,7 +53,7 @@ const Redirect = () => {
           logOut("/login");
         });
       } else {
-        router.push("profile/" + uid);
+        router.push("/account/" + uid);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -60,7 +64,7 @@ const Redirect = () => {
       <LoggedInNav />
       <Main className="relative z-0">
         <Image
-          src={profileLoading}
+          src={accountLoading}
           alt="Loading"
           className="w-24 md:w-48 object-contain"
         />
@@ -69,14 +73,12 @@ const Redirect = () => {
   );
 };
 
-// Wrap the Redirect component in a Suspense component since
-// Redirect uses useSearchParams
-const Final = () => {
+const Redirect = () => {
   return (
     <Suspense>
-      <Redirect />
+      <Base />
     </Suspense>
   );
 };
 
-export default Final;
+export default Redirect;

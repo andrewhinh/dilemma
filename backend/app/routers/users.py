@@ -1,5 +1,4 @@
 """User routes."""
-import uuid
 from datetime import datetime
 from typing import Annotated, List, Optional
 
@@ -8,11 +7,13 @@ from fastapi.responses import RedirectResponse
 from sqlmodel import Session
 
 from app.database import get_session
-from app.dependencies.system import verify_api_key
+from app.dependencies.security import verify_api_key
 from app.dependencies.users import (
     ACCESS_TOKEN_EXPIRES,
     CREDENTIALS_EXCEPTION,
+    RECOVERY_CODE_EXPIRES,
     REFRESH_TOKEN_EXPIRES,
+    VERIFY_CODE_EXPIRES,
     create_token,
     delete_auth_cookies,
     generate_username_from_email,
@@ -27,7 +28,6 @@ from app.dependencies.users import (
     get_sent_friend_requests,
     get_user,
     get_user_from_token,
-    get_verification_code,
     google_decode_refresh_token,
     google_encode_refresh_token,
     google_get_new_access_token,
@@ -37,9 +37,12 @@ from app.dependencies.users import (
     send_email,
     set_auth_cookies,
     set_redirect_fe,
+    verify_code,
     verify_password,
+    verify_user_update,
 )
 from app.models.users import (
+    AuthCode,
     Friend,
     FriendRead,
     FriendRequest,
@@ -50,7 +53,6 @@ from app.models.users import (
     UserRead,
     UserReference,
     UserUpdate,
-    VerificationCode,
 )
 
 router = APIRouter(
@@ -60,6 +62,7 @@ router = APIRouter(
 )
 
 
+# Native signup/login
 @router.post("/verify-email", response_model=dict[str, str])
 async def verify_email(
     *,
@@ -77,13 +80,8 @@ async def verify_email(
     -------
     dict[str, str]
         Message
-
-    Raises
-    ------
-    HTTPException
-        User not found
     """
-    db_user = UserUpdate.model_validate(user)
+    db_user = UserCreate.model_validate(user)
 
     if not db_user.email:
         raise HTTPException(
@@ -106,57 +104,28 @@ async def verify_email(
             detail="Passwords do not match",
         )
 
-    if get_user(session, email=db_user.email):
-        raise HTTPException(
-            status_code=400,
-            detail="Email is invalid",
+    user_exists = get_user(session, email=db_user.email)
+    if not user_exists:
+        verify_code = AuthCode(
+            email=db_user.email,
+            request_type="verify",
+            expire_date=datetime.utcnow() + VERIFY_CODE_EXPIRES,
         )
+        session.add(verify_code)
+        session.commit()
 
-    verify_code = VerificationCode(
-        email=db_user.email,
-        code=uuid.uuid4().hex[:6],
-    )
-    session.add(verify_code)
-    session.commit()
-    session.refresh(verify_code)
+        body = f"""
+    ## Welcome!
 
-    body = f"""
-## Welcome!
+    Head back to the website and enter the following code to continue:
 
-Head back to the website and enter the following code to continue:
+    ## {verify_code.code}
 
-## {verify_code.code}
+    If you did not request this code, please ignore this email.
+        """
+        send_email(db_user.email, subject="Verify Email", body=body)
 
-If you did not request this code, please ignore this email.
-    """
-    send_email(db_user.email, subject="Verify Email", body=body)
-    return {"message": "Verification email sent"}
-
-
-@router.post("/verify-email/google", response_class=RedirectResponse)
-async def verify_email_google(
-    *,
-    auth: GoogleAuth,
-):
-    """Get Google login page URL.
-
-    Parameters
-    ----------
-    auth
-        GoogleAuth
-
-    Returns
-    -------
-    RedirectResponse
-        Redirect to Google login page
-    """
-    if not auth.state:
-        raise HTTPException(
-            status_code=400,
-            detail="State is empty",
-        )
-    response = RedirectResponse(get_google_auth_url(auth.state))
-    return response
+    return {"message": "If the email exists, you will receive a verification email shortly."}
 
 
 @router.post("/token/signup", response_model=UserRead)
@@ -175,60 +144,14 @@ async def signup(
 
     Returns
     -------
-    RedirectResponse
-        Redirect to profile page
-
-    Raises
-    ------
-    HTTPException
-        Email is empty
-        Username is empty
-        Password is empty
-        Confirm password is empty
-        Passwords do not match
-        Code is empty
-        Email is invalid
-        Username is invalid
-        Code is invalid
-        Previous code not found, request new code
+    UserRead
+        User
     """
     db_user = UserCreate.model_validate(user)
+    verify_code(session, db_user.code, db_user.email, "verify")
 
-    if not db_user.verify_code:
-        raise HTTPException(
-            status_code=400,
-            detail="Code is empty",
-        )
-    verify_code = get_verification_code(session, db_user.email)
-    now = datetime.utcnow()
-
-    if not verify_code:
-        raise HTTPException(
-            status_code=404,
-            detail="Previous code not found, request new code",
-        )
-    if verify_code.code != db_user.verify_code or verify_code.status == "verified":
-        raise HTTPException(
-            status_code=400,
-            detail="Code is invalid",
-        )
-    if verify_code.expire_date < now or verify_code.status == "expired":
-        if verify_code.status != "expired":
-            verify_code.status = "expired"
-            session.add(verify_code)
-            session.commit()
-            session.refresh(verify_code)
-        raise HTTPException(
-            status_code=400,
-            detail="Code is expired, request new code",
-        )
-
-    verify_code.status = "verified"
-    verify_code.verify_date = now
-    session.add(verify_code)
-
-    access_token = create_token(data={"email": user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
-    refresh_token = create_token(data={"email": user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
+    access_token = create_token(data={"email": db_user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
+    refresh_token = create_token(data={"email": db_user.email}, expires_delta=REFRESH_TOKEN_EXPIRES)
 
     created_user = User(
         profile_picture=db_user.profile_picture,
@@ -240,7 +163,6 @@ async def signup(
     )
     session.add(created_user)
     session.commit()
-    session.refresh(verify_code)
     session.refresh(created_user)
 
     set_auth_cookies(response, access_token, refresh_token, created_user.provider)
@@ -263,13 +185,8 @@ async def login(
 
     Returns
     -------
-    RedirectResponse
-        Redirect to profile page
-
-    Raises
-    ------
-    HTTPException
-        Incorrect email or password
+    UserRead
+        User
     """
     provider = "dilemma"
     db_user = UserCreate.model_validate(user)
@@ -303,7 +220,34 @@ async def login(
     return UserRead.model_validate(verified_user)
 
 
-@router.post("/token/google")
+# Google signup/login
+@router.post("/verify-email/google", response_class=RedirectResponse)
+async def verify_email_google(
+    *,
+    auth: GoogleAuth,
+):
+    """Get Google login page URL.
+
+    Parameters
+    ----------
+    auth
+        GoogleAuth
+
+    Returns
+    -------
+    RedirectResponse
+        Redirect to Google login page
+    """
+    if not auth.state:
+        raise HTTPException(
+            status_code=400,
+            detail="State is empty",
+        )
+    response = RedirectResponse(get_google_auth_url(auth.state))
+    return response
+
+
+@router.post("/token/google", response_model=UserRead)
 async def auth_google(
     *,
     session: Session = Depends(get_session),
@@ -319,21 +263,8 @@ async def auth_google(
 
     Returns
     -------
-    dict[str, str]
-        URL to redirect to
-
-    Raises
-    ------
-    HTTPException
-        Email is empty
-        Username is empty
-        Password is empty
-        Confirm password is empty
-        Passwords do not match
-        Code is empty
-        Email is invalid
-        Username is invalid
-        Code is invalid
+    UserRead
+        User
     """
     provider = "google"
 
@@ -370,11 +301,15 @@ async def auth_google(
     elif db_user and auth.state == "login":
         db_user.refresh_token = enc_refresh_token
     elif db_user and auth.state == "signup":
-        response = set_redirect_fe(response, "/login")
-        return response
+        raise HTTPException(
+            status_code=400,
+            detail="Account already exists",
+        )
     elif not db_user and auth.state == "login":
-        response = set_redirect_fe(response, "/signup")
-        return response
+        raise HTTPException(
+            status_code=400,
+            detail="Account does not exist",
+        )
     else:  # shouldn't happen
         raise CREDENTIALS_EXCEPTION
 
@@ -386,6 +321,7 @@ async def auth_google(
     return UserRead.model_validate(db_user)
 
 
+# Token management
 @router.post("/token/refresh", response_model=UserRead)
 async def refresh_token(
     *,
@@ -410,11 +346,6 @@ async def refresh_token(
     -------
     Token
         token_type and uid
-
-    Raises
-    ------
-    HTTPException
-        Token expired
     """
     # Check if access token is valid
     try:
@@ -485,7 +416,6 @@ async def logout(
             user.refresh_token = None
             session.add(user)
             session.commit()
-            session.refresh(user)
         except HTTPException:  # If not, try to get user from refresh token
             try:
                 if not refresh_token:
@@ -494,7 +424,6 @@ async def logout(
                 user.refresh_token = None
                 session.add(user)
                 session.commit()
-                session.refresh(user)
             except HTTPException:
                 pass
 
@@ -502,6 +431,7 @@ async def logout(
     return {"message": "Logout successful"}
 
 
+# Native password recovery
 @router.post("/forgot-password", response_model=dict[str, str])
 async def forgot_password(
     *,
@@ -521,11 +451,6 @@ async def forgot_password(
     -------
     dict[str, str]
         Message
-
-    Raises
-    ------
-    HTTPException
-        User not found
     """
     provider = "dilemma"
     db_user = UserUpdate.model_validate(user)
@@ -541,24 +466,24 @@ async def forgot_password(
         )
 
     if verified_user:
-        recovery_code = uuid.uuid4().hex[:6]
-        verified_user.recovery_code = recovery_code
-        session.add(verified_user)
+        recovery_code = AuthCode(
+            email=verified_user.email, request_type="recovery", expire_date=datetime.utcnow() + RECOVERY_CODE_EXPIRES
+        )
+        session.add(recovery_code)
         session.commit()
-        session.refresh(verified_user)
 
         body = f"""
-## You've requested a password reset.
+    ## You've requested a password reset.
 
-Head back to the website and enter the following code to continue:
+    Head back to the website and enter the following code to continue:
 
-## {recovery_code}
+    ## {recovery_code.code}
 
-If you did not request this code, please ignore this email.
+    If you did not request this code, please ignore this email.
         """
         send_email(verified_user.email, subject="Password Recovery", body=body)
 
-    return {"message": "Password recovery email sent"}
+    return {"message": "If the email exists, you will receive a recovery email shortly."}
 
 
 @router.post("/check-code", response_model=dict[str, str])
@@ -580,17 +505,9 @@ async def check_code(
     -------
     dict[str, str]
         Message
-
-    Raises
-    ------
-    HTTPException
-        Code not found
     """
     provider = "dilemma"
     db_user = UserUpdate.model_validate(user)
-
-    if not db_user.recovery_code:
-        raise HTTPException(status_code=400, detail="Code is empty")
 
     if db_user.email:
         verified_user = get_user(session, provider, email=db_user.email)
@@ -602,17 +519,7 @@ async def check_code(
             detail="Username or email is empty",
         )
 
-    if not verified_user:
-        raise HTTPException(status_code=400, detail="Email is invalid")
-    if not verified_user.recovery_code:
-        raise HTTPException(status_code=404, detail="Previous code not found, request new code")
-    if verified_user.recovery_code != db_user.recovery_code:
-        raise HTTPException(status_code=400, detail="Code is invalid")
-
-    verified_user.recovery_code = None
-    session.add(verified_user)
-    session.commit()
-    session.refresh(verified_user)
+    verify_code(session, db_user.code, verified_user.email, "recovery")
 
     return {"message": "Code is valid"}
 
@@ -634,24 +541,12 @@ async def reset_password(
 
     Returns
     -------
-    dict[str, str]
-        Message
-
-    Raises
-    ------
-    HTTPException
-        Passwords do not match
+    RedirectResponse
+        Redirect to login
     """
     provider = "dilemma"
     response = RedirectResponse("/")
     db_user = UserUpdate.model_validate(user)
-
-    if not db_user.password:
-        raise HTTPException(status_code=400, detail="Password is empty")
-    if not db_user.confirm_password:
-        raise HTTPException(status_code=400, detail="Confirm password is empty")
-    if db_user.password != db_user.confirm_password:
-        raise HTTPException(status_code=400, detail="Passwords do not match")
 
     if db_user.email:
         verified_user = get_user(session, provider, email=db_user.email)
@@ -663,18 +558,119 @@ async def reset_password(
             detail="Username or email is empty",
         )
 
-    if not verified_user:
-        raise HTTPException(status_code=400, detail="Email is invalid")
+    if not db_user.password:
+        raise HTTPException(status_code=400, detail="Password is empty")
+    if not db_user.confirm_password:
+        raise HTTPException(status_code=400, detail="Confirm password is empty")
+    if db_user.password != db_user.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
 
     verified_user.hashed_password = get_password_hash(db_user.password)
     session.add(verified_user)
     session.commit()
-    session.refresh(verified_user)
 
     response = set_redirect_fe(response, "/login")
     return response
 
 
+# Native email management
+@router.post("/verify-email/update", response_model=dict[str, str])
+async def verify_email_update(
+    *,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
+    provider: Optional[str] = Cookie(default=None),
+    user: UserUpdate,
+):
+    """Verify new email.
+
+    Parameters
+    ----------
+    user
+        UserUpdate
+
+    Returns
+    -------
+    dict[str, str]
+        Message
+    """
+    if provider != "dilemma":
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to change email, did not create account with Dilemma",
+        )
+
+    db_user = UserUpdate.model_validate(user)
+
+    if not db_user.email:
+        raise HTTPException(
+            status_code=400,
+            detail="Email is empty",
+        )
+    if current_user.email == db_user.email:
+        raise HTTPException(
+            status_code=400,
+            detail="Email is the same",
+        )
+
+    user_exists = get_user(session, email=db_user.email)
+    if not user_exists:
+        verify_code = AuthCode(
+            email=db_user.email,
+            request_type="verify",
+            expire_date=datetime.utcnow() + VERIFY_CODE_EXPIRES,
+        )
+        session.add(verify_code)
+        session.commit()
+
+        body = f"""
+    ## You've requested to update your email.
+
+    Head back to the website and enter the following code to continue:
+
+    ## {verify_code.code}
+
+    If you did not request this code, please ignore this email.
+        """
+        send_email(db_user.email, subject="Verify Email", body=body)
+
+    return {"message": "If the email exists, you will receive a verification email shortly."}
+
+
+@router.post("/update-email", response_model=UserRead)
+async def update_email(
+    *,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
+    response: Response,
+    user: UserUpdate,
+):
+    """Update email.
+
+    Parameters
+    ----------
+    user
+        UserUpdate
+
+    Returns
+    -------
+    dict[str, str]
+        Message
+    """
+    db_user = UserUpdate.model_validate(user)
+    verify_code(session, db_user.code, db_user.email, "verify")
+
+    current_user.email = db_user.email
+    session.add(current_user)
+    session.commit()
+    session.refresh(current_user)
+
+    access_token = create_token(data={"email": db_user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
+    set_auth_cookies(response, access_token)
+    return UserRead.model_validate(current_user)
+
+
+# User management
 @router.get("/user/", response_model=UserRead)
 async def read_user(
     *,
@@ -682,35 +678,19 @@ async def read_user(
 ):
     """Get current user.
 
-    Parameters
-    ----------
-    session
-        Database session
-    current_user
-        Current user
-
     Returns
     -------
     User
         Current user
-
-    Raises
-    ------
-    HTTPException
-        User not found
     """
-    user = UserRead.model_validate(current_user)
-    return user
+    return UserRead.model_validate(current_user)
 
 
 @router.patch("/user/update", response_model=UserRead)
-async def update_user(  # noqa: C901
+async def update_user(
     *,
     current_user: Annotated[User, Depends(get_current_active_user)],
     session: Session = Depends(get_session),
-    response: Response,
-    refresh_token: Optional[str] = Cookie(default=None),
-    provider: Optional[str] = Cookie(default=None),
     new_user: UserUpdate,
 ):
     """Update user with new field(s).
@@ -730,62 +710,9 @@ async def update_user(  # noqa: C901
     -------
     Token
         token_type and uid
-
-    Raises
-    ------
-    HTTPException
-        User not found
     """
     user_data = new_user.model_dump(exclude_unset=True)
-    identity_changed = False
-
-    if "email" in user_data.keys():
-        if not user_data["email"]:
-            raise HTTPException(
-                status_code=400,
-                detail="Email is empty",
-            )
-        if current_user.email != user_data["email"]:
-            identity_changed = True
-            if get_user(session, email=user_data["email"]):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Email is invalid",
-                )
-
-    if "username" in user_data.keys():
-        if not user_data["username"]:
-            raise HTTPException(
-                status_code=400,
-                detail="Username is empty",
-            )
-        if current_user.username != user_data["username"]:
-            identity_changed = True
-            if get_user(session, username=user_data["username"]):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Username is invalid",
-                )
-
-    if "password" in user_data.keys() and "confirm_password" in user_data.keys():
-        if not user_data["password"]:
-            raise HTTPException(
-                status_code=400,
-                detail="Password is empty",
-            )
-        if not user_data["confirm_password"]:
-            raise HTTPException(
-                status_code=400,
-                detail="Confirm password is empty",
-            )
-        if user_data["password"] != user_data["confirm_password"]:
-            raise HTTPException(
-                status_code=400,
-                detail="Passwords do not match",
-            )
-        user_data["hashed_password"] = get_password_hash(user_data["password"])
-        del user_data["password"]
-        del user_data["confirm_password"]
+    verify_user_update(session, current_user, user_data)
 
     for key, value in user_data.items():
         setattr(current_user, key, value)
@@ -793,21 +720,11 @@ async def update_user(  # noqa: C901
     session.commit()
     session.refresh(current_user)
 
-    if identity_changed:
-        if provider == "dilemma":
-            access_token = create_token(data={"email": current_user.email}, expires_delta=ACCESS_TOKEN_EXPIRES)
-        elif provider == "google":
-            dec_refresh_token = google_decode_refresh_token(refresh_token)
-            access_token = google_get_new_access_token(dec_refresh_token)
-        else:
-            raise CREDENTIALS_EXCEPTION
-        set_auth_cookies(response, access_token, refresh_token, provider)
-
     return UserRead.model_validate(current_user)
 
 
 @router.delete("/user/delete", response_model=dict[str, str])
-def delete_user(
+async def delete_user(
     *,
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
@@ -817,8 +734,9 @@ def delete_user(
     return {"message": "User deleted"}
 
 
+# Friend request management
 @router.post("/friends/send-request", response_model=UserRead)
-def send_friend_request(
+async def send_friend_request(
     *,
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
@@ -849,7 +767,7 @@ def send_friend_request(
 
 
 @router.post("/friends/revert-request", response_model=UserRead)
-def revert_friend_request(
+async def revert_friend_request(
     *,
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
@@ -882,7 +800,7 @@ def revert_friend_request(
 
 
 @router.post("/friends/accept-request", response_model=UserRead)
-def accept_friend_request(
+async def accept_friend_request(
     *,
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
@@ -917,7 +835,7 @@ def accept_friend_request(
 
 
 @router.post("/friends/decline-request", response_model=UserRead)
-def decline_friend_request(
+async def decline_friend_request(
     *,
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
@@ -950,7 +868,7 @@ def decline_friend_request(
 
 
 @router.get("/friends/requests/sent", response_model=List[FriendRequestRead])
-def read_sent_friend_requests(
+async def read_sent_friend_requests(
     *,
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
@@ -970,7 +888,7 @@ def read_sent_friend_requests(
 
 
 @router.get("/friends/requests/incoming", response_model=List[FriendRequestRead])
-def read_incoming_friend_requests(
+async def read_incoming_friend_requests(
     *,
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
@@ -990,8 +908,9 @@ def read_incoming_friend_requests(
     return friend_requests
 
 
+# Friend management
 @router.get("/friends/", response_model=List[FriendRead])
-def read_friends(
+async def read_friends(
     *,
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
@@ -1011,7 +930,7 @@ def read_friends(
 
 
 @router.post("/friends/delete", response_model=UserRead)
-def delete_friend(
+async def delete_friend(
     *,
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],

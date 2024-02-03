@@ -8,21 +8,21 @@ interface User {
   email: string;
   username: string;
   fullname: string;
-  profileView: string;
+  accountView: string;
   isSideBarOpen: boolean;
   uid: string;
 }
 
 // Type for the user object that is returned from the backend
 interface UserBackend {
-  join_date: string;
-  profile_picture: string;
-  email: string;
-  username: string;
-  fullname: string;
-  profile_view: string;
-  is_sidebar_open: boolean;
-  uid: string;
+  join_date?: string;
+  profile_picture?: string;
+  email?: string;
+  username?: string;
+  fullname?: string;
+  account_view?: string;
+  is_sidebar_open?: boolean;
+  uid?: string;
 }
 
 interface FriendBase {
@@ -50,16 +50,18 @@ export type { UserBackend, FriendRequest, Friend };
 
 interface State extends UserWithFriends {
   isLoggedIn: boolean;
+  getUserInfo: boolean;
 }
 
 const initialState: State = {
   isLoggedIn: false,
+  getUserInfo: true,
   joinDate: new Date(),
   profilePicture: "",
   email: "",
   username: "",
   fullname: "",
-  profileView: "",
+  accountView: "",
   isSideBarOpen: false,
   uid: "",
   sentFriendRequests: [],
@@ -87,6 +89,8 @@ const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "SET_LOGGED_IN":
       return { ...state, isLoggedIn: action.payload };
+    case "SET_GET_USER_INFO":
+      return { ...state, getUserInfo: action.payload };
     case "SET_JOIN_DATE":
       return { ...state, joinDate: action.payload };
     case "SET_PROFILE_PICTURE":
@@ -97,8 +101,8 @@ const reducer = (state: State, action: Action): State => {
       return { ...state, username: action.payload };
     case "SET_FULLNAME":
       return { ...state, fullname: action.payload };
-    case "SET_PROFILE_VIEW":
-      return { ...state, profileView: action.payload };
+    case "SET_ACCOUNT_VIEW":
+      return { ...state, accountView: action.payload };
     case "SET_IS_SIDEBAR_OPEN":
       return { ...state, isSideBarOpen: action.payload };
     case "SET_UID":

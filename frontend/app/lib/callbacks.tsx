@@ -1,8 +1,9 @@
 import { useRouter } from "next/navigation";
 import { useConst } from "../providers";
 import { sendRequest } from "./api";
+import { useSetUser } from "../utils";
 
-const useToProfile = () => {
+const useToAccount = () => {
   const router = useRouter();
   const { dispatch } = useConst();
 
@@ -24,7 +25,7 @@ const useToProfile = () => {
           payload: data.uid,
         });
         onSuccess();
-        router.push("/profile" + data.uid);
+        router.push("/account/" + data.uid);
       }
     });
   };
@@ -33,6 +34,7 @@ const useToProfile = () => {
 const useLogOut = () => {
   const router = useRouter();
   const { dispatch } = useConst();
+  const setUser = useSetUser();
 
   return (navigateTo = "/") => {
     sendRequest("/token/logout", "POST").then((data) => {
@@ -40,6 +42,16 @@ const useLogOut = () => {
         dispatch({
           type: "SET_LOGGED_IN",
           payload: false,
+        });
+        setUser({
+          join_date: "",
+          profile_picture: "",
+          email: "",
+          username: "",
+          fullname: "",
+          account_view: "",
+          is_sidebar_open: false,
+          uid: "",
         });
         router.push(navigateTo);
       }
@@ -70,4 +82,4 @@ const useRefreshToken = () => {
   };
 };
 
-export { useToProfile, useLogOut, useRefreshToken };
+export { useToAccount, useLogOut, useRefreshToken };

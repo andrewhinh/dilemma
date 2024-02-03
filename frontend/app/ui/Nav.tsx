@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 
+import { useGetUser } from "../utils";
 import { useConst } from "../providers";
 import { useRefreshToken, useLogOut } from "../lib/callbacks";
 
@@ -62,12 +63,21 @@ function LoggedOutNav({ showLogin = true, showSignUp = true }) {
 
 function LoggedInNav() {
   const router = useRouter();
-  const { state } = useConst();
-  const { profilePicture, uid } = state;
+  const getUser = useGetUser();
+  const { state, dispatch } = useConst();
+  const { getUserInfo, profilePicture, uid } = state;
   const logOut = useLogOut();
 
   const [showDropdown, setShowDropdown] = useState(false);
   const [logOutLoading, setLogOutLoading] = useState(false);
+
+  useEffect(() => {
+    if (getUserInfo) {
+      getUser();
+      dispatch({ type: "SET_GET_USER_INFO", payload: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getUserInfo]);
 
   return (
     <Nav>
@@ -75,32 +85,31 @@ function LoggedInNav() {
         onMouseLeave={() => setShowDropdown(false)}
         className="relative flex flex-1 justify-end md:pr-2"
       >
-        <Button
-          onClick={() => {
+        <div
+          onMouseEnter={() => {
             setShowDropdown(!showDropdown);
           }}
-          className="bg-transparent"
         >
           <Image
             src={profilePicture || profileOutline}
-            alt="Profile Link"
+            alt="Account Link"
             width={40}
             height={40}
             className="rounded-full object-contain"
           />
-        </Button>
+        </div>
         {showDropdown && (
           <div
             className="absolute z-10 right-0 bg-slate-300 rounded-lg shadow-xl gap-1 p-2 flex flex-col"
             style={{ top: "100%" }} // Directly at the bottom of the button
           >
             <Button
-              className="p-3"
+              className="p-3 whitespace-nowrap"
               onClick={() => {
-                router.push("/profile/" + uid);
+                router.push("/account/" + uid);
               }}
             >
-              My Profile
+              My Account
             </Button>
             <Button
               className="p-3 bg-rose-500 whitespace-nowrap"
@@ -138,7 +147,7 @@ function AuthNav() {
 
   useEffect(() => {
     if (!isLoggedIn) refreshToken();
-    else router.push("profile/" + uid);
+    else router.push("/account/" + uid);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn]);
 

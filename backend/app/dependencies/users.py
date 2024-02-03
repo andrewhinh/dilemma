@@ -17,7 +17,7 @@ from sqlmodel import Session, select
 
 from app.config import get_settings
 from app.database import get_session
-from app.models.users import Friend, FriendRequest, User, VerificationCode
+from app.models.users import AuthCode, Friend, FriendRequest, User
 
 SETTINGS = get_settings()
 
@@ -28,9 +28,11 @@ SMTP_SSL_LOGIN = SETTINGS.smtp_ssl_login
 SMTP_SSL_PASSWORD = SETTINGS.smtp_ssl_password
 
 JWT_SECRET = SETTINGS.jwt_secret
+ACCESS_TOKEN_EXPIRES = timedelta(minutes=SETTINGS.access_token_expire_minutes)
+REFRESH_TOKEN_EXPIRES = timedelta(minutes=SETTINGS.refresh_token_expire_minutes)
+VERIFY_CODE_EXPIRES = timedelta(minutes=SETTINGS.verify_code_expire_minutes)
+RECOVERY_CODE_EXPIRES = timedelta(minutes=SETTINGS.recovery_code_expire_minutes)
 JWT_ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRES = timedelta(minutes=30)
-REFRESH_TOKEN_EXPIRES = timedelta(days=30)
 PWD_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 GOOGLE_CLIENT_ID = SETTINGS.google_client_id
@@ -126,9 +128,9 @@ def get_google_auth_url(state: str) -> str:
     return f"https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id={GOOGLE_CLIENT_ID}&redirect_uri={GOOGLE_REDIRECT_URI}&scope=openid%20profile%20email&access_type=offline&state={state}"
 
 
-def get_verification_code(session: Session, email: str, status: str = "pending") -> VerificationCode | None:
+def get_auth_code(session: Session, email: str, request_type: str, status: str = "pending") -> AuthCode | None:
     """
-    Get verification code.
+    Get auth code.
 
     Parameters
     ----------
@@ -136,17 +138,76 @@ def get_verification_code(session: Session, email: str, status: str = "pending")
         Session
     email : str
         Email
+    request_type : str
+        Request type
     status : str
         Status
 
     Returns
     -------
-    VerificationCode
-        Verification code
+    AuthCode
+        Auth code
     """
     return session.exec(
-        select(VerificationCode).where(VerificationCode.email == email).where(VerificationCode.status == status)
-    ).first()
+        select(AuthCode)
+        .where(AuthCode.email == email)
+        .where(AuthCode.request_type == request_type)
+        .where(AuthCode.status == status)
+    ).all()[-1]
+
+
+def verify_code(session: Session, code: str, email: str, request_type: str) -> bool:
+    """
+    Check if code is valid.
+
+    Parameters
+    ----------
+    session : Session
+        Session
+    code : str
+        Code
+    email : str
+        Email
+
+    Returns
+    -------
+    bool
+        True if code is valid, else False
+    """
+    if not code:
+        raise HTTPException(
+            status_code=400,
+            detail="Code is empty",
+        )
+
+    db_verify_code = get_auth_code(session, email, request_type)
+    now = datetime.utcnow()
+
+    if not db_verify_code or not db_verify_code.code:
+        raise HTTPException(
+            status_code=404,
+            detail="Previous code not found, request new code",
+        )
+    if code != db_verify_code.code or db_verify_code.status == "verified":
+        raise HTTPException(
+            status_code=400,
+            detail="Code is invalid",
+        )
+    if db_verify_code.expire_date < now or db_verify_code.status == "expired":
+        if db_verify_code.status != "expired":
+            db_verify_code.status = "expired"
+            session.add(db_verify_code)
+            session.commit()
+        raise HTTPException(
+            status_code=400,
+            detail="Code is expired, request new code",
+        )
+
+    db_verify_code.status = "verified"
+    db_verify_code.usage_date = now
+    session.add(db_verify_code)
+    session.commit()
+    return True
 
 
 def create_token(data: dict, expires_delta: timedelta) -> str:
@@ -213,7 +274,9 @@ def get_password_hash(password: str) -> str:
     return PWD_CONTEXT.hash(password)
 
 
-def set_auth_cookies(response: Response, access_token: str, refresh_token: str, provider: str) -> None:
+def set_auth_cookies(
+    response: Response, access_token: str = None, refresh_token: str = None, provider: str = None
+) -> None:
     """
     Set auth cookies.
 
@@ -238,30 +301,33 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str, 
     HTTPException
         If provider is invalid
     """
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        max_age=ACCESS_TOKEN_EXPIRES.total_seconds(),
-        secure=True,
-        httponly=True,
-        samesite="none",
-    )
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        max_age=REFRESH_TOKEN_EXPIRES.total_seconds(),
-        secure=True,
-        httponly=True,
-        samesite="none",
-    )
-    response.set_cookie(
-        key="provider",
-        value=provider,
-        max_age=REFRESH_TOKEN_EXPIRES.total_seconds(),
-        secure=True,
-        httponly=True,
-        samesite="none",
-    )
+    if access_token:
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            max_age=ACCESS_TOKEN_EXPIRES.total_seconds(),
+            secure=True,
+            httponly=True,
+            samesite="none",
+        )
+    if refresh_token:
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh_token,
+            max_age=REFRESH_TOKEN_EXPIRES.total_seconds(),
+            secure=True,
+            httponly=True,
+            samesite="none",
+        )
+    if provider:
+        response.set_cookie(
+            key="provider",
+            value=provider,
+            max_age=REFRESH_TOKEN_EXPIRES.total_seconds(),
+            secure=True,
+            httponly=True,
+            samesite="none",
+        )
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -405,6 +471,21 @@ def google_get_user_from_user_info(session: Session, user_info: dict) -> User:
 
 
 def set_redirect_fe(response: RedirectResponse, route: str) -> RedirectResponse:
+    """
+    Set redirect frontend.
+
+    Parameters
+    ----------
+    response : RedirectResponse
+        Response
+    route : str
+        Route
+
+    Returns
+    -------
+    RedirectResponse
+        Response
+    """
     response = RedirectResponse(url=f"{FRONTEND_URL}{route}")
     return response
 
@@ -504,7 +585,7 @@ def get_user_from_token(session: Session, provider: str, token: str) -> User:
     return db_user
 
 
-def delete_auth_cookies(response: Response) -> None:
+def delete_auth_cookies(response: Response, cookies: list[str] = None) -> None:
     """
     Delete auth cookies.
 
@@ -513,9 +594,10 @@ def delete_auth_cookies(response: Response) -> None:
     response : Response
         Response
     """
-    response.delete_cookie(key="access_token")
-    response.delete_cookie(key="refresh_token")
-    response.delete_cookie(key="provider")
+    if cookies is None:
+        cookies = ["access_token", "refresh_token", "provider"]
+    for cookie in cookies:
+        response.delete_cookie(key=cookie)
 
 
 async def get_current_user(
@@ -568,6 +650,64 @@ async def get_current_active_user(
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
+def verify_user_update(session: Session, current_user: User, user_data: dict):
+    """
+    Verify user update data.
+
+    Parameters
+    ----------
+    session : Session
+        Session
+    current_user : User
+        Current user
+    user_data : dict
+        User data
+
+    Returns
+    -------
+    bool
+        True if username changed, else False
+    """
+    if "email" in user_data.keys():
+        raise HTTPException(
+            status_code=400,
+            detail="Email cannot be updated",
+        )
+
+    if "username" in user_data.keys():
+        if not user_data["username"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Username is empty",
+            )
+        if current_user.username != user_data["username"]:
+            if get_user(session, username=user_data["username"]):
+                raise HTTPException(
+                    status_code=400,
+                    detail="Username is invalid",
+                )
+
+    if "password" in user_data.keys() and "confirm_password" in user_data.keys():
+        if not user_data["password"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Password is empty",
+            )
+        if not user_data["confirm_password"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Confirm password is empty",
+            )
+        if user_data["password"] != user_data["confirm_password"]:
+            raise HTTPException(
+                status_code=400,
+                detail="Passwords do not match",
+            )
+        user_data["hashed_password"] = get_password_hash(user_data["password"])
+        del user_data["password"]
+        del user_data["confirm_password"]
 
 
 def get_sent_friend_request_links(current_user: User) -> List[FriendRequest]:
@@ -669,7 +809,7 @@ def get_friends(current_user: User, status: str = "confirmed") -> List[User]:
     Returns
     -------
     List[User]
-        Friends
+        Friend
     """
     return [link.friend_1 for link in current_user.friend_1_links if link.status == status] + [
         link.friend_2 for link in current_user.friend_2_links if link.status == status

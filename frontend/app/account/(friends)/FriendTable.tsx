@@ -1,6 +1,6 @@
 import Image from "next/image";
 import { FriendRequest, Friend } from "@/app/providers";
-import { useProfile } from "../providers";
+import { useAccount } from "../providers";
 import { sendRequest } from "../../lib/api";
 import {
   useGetSentFriendRequests,
@@ -27,7 +27,7 @@ function FriendTable({
   data: FriendRequest[] | Friend[];
   type: "sent" | "incoming" | "friends";
 }) {
-  const { state, dispatch } = useProfile();
+  const { state, dispatch } = useAccount();
   const setUser = useSetUser();
   const getSentFriendRequests = useGetSentFriendRequests();
   const getIncomingFriendRequests = useGetIncomingFriendRequests();

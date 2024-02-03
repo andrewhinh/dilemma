@@ -37,10 +37,17 @@ Create a `.env` file:
    # Get your GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET: https://console.cloud.google.com/apis/credentials
    API_URL=<backend URL here>
    API_KEY=$(openssl rand -hex 32)
-   DB_URL=sqlite:///data.db
    DB_ECHO=True
+   POSTGRES_SERVER=localhost
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=secret
+   POSTGRES_DB=postgres
    OPENAI_API_KEY=<your key here>
    JWT_SECRET=$(openssl rand -hex 32)
+   ACCESS_TOKEN_EXPIRE_MINUTES=11520
+   REFRESH_TOKEN_EXPIRE_MINUTES=43200
+   VERIFY_CODE_EXPIRE_MINUTES=15
+   RECOVERY_CODE_EXPIRE_MINUTES=15
    SMTP_SSL_HOST=smtp.gmail.com
    SMTP_SSL_PORT=587
    SMTP_SSL_SENDER=<your name here>
@@ -49,23 +56,47 @@ Create a `.env` file:
    FRONTEND_URL=<frontend URL here>
    GOOGLE_CLIENT_ID=<your client ID here>
    GOOGLE_CLIENT_SECRET=<your client secret here>
-   echo "API_URL=$API_URL" >> .env
-   echo "API_KEY=$API_KEY" >> .env
-   echo "DB_URL=$DB_URL" >> .env
-   echo "DB_ECHO=$DB_ECHO" >> .env
-   echo "OPENAI_API_KEY=$OPENAI_API_KEY" >> .env
-   echo "JWT_SECRET=$JWT_SECRET" >> .env
-   echo "SMTP_SSL_HOST=$SMTP_SSL_HOST" >> .env
-   echo "SMTP_SSL_PORT=$SMTP_SSL_PORT" >> .env
-   echo "SMTP_SSL_SENDER=$SMTP_SSL_SENDER" >> .env
-   echo "SMTP_SSL_LOGIN=$SMTP_SSL_LOGIN" >> .env
-   echo "SMTP_SSL_PASSWORD=$SMTP_SSL_PASSWORD" >> .env
-   echo "FRONTEND_URL=$FRONTEND_URL" >> .env
-   echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" >> .env
-   echo "GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET" >> .env
+   GOOGLE_REDIRECT_URI=${FRONTEND_URL}/profile
+
+   cat <<EOF > .env.test
+   API_URL=$API_URL
+   API_KEY=$API_KEY
+   DB_ECHO=$DB_ECHO
+   POSTGRES_SERVER=$POSTGRES_SERVER
+   POSTGRES_USER=$POSTGRES_USER
+   POSTGRES_PASSWORD=$POSTGRES_PASSWORD
+   POSTGRES_DB=$POSTGRES_DB
+   OPENAI_API_KEY=$OPENAI_API_KEY
+   JWT_SECRET=$JWT_SECRET
+   ACCESS_TOKEN_EXPIRE_MINUTES=$ACCESS_TOKEN_EXPIRE_MINUTES
+   REFRESH_TOKEN_EXPIRE_MINUTES=$REFRESH_TOKEN_EXPIRE_MINUTES
+   VERIFY_CODE_EXPIRE_MINUTES=$VERIFY_CODE_EXPIRE_MINUTES
+   RECOVERY_CODE_EXPIRE_MINUTES=$RECOVERY_CODE_EXPIRE_MINUTES
+   SMTP_SSL_HOST=$SMTP_SSL_HOST
+   SMTP_SSL_PORT=$SMTP_SSL_PORT
+   SMTP_SSL_SENDER=$SMTP_SSL_SENDER
+   SMTP_SSL_LOGIN=$SMTP_SSL_LOGIN
+   SMTP_SSL_PASSWORD=$SMTP_SSL_PASSWORD
+   FRONTEND_URL=$FRONTEND_URL
+   GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
+   GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
+   GOOGLE_REDIRECT_URI=$GOOGLE_REDIRECT_URI
+   EOF
    ```
 
 ## Development
+
+To generate a database migration script:
+
+   ```bash
+   make script m="<your message here>"
+   ```
+
+To apply a database migration script:
+
+   ```bash
+   make migrate
+   ```
 
 To run all tests:
 
@@ -73,16 +104,16 @@ To run all tests:
    make test
    ```
 
-To generate a database migration script:
-
-   ```bash
-   make script message="<your message here>"
-   ```
-
 To run the backend locally:
 
    ```bash
    make dev
+   ```
+
+To connect to the database:
+
+   ```bash
+   make db
    ```
 
 To start a local linting server:

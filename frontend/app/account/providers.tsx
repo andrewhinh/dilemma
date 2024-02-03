@@ -9,7 +9,6 @@ interface Action {
 }
 
 interface State {
-  getUserInfo: boolean;
   canUpdateUser: boolean;
   updateUserErrorMsg: string;
   updateUserLoading: boolean;
@@ -24,7 +23,6 @@ interface State {
 }
 
 const initialState: State = {
-  getUserInfo: true,
   canUpdateUser: false,
   updateUserErrorMsg: "",
   updateUserLoading: false,
@@ -38,20 +36,18 @@ const initialState: State = {
   deleteFriendLoading: false,
 };
 
-interface ProfileContextType {
+interface AccountContextType {
   state: State;
   dispatch: React.Dispatch<Action>;
 }
 
-const ProfileContext = createContext<ProfileContextType>({
+const AccountContext = createContext<AccountContextType>({
   state: initialState,
   dispatch: () => undefined,
 });
 
 const reducer = (state: State, action: Action) => {
   switch (action.type) {
-    case "SET_GET_USER_INFO":
-      return { ...state, getUserInfo: action.payload };
     case "SET_CAN_UPDATE_USER":
       return { ...state, canUpdateUser: action.payload };
     case "SET_UPDATE_USER_ERROR_MSG":
@@ -79,18 +75,18 @@ const reducer = (state: State, action: Action) => {
   }
 };
 
-export const useProfile = () => {
-  return useContext(ProfileContext);
+export const useAccount = () => {
+  return useContext(AccountContext);
 };
 
-export const ProfileProvider = ({ children }: any) => {
+export const AccountProvider = ({ children }: any) => {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   const contextValue = { state, dispatch };
 
   return (
-    <ProfileContext.Provider value={contextValue}>
+    <AccountContext.Provider value={contextValue}>
       {children}
-    </ProfileContext.Provider>
+    </AccountContext.Provider>
   );
 };

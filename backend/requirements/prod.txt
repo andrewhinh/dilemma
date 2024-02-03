@@ -148,6 +148,8 @@ pandas==2.1.1
     #   dspy-ai
 passlib[bcrypt]==1.7.4
     # via -r requirements/prod.in
+psycopg2==2.9.9
+    # via -r requirements/prod.in
 pyarrow==14.0.2
     # via datasets
 pyasn1==0.5.1

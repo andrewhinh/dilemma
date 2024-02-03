@@ -4,7 +4,7 @@ from fastapi.encoders import jsonable_encoder
 from langchain.chains import LLMChain
 
 from app.dependencies.items import create_llm, create_prompt  # create_dspy
-from app.dependencies.system import verify_api_key
+from app.dependencies.security import verify_api_key
 from app.models.items import DoneResponse, ErrorResponse, WebSocketStreamingCallback
 
 router = APIRouter(

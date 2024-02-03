@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { sendRequest } from "../../lib/api";
 import validator from "validator";
 
+import Header from "../../ui/Header";
 import Form from "../../ui/Form";
 import Input from "../../ui/Input";
 import { FormButton } from "../../ui/Button";
@@ -16,11 +17,14 @@ function ResetPassword() {
 
   const [id, setId] = useState("");
   const [isEmail, setIsEmail] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
+
+  const [verifiedUserMessage, setVerifiedUserMessage] = useState("");
   const [code, setCode] = useState("");
+
   const [verifiedCode, setVerifiedCode] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -46,7 +50,7 @@ function ResetPassword() {
     };
     sendRequest("/forgot-password", "POST", request).then((data) => {
       if (data.detail) setErrorMsg(data.detail);
-      else setIsVerified(true);
+      else setVerifiedUserMessage(data.message);
       setLoading(false);
     });
   };
@@ -64,7 +68,7 @@ function ResetPassword() {
 
     let request = {
       ...(isEmail ? { email: id } : { username: id }),
-      recovery_code: code,
+      code: code,
     };
     sendRequest("/check-code", "POST", request).then((data) => {
       if (data.detail) setErrorMsg(data.detail);
@@ -98,9 +102,9 @@ function ResetPassword() {
 
     let request = {
       ...(isEmail ? { email: id } : { username: id }),
-      recovery_code: code,
       password: password,
       confirm_password: confirmPassword,
+      code: code,
     };
     sendRequest("/reset-password", "POST", request).then((data) => {
       if (data.detail) setErrorMsg(data.detail);
@@ -113,7 +117,10 @@ function ResetPassword() {
 
   return (
     <>
-      {!isVerified ? (
+      <Header>
+        <h1 className="p-2 text-4xl md:text-6xl">Reset Password</h1>
+      </Header>
+      {!verifiedUserMessage ? (
         <Form onSubmit={handleSendEmail}>
           <Input
             type="id"
@@ -134,7 +141,7 @@ function ResetPassword() {
         <Form onSubmit={verifiedCode ? handlePwdSubmit : handleCodeSubmit}>
           {!verifiedCode ? (
             <>
-              <p>A recovery code has been sent to your email.</p>
+              <p>{verifiedUserMessage}</p>
               <Input
                 type="text"
                 name="code"
@@ -176,9 +183,9 @@ function ResetPassword() {
               <p>{verifiedCode ? "Reset Password" : "Verify Code"}</p>
             )}
           </FormButton>
-          {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
         </Form>
       )}
+      {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
     </>
   );
 }
