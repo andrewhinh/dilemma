@@ -1,6 +1,6 @@
 import { Inter } from "next/font/google";
 import type { Metadata } from "next";
-import ConstProvider from "./providers";
+import { ConstProvider } from "./providers";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
@@ -23,7 +23,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased`}>
+      <body
+        className={`${inter.className} antialiased bg-zinc-50 text-zinc-500 flex flex-col min-h-screen`}
+      >
         <ConstProvider>{children}</ConstProvider>
         <Analytics />
         <SpeedInsights />

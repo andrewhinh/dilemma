@@ -5,26 +5,25 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.database import create_db_and_tables
+from app.dependencies.users import WWW_URL
 from app.internal import admin
 from app.routers import items, users
 
-# Create database and tables
-create_db_and_tables()
-
 # Settings
 SETTINGS = get_settings()
+FRONTEND_URL = SETTINGS.frontend_url
 
 # App
 app = FastAPI()
+app.include_router(admin.router)
 app.include_router(users.router)
 app.include_router(items.router)
-app.include_router(admin.router)
+
 
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[SETTINGS.frontend_url, SETTINGS.www_frontend_url],
+    allow_origins=[FRONTEND_URL, WWW_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

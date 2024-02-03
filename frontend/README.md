@@ -13,12 +13,14 @@ Install dependencies:
 Create a `.env` file:
 
    ```bash
-   NEXT_PUBLIC_API_URL=https://localhost/
-   NEXT_PUBLIC_API_PORT=8000
-   NEXT_PUBLIC_APP_URL=https://localhost:3000/?tag=dog&rating=r
-   echo "NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL" >> .env
-   echo "NEXT_PUBLIC_API_PORT=$NEXT_PUBLIC_API_PORT" >> .env
+   NEXT_PUBLIC_APP_URL=<frontend URL here>
+   API_URL=<backend URL here>
+   API_PORT=8000
+   API_KEY=<backend API key here>
    echo "NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL" >> .env
+   echo "API_URL=$API_URL" >> .env
+   echo "API_PORT=$API_PORT" >> .env
+   echo "API_KEY=$API_KEY" >> .env
    ```
 
 ## Development

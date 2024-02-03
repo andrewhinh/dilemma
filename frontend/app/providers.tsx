@@ -1,72 +1,133 @@
 "use client";
 
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useMemo,
-  useCallback,
-} from "react";
-import PropTypes from "prop-types";
+import React, { createContext, useReducer, useContext } from "react";
 
-// Utility function to remove protocol and trailing slash from URL
-const formatUrl = (url: string | undefined) =>
-  url ? url.replace(/(^\w+:|^)\/\//, "").replace(/\/$/, "") : "";
+interface User {
+  joinDate: Date;
+  profilePicture: string;
+  email: string;
+  username: string;
+  fullname: string;
+  accountView: string;
+  isSideBarOpen: boolean;
+  uid: string;
+}
 
-// Only add port for localhost
-const apiUrlBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
-const apiUrlPort = process.env.NEXT_PUBLIC_API_PORT
-  ? `:${process.env.NEXT_PUBLIC_API_PORT}`
-  : "";
-const apiUrl = `${apiUrlBase}${apiUrlPort}`;
+// Type for the user object that is returned from the backend
+interface UserBackend {
+  join_date?: string;
+  profile_picture?: string;
+  email?: string;
+  username?: string;
+  fullname?: string;
+  account_view?: string;
+  is_sidebar_open?: boolean;
+  uid?: string;
+}
 
-const websocketUrlBase = `wss://${formatUrl(process.env.NEXT_PUBLIC_API_URL)}`;
-const websocketUrlPort = process.env.NEXT_PUBLIC_API_PORT
-  ? `:${process.env.NEXT_PUBLIC_API_PORT}`
-  : "";
-const websocketURL = `${websocketUrlBase}${websocketUrlPort}`;
+interface FriendBase {
+  uid: string;
+  join_date: Date;
+  profile_picture?: string;
+  username: string;
+}
 
-// Adjust the context's default value to match the expected types
-const ConstContext = createContext({
-  token: "",
-  setToken: (token: string) => {},
+interface FriendRequest extends FriendBase {
+  request_date: string;
+}
+
+interface Friend extends FriendBase {
+  friendship_date: string;
+}
+
+interface UserWithFriends extends User {
+  sentFriendRequests: FriendRequest[];
+  incomingFriendRequests: FriendRequest[];
+  friends: Friend[];
+}
+
+export type { UserBackend, FriendRequest, Friend };
+
+interface State extends UserWithFriends {
+  isLoggedIn: boolean;
+  getUserInfo: boolean;
+}
+
+const initialState: State = {
+  isLoggedIn: false,
+  getUserInfo: true,
+  joinDate: new Date(),
+  profilePicture: "",
+  email: "",
+  username: "",
+  fullname: "",
+  accountView: "",
+  isSideBarOpen: false,
   uid: "",
-  setUid: (uid: string) => {},
-  apiUrl,
-  websocketURL,
+  sentFriendRequests: [],
+  incomingFriendRequests: [],
+  friends: [],
+};
+
+interface Action {
+  type: string;
+  field?: keyof State;
+  payload?: any;
+}
+
+interface ConstContextType {
+  state: State;
+  dispatch: React.Dispatch<Action>;
+}
+
+const ConstContext = createContext<ConstContextType>({
+  state: initialState,
+  dispatch: () => undefined,
 });
+
+const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case "SET_LOGGED_IN":
+      return { ...state, isLoggedIn: action.payload };
+    case "SET_GET_USER_INFO":
+      return { ...state, getUserInfo: action.payload };
+    case "SET_JOIN_DATE":
+      return { ...state, joinDate: action.payload };
+    case "SET_PROFILE_PICTURE":
+      return { ...state, profilePicture: action.payload };
+    case "SET_EMAIL":
+      return { ...state, email: action.payload };
+    case "SET_USERNAME":
+      return { ...state, username: action.payload };
+    case "SET_FULLNAME":
+      return { ...state, fullname: action.payload };
+    case "SET_ACCOUNT_VIEW":
+      return { ...state, accountView: action.payload };
+    case "SET_IS_SIDEBAR_OPEN":
+      return { ...state, isSideBarOpen: action.payload };
+    case "SET_UID":
+      return { ...state, uid: action.payload };
+    case "SET_SENT_FRIEND_REQUESTS":
+      return { ...state, sentFriendRequests: action.payload };
+    case "SET_INCOMING_FRIEND_REQUESTS":
+      return { ...state, incomingFriendRequests: action.payload };
+    case "SET_FRIENDS":
+      return { ...state, friends: action.payload };
+    default:
+      return state;
+  }
+};
 
 export const useConst = () => useContext(ConstContext);
 
-const ConstProvider = ({ children }: { children: React.ReactNode }) => {
-  const [token, setToken] = useState<string>("");
-  const [uid, setUid] = useState<string>("");
+export const ConstProvider = ({ children }: any) => {
+  const [state, dispatch] = useReducer(reducer, initialState);
 
-  const memoizedSetToken = useCallback(
-    (newToken: string) => setToken(newToken),
-    []
-  );
-  const memoizedSetUid = useCallback((newUid: string) => setUid(newUid), []);
-
-  const value = useMemo(
-    () => ({
-      token,
-      setToken: memoizedSetToken,
-      uid,
-      setUid: memoizedSetUid,
-      apiUrl,
-      websocketURL,
-    }),
-    [token, memoizedSetToken, uid, memoizedSetUid]
-  );
+  const contextValue = { state, dispatch };
 
   return (
-    <ConstContext.Provider value={value}>{children}</ConstContext.Provider>
+    <ConstContext.Provider value={contextValue}>
+      {children}
+    </ConstContext.Provider>
   );
 };
-
-ConstProvider.propTypes = {
-  children: PropTypes.node.isRequired,
-};
-
-export default ConstProvider;

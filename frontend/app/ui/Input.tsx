@@ -6,8 +6,9 @@ interface InputProps {
   value?: string;
   placeholder?: string;
   autoFocus?: boolean;
-  className?: string;
+  accept?: string;
   onChange?: (e: any) => void;
+  className?: string;
 }
 
 function Input({
@@ -17,8 +18,9 @@ function Input({
   value,
   placeholder,
   autoFocus,
-  className,
+  accept,
   onChange,
+  className,
 }: InputProps) {
   const defaultClassName = "h-10 text-zinc-500 bg-slate-300 p-2";
 
@@ -29,8 +31,9 @@ function Input({
       name={name}
       value={value}
       placeholder={placeholder}
-      onChange={onChange}
       autoFocus={autoFocus}
+      accept={accept}
+      onChange={onChange}
       className={
         className ? `${className} ${defaultClassName}` : defaultClassName
       }

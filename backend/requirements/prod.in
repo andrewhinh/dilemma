@@ -4,8 +4,11 @@ passlib[bcrypt]
 python-jose[cryptography]
 python-multipart
 uvicorn[standard]
+pydantic-settings
+sqlmodel
+psycopg2
+Markdown
+alembic
 langchain
 openai
-sqlmodel
 dspy-ai
-pydantic-settings

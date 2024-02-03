@@ -1,31 +1,30 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-
-import { useConst } from "../../providers";
-import { useSendRequest } from "../../lib/utils";
-
+import { sendRequest } from "../../lib/api";
 import validator from "validator";
 
+import Header from "../../ui/Header";
 import Form from "../../ui/Form";
 import Input from "../../ui/Input";
-import Button from "../../ui/Button";
+import { FormButton } from "../../ui/Button";
+import buttonLoading from "@/public/button-loading.svg";
 
 function ResetPassword() {
   const router = useRouter();
-  const { apiUrl } = useConst();
-  const sendRequest = useSendRequest();
-  const forgotPasswordUrl = apiUrl + "/forgot-password";
-  const checkCodeUrl = apiUrl + "/check-code";
-  const resetPasswordUrl = apiUrl + "/reset-password";
 
-  const [email, setEmail] = useState("");
-  const [verifiedEmail, setVerifiedEmail] = useState(false);
+  const [id, setId] = useState("");
+  const [isEmail, setIsEmail] = useState(false);
+
+  const [verifiedUserMessage, setVerifiedUserMessage] = useState("");
   const [code, setCode] = useState("");
+
   const [verifiedCode, setVerifiedCode] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -34,24 +33,26 @@ function ResetPassword() {
     setErrorMsg(null);
     setLoading(true);
 
-    if (email === "") {
-      setErrorMsg("Email cannot be empty");
+    if (id === "") {
+      setErrorMsg("Username or email cannot be empty");
       setLoading(false);
       return;
     }
 
-    if (!validator.isEmail(email)) {
-      setErrorMsg("Email is not valid");
-      setLoading(false);
-      return;
+    if (validator.isEmail(id)) {
+      setIsEmail(true);
+    } else {
+      setIsEmail(false);
     }
 
-    sendRequest(forgotPasswordUrl, "POST", { email: email })
-      .then(() => {
-        setVerifiedEmail(true);
-      })
-      .catch((error) => setErrorMsg(error.detail || error))
-      .finally(() => setLoading(false));
+    let request = {
+      ...(isEmail ? { email: id } : { username: id }),
+    };
+    sendRequest("/forgot-password", "POST", request).then((data) => {
+      if (data.detail) setErrorMsg(data.detail);
+      else setVerifiedUserMessage(data.message);
+      setLoading(false);
+    });
   };
 
   const handleCodeSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -65,12 +66,15 @@ function ResetPassword() {
       return;
     }
 
-    sendRequest(checkCodeUrl, "POST", { email: email, recovery_code: code })
-      .then(() => {
-        setVerifiedCode(true);
-      })
-      .catch((error) => setErrorMsg(error.detail || error))
-      .finally(() => setLoading(false));
+    let request = {
+      ...(isEmail ? { email: id } : { username: id }),
+      code: code,
+    };
+    sendRequest("/check-code", "POST", request).then((data) => {
+      if (data.detail) setErrorMsg(data.detail);
+      else setVerifiedCode(true);
+      setLoading(false);
+    });
   };
 
   const handlePwdSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -96,36 +100,48 @@ function ResetPassword() {
       return;
     }
 
-    sendRequest(resetPasswordUrl, "POST", {
-      email: email,
+    let request = {
+      ...(isEmail ? { email: id } : { username: id }),
       password: password,
       confirm_password: confirmPassword,
-    })
-      .then(() => {
-        router.push("/login");
-      })
-      .catch((error) => setErrorMsg(error.detail || error))
-      .finally(() => setLoading(false));
+      code: code,
+    };
+    sendRequest("/reset-password", "POST", request).then((data) => {
+      if (data.detail) setErrorMsg(data.detail);
+      else {
+        setLoading(false);
+        router.push(data.url);
+      }
+    });
   };
 
   return (
     <>
-      {!verifiedEmail ? (
+      <Header>
+        <h1 className="p-2 text-4xl md:text-6xl">Reset Password</h1>
+      </Header>
+      {!verifiedUserMessage ? (
         <Form onSubmit={handleSendEmail}>
           <Input
-            type="email"
-            name="email"
-            value={email}
-            placeholder="Email"
+            type="id"
+            name="id"
+            placeholder="Username or email"
             autoFocus
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => setId(e.target.value)}
           />
-          <Button type="submit">Send Email</Button>
+          <FormButton>
+            {loading ? (
+              <Image src={buttonLoading} className="w-6 h-6" alt="Send Email" />
+            ) : (
+              <p>Send Email</p>
+            )}
+          </FormButton>
         </Form>
       ) : (
         <Form onSubmit={verifiedCode ? handlePwdSubmit : handleCodeSubmit}>
           {!verifiedCode ? (
             <>
+              <p>{verifiedUserMessage}</p>
               <Input
                 type="text"
                 name="code"
@@ -137,30 +153,39 @@ function ResetPassword() {
             </>
           ) : (
             <>
-              <Input
-                type="password"
-                name="password"
-                value={password}
-                placeholder="New Password"
-                autoFocus
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <Input
-                type="password"
-                name="confirmPassword"
-                value={confirmPassword}
-                placeholder="Confirm New Password"
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
+              <div className="gap-2 flex flex-col text-left">
+                <Input
+                  type="password"
+                  name="password"
+                  value={password}
+                  placeholder="New Password"
+                  autoFocus
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+                <Input
+                  type="password"
+                  name="confirmPassword"
+                  value={confirmPassword}
+                  placeholder="Confirm New Password"
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </div>
             </>
           )}
-          <Button type="submit">
-            {verifiedCode ? "Reset Password" : "Verify Code"}
-          </Button>
-          {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
-          {loading && <p>Loading...</p>}
+          <FormButton>
+            {loading ? (
+              <Image
+                src={buttonLoading}
+                className="w-6 h-6"
+                alt={verifiedCode ? "Reset Password" : "Verify Code"}
+              />
+            ) : (
+              <p>{verifiedCode ? "Reset Password" : "Verify Code"}</p>
+            )}
+          </FormButton>
         </Form>
       )}
+      {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
     </>
   );
 }
