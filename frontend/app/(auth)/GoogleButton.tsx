@@ -10,9 +10,10 @@ import buttonLoading from "@/public/button-loading.svg";
 
 type GoogleButtonProps = {
   action: "login" | "signup";
+  setErrorMsg: (msg: string) => void;
 };
 
-function GoogleButton({ action }: GoogleButtonProps) {
+function GoogleButton({ action, setErrorMsg }: GoogleButtonProps) {
   const router = useRouter();
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -25,7 +26,7 @@ function GoogleButton({ action }: GoogleButtonProps) {
       (data) => {
         setGoogleLoading(false);
         if (data.detail) {
-          router.push("/login");
+          setErrorMsg(data.detail);
         } else {
           router.push(data.url);
         }
@@ -34,21 +35,21 @@ function GoogleButton({ action }: GoogleButtonProps) {
   };
 
   return (
-    <Form onSubmit={handleGoogle}>
-      <Button className="p-3">
-        {googleLoading ? (
-          <Image src={buttonLoading} className="w-6 h-6" alt="Sign Up" />
-        ) : (
-          <div className="flex justify-center items-center gap-2">
-            <Image src={googleIcon} className="w-8 h-8" alt="Google Icon" />
-            <p className="hidden md:block">
-              {action === "login" ? "Login" : "Sign up"} with Google
-            </p>
-            <p className="block md:hidden">Google</p>
-          </div>
-        )}
-      </Button>
-    </Form>
+    <Button className="w-full h-10 p-3" onClick={handleGoogle}>
+      <Image
+        src={buttonLoading}
+        className={`w-6 h-6 ${googleLoading ? "block" : "hidden"}`}
+        alt="Loading..."
+      />
+      <div
+        className={`flex justify-center items-center gap-2 ${
+          googleLoading ? "hidden" : "block"
+        }`}
+      >
+        <Image src={googleIcon} className="w-6 h-6" alt="Google Icon" />
+        <p>Google</p>
+      </div>
+    </Button>
   );
 }
 

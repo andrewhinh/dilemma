@@ -1,6 +1,5 @@
 import { UserBackend, useConst } from "./providers";
 import { sendRequest } from "./lib/api";
-import { useLogOut } from "./lib/callbacks";
 import { useAccount } from "./account/providers";
 
 const useGetUser = () => {
@@ -8,17 +7,19 @@ const useGetUser = () => {
   const getSentFriendRequests = useGetSentFriendRequests();
   const getIncomingFriendRequests = useGetIncomingFriendRequests();
   const getFriends = useGetFriends();
-  const logOut = useLogOut();
 
   return () => {
-    sendRequest("/user/", "GET").then((data) => {
-      if (data.detail) logOut("/login");
-      else {
-        setUser(data);
-        getSentFriendRequests();
-        getIncomingFriendRequests();
-        getFriends();
-      }
+    return new Promise((resolve, reject) => {
+      sendRequest("/user/", "GET").then((data) => {
+        if (data.detail) reject();
+        else {
+          setUser(data);
+          getSentFriendRequests();
+          getIncomingFriendRequests();
+          getFriends();
+          resolve(data);
+        }
+      });
     });
   };
 };
@@ -74,6 +75,10 @@ const useSetUser = () => {
 
   return (data: UserBackend) => {
     constDispatch({ type: "SET_JOIN_DATE", payload: data.join_date });
+    constDispatch({
+      type: "SET_PROVIDER",
+      payload: data.provider,
+    });
     constDispatch({
       type: "SET_PROFILE_PICTURE",
       payload: data.profile_picture,

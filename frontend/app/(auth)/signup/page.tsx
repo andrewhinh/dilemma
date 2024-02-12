@@ -7,7 +7,7 @@ import { useSearchParams } from "next/navigation";
 import validator from "validator";
 
 import { sendRequest } from "../../lib/api";
-import { useToAccount } from "../../lib/callbacks";
+import { useToHome } from "../../lib/callbacks";
 
 import Header from "../../ui/Header";
 import GoogleButton from "../GoogleButton";
@@ -19,7 +19,7 @@ import buttonLoading from "@/public/button-loading.svg";
 
 function Base() {
   const searchParams = useSearchParams();
-  const toAccount = useToAccount();
+  const toHome = useToHome();
 
   const [pic, setPic] = useState<string>("");
   const [email, setEmail] = useState<string>("");
@@ -109,7 +109,7 @@ function Base() {
       code: code,
     };
 
-    toAccount(
+    toHome(
       "/token/signup",
       request,
       () => setLoading(false),
@@ -125,16 +125,19 @@ function Base() {
       <Header>
         <h1 className="p-2 text-4xl md:text-6xl whitespace-nowrap">Sign Up</h1>
       </Header>
-      {!verifiedEmailMessage ? (
-        <div className="flex flex-col gap-8">
-          <GoogleButton action="signup" />
-          <p>--- or ---</p>
-          <Form onSubmit={handleSendEmail}>
-            <ProfilePicture
-              picture={pic}
-              setErrorMsg={setErrorMsg}
-              setPicture={setPic}
-            />
+      <div className="flex flex-col gap-8">
+        <Form
+          onSubmit={handleSendEmail}
+          className={`flex flex-col gap-8 ${
+            verifiedEmailMessage ? "hidden" : "block"
+          }`}
+        >
+          <ProfilePicture
+            picture={pic}
+            setErrorMsg={setErrorMsg}
+            setPicture={setPic}
+          />
+          <div className="gap-4 flex flex-col">
             <div className="gap-2 flex flex-col text-left">
               <Input
                 type="email"
@@ -158,47 +161,45 @@ function Base() {
                 placeholder="Confirm Password"
                 onChange={(e) => setConfirmPassword(e.target.value)}
               />
-              <Link
-                href="/login"
-                className="text-md underline hover:opacity-50 transition 300ms ease-in-out"
-              >
-                Already have an account?
-              </Link>
             </div>
             <FormButton>
-              {loading ? (
-                <Image src={buttonLoading} className="w-6 h-6" alt="Sign Up" />
-              ) : (
-                <p>Sign Up</p>
-              )}
-            </FormButton>
-          </Form>
-        </div>
-      ) : (
-        <Form onSubmit={handleCodeSubmit}>
-          <p>{verifiedEmailMessage}</p>
-          <Input
-            type="text"
-            name="code"
-            value={code}
-            placeholder="Code"
-            autoFocus
-            onChange={(e) => setCode(e.target.value)}
-          />
-          <FormButton>
-            {loading ? (
               <Image
                 src={buttonLoading}
-                className="w-6 h-6"
+                className={`w-6 h-6 ${loading ? "block" : "hidden"}`}
+                alt="Sign Up"
+              />
+              <p className={`${loading ? "hidden" : "block"}`}>Sign Up</p>
+            </FormButton>
+            <p>--- or ---</p>
+            <GoogleButton action="signup" setErrorMsg={setErrorMsg} />
+          </div>
+        </Form>
+        <Form
+          onSubmit={handleCodeSubmit}
+          className={`${verifiedEmailMessage ? "block" : "hidden"}`}
+        >
+          <p>{verifiedEmailMessage}</p>
+          <div className="gap-4 flex flex-col">
+            <Input
+              type="text"
+              name="code"
+              value={code}
+              placeholder="Code"
+              autoFocus
+              onChange={(e) => setCode(e.target.value)}
+            />
+            <FormButton>
+              <Image
+                src={buttonLoading}
+                className={`w-6 h-6 ${loading ? "block" : "hidden"}`}
                 alt="Verify Code"
               />
-            ) : (
-              <p>Verify Code</p>
-            )}
-          </FormButton>
+              <p className={`${loading ? "hidden" : "block"}`}>Verify Code</p>
+            </FormButton>
+          </div>
         </Form>
-      )}
-      {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
+        {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
+      </div>
     </>
   );
 }

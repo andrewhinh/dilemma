@@ -100,7 +100,7 @@ function ProfilePicture({
           alt="Profile Picture"
           width={96}
           height={96}
-          className={`rounded-full ${picture ? "w-24 h-24" : "w-8 h-8"}`}
+          className={`rounded-full ${!picture && "w-8 h-8"}`}
         />
       </label>
       <Input

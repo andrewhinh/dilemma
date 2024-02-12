@@ -115,13 +115,13 @@ async def verify_email(
         session.commit()
 
         body = f"""
-    ## Welcome!
+## Welcome!
 
-    Head back to the website and enter the following code to continue:
+Head back to the website and enter the following code to continue:
 
-    ## {verify_code.code}
+## {verify_code.code}
 
-    If you did not request this code, please ignore this email.
+If you did not request this code, please ignore this email.
         """
         send_email(db_user.email, subject="Verify Email", body=body)
 
@@ -192,9 +192,9 @@ async def login(
     db_user = UserCreate.model_validate(user)
 
     if db_user.email:
-        verified_user = get_user(session, provider, email=db_user.email)
+        verified_user = get_user(session, disabled=False, provider=provider, email=db_user.email)
     elif db_user.username:
-        verified_user = get_user(session, provider, username=db_user.username)
+        verified_user = get_user(session, disabled=False, provider=provider, username=db_user.username)
     else:
         raise HTTPException(
             status_code=400,
@@ -284,8 +284,6 @@ async def auth_google(
     refresh_token = tokens["refresh_token"]
     enc_refresh_token = google_encode_refresh_token(refresh_token)
 
-    if not access_token:
-        raise CREDENTIALS_EXCEPTION
     user_info = google_get_user_info_from_access_token(access_token)
     db_user = google_get_user_from_user_info(session, user_info)
 
@@ -456,9 +454,9 @@ async def forgot_password(
     db_user = UserUpdate.model_validate(user)
 
     if db_user.email:
-        verified_user = get_user(session, provider, email=db_user.email)
+        verified_user = get_user(session, disabled=False, provider=provider, email=db_user.email)
     elif db_user.username:
-        verified_user = get_user(session, provider, username=db_user.username)
+        verified_user = get_user(session, disabled=False, provider=provider, username=db_user.username)
     else:
         raise HTTPException(
             status_code=400,
@@ -473,13 +471,13 @@ async def forgot_password(
         session.commit()
 
         body = f"""
-    ## You've requested a password reset.
+## You've requested a password reset.
 
-    Head back to the website and enter the following code to continue:
+Head back to the website and enter the following code to continue:
 
-    ## {recovery_code.code}
+## {recovery_code.code}
 
-    If you did not request this code, please ignore this email.
+If you did not request this code, please ignore this email.
         """
         send_email(verified_user.email, subject="Password Recovery", body=body)
 
@@ -510,9 +508,9 @@ async def check_code(
     db_user = UserUpdate.model_validate(user)
 
     if db_user.email:
-        verified_user = get_user(session, provider, email=db_user.email)
+        verified_user = get_user(session, disabled=False, provider=provider, email=db_user.email)
     elif db_user.username:
-        verified_user = get_user(session, provider, username=db_user.username)
+        verified_user = get_user(session, disabled=False, provider=provider, username=db_user.username)
     else:
         raise HTTPException(
             status_code=400,
@@ -549,9 +547,9 @@ async def reset_password(
     db_user = UserUpdate.model_validate(user)
 
     if db_user.email:
-        verified_user = get_user(session, provider, email=db_user.email)
+        verified_user = get_user(session, disabled=False, provider=provider, email=db_user.email)
     elif db_user.username:
-        verified_user = get_user(session, provider, username=db_user.username)
+        verified_user = get_user(session, disabled=False, provider=provider, username=db_user.username)
     else:
         raise HTTPException(
             status_code=400,
@@ -624,13 +622,13 @@ async def verify_email_update(
         session.commit()
 
         body = f"""
-    ## You've requested to update your email.
+## You've requested to update your email.
 
-    Head back to the website and enter the following code to continue:
+Head back to the website and enter the following code to continue:
 
-    ## {verify_code.code}
+## {verify_code.code}
 
-    If you did not request this code, please ignore this email.
+If you did not request this code, please ignore this email.
         """
         send_email(db_user.email, subject="Verify Email", body=body)
 
@@ -748,7 +746,7 @@ async def send_friend_request(
     if current_user.username == db_friend.username:
         raise HTTPException(status_code=400, detail="Cannot send request to yourself")
 
-    friend = get_user(session, username=db_friend.username)
+    friend = get_user(session, disabled=False, username=db_friend.username)
     if friend:
         if friend in get_sent_friend_requests(current_user):
             raise HTTPException(status_code=400, detail="Friend request already sent")
@@ -779,7 +777,7 @@ async def revert_friend_request(
     if current_user.username == db_friend.username:
         raise HTTPException(status_code=400, detail="Cannot send request to yourself")
 
-    friend = get_user(session, username=db_friend.username)
+    friend = get_user(session, disabled=False, username=db_friend.username)
     if friend:
         friend_request_links = get_sent_friend_request_links(current_user)
         friend_requests = get_sent_friend_requests(current_user)
@@ -812,7 +810,7 @@ async def accept_friend_request(
     if current_user.username == db_friend.username:
         raise HTTPException(status_code=400, detail="Cannot accept request from yourself")
 
-    friend = get_user(session, username=db_friend.username)
+    friend = get_user(session, disabled=False, username=db_friend.username)
     if friend:
         friend_request_links = get_incoming_friend_request_links(current_user)
         friend_requests = get_incoming_friend_requests(current_user)
@@ -847,7 +845,7 @@ async def decline_friend_request(
     if current_user.username == db_friend.username:
         raise HTTPException(status_code=400, detail="Cannot decline request from yourself")
 
-    friend = get_user(session, username=db_friend.username)
+    friend = get_user(session, disabled=False, username=db_friend.username)
     if friend:
         friend_request_links = get_incoming_friend_request_links(current_user)
         friend_requests = get_incoming_friend_requests(current_user)
@@ -942,7 +940,7 @@ async def delete_friend(
     if current_user.username == db_friend.username:
         raise HTTPException(status_code=400, detail="Cannot delete yourself as a friend")
 
-    friend = get_user(session, username=db_friend.username)
+    friend = get_user(session, disabled=False, username=db_friend.username)
     if friend:
         friend_links = get_friend_links(current_user)
         friends = get_friends(current_user)

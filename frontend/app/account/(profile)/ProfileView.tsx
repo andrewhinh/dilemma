@@ -11,7 +11,7 @@ import Input from "../../ui/Input";
 import { FormButton } from "../../ui/Button";
 import buttonLoading from "@/public/button-loading.svg";
 
-function ProfileView() {
+function ProfileView({ show }: { show: boolean }) {
   const { state: constState, dispatch: constDispatch } = useConst();
   const { state: accountState, dispatch: accountDispatch } = useAccount();
   const updateUser = useUpdateUser();
@@ -24,7 +24,7 @@ function ProfileView() {
   const [tempFullname, setTempFullname] = useState(fullname);
 
   return (
-    <Main className="relative z-0 gap-16">
+    <Main className={`relative z-0 gap-16 ${show ? "block" : "hidden"}`}>
       <Form
         onSubmit={(e) =>
           updateUser(e, {
@@ -141,15 +141,14 @@ function ProfileView() {
               });
             }}
           >
-            {updateUserLoading ? (
-              <Image
-                src={buttonLoading}
-                className="w-6 h-6"
-                alt="Update Profile"
-              />
-            ) : (
-              <p>Update Profile</p>
-            )}
+            <Image
+              src={buttonLoading}
+              className={`w-6 h-6 ${updateUserLoading ? "block" : "hidden"}`}
+              alt="Update Profile"
+            />
+            <p className={updateUserLoading ? "hidden" : "block"}>
+              Update Profile
+            </p>
           </FormButton>
         </div>
         {updateUserErrorMsg && (

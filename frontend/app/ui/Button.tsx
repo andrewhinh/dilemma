@@ -34,7 +34,7 @@ function Button({ children, type, className, onClick, noHover }: ButtonProps) {
 }
 
 function FormButton({ children, className, onClick, noHover }: ButtonProps) {
-  let classNames = ["h-10 py-2 px-4"];
+  let classNames = ["w-full h-10 px-4 py-2"];
   if (className) classNames.push(className);
 
   return (

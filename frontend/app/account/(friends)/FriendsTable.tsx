@@ -226,13 +226,22 @@ function FriendTable({
               <div className="flex flex-1 gap-2 justify-start items-center">
                 <div className="group relative inline-block">
                   <Image
-                    src={
-                      row.profile_picture ? row.profile_picture : profileOutline
-                    }
+                    src={row.profile_picture || ""}
                     width={40}
                     height={40}
                     alt="Profile Picture"
-                    className="rounded-full w-8 h-8 md:w-10 md:h-10"
+                    className={`rounded-full w-8 h-8 md:w-10 md:h-10 ${
+                      row.profile_picture ? "block" : "hidden"
+                    }`}
+                  />
+                  <Image
+                    src={profileOutline}
+                    width={40}
+                    height={40}
+                    alt="Profile Picture"
+                    className={`rounded-full w-8 h-8 md:w-10 md:h-10 ${
+                      row.profile_picture ? "hidden" : "block"
+                    }`}
                   />
                   <div className="w-24 md:w-44 absolute bottom-full left-1/2 transform -translate-x-1/2 -translate-y-2 bg-cyan-200 text-zinc-500 p-2 rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <p className="flex md:hidden justify-center font-semibold">
@@ -274,15 +283,20 @@ function FriendTable({
                       type="submit"
                       className="bg-rose-500 rounded-full w-8 h-8 md:w-10 md:h-10"
                     >
-                      {revertRequestLoading ? (
-                        <Image
-                          className="w-4 h-4"
-                          src={buttonLoading}
-                          alt="Revert"
-                        />
-                      ) : (
-                        <Image className="w-4 h-4" src={x} alt="Revert" />
-                      )}
+                      <Image
+                        className={`w-4 h-4 ${
+                          revertRequestLoading ? "block" : "hidden"
+                        }`}
+                        src={buttonLoading}
+                        alt="Revert"
+                      />
+                      <Image
+                        className={`w-4 h-4 ${
+                          revertRequestLoading ? "hidden" : "block"
+                        }`}
+                        src={x}
+                        alt="Revert"
+                      />
                     </Button>
                   </Form>
                 )}
@@ -299,15 +313,20 @@ function FriendTable({
                         type="submit"
                         className="rounded-full w-8 h-8 md:w-10 md:h-10"
                       >
-                        {acceptRequestLoading ? (
-                          <Image
-                            className="w-4 h-4"
-                            src={buttonLoading}
-                            alt="Accept"
-                          />
-                        ) : (
-                          <Image className="w-4 h-4" src={check} alt="Accept" />
-                        )}
+                        <Image
+                          className={`w-4 h-4 ${
+                            acceptRequestLoading ? "block" : "hidden"
+                          }`}
+                          src={buttonLoading}
+                          alt="Accept"
+                        />
+                        <Image
+                          className={`w-4 h-4 ${
+                            acceptRequestLoading ? "hidden" : "block"
+                          }`}
+                          src={check}
+                          alt="Accept"
+                        />
                       </Button>
                     </Form>
                     <Form onSubmit={(e) => handleDeclineFriendRequest(e)}>
@@ -321,15 +340,20 @@ function FriendTable({
                         type="submit"
                         className="bg-rose-500 rounded-full w-8 h-8 md:w-10 md:h-10"
                       >
-                        {declineRequestLoading ? (
-                          <Image
-                            className="w-4 h-4"
-                            src={buttonLoading}
-                            alt="Decline"
-                          />
-                        ) : (
-                          <Image className="w-4 h-4" src={x} alt="Decline" />
-                        )}
+                        <Image
+                          className={`w-4 h-4 ${
+                            declineRequestLoading ? "block" : "hidden"
+                          }`}
+                          src={buttonLoading}
+                          alt="Decline"
+                        />
+                        <Image
+                          className={`w-4 h-4 ${
+                            declineRequestLoading ? "hidden" : "block"
+                          }`}
+                          src={x}
+                          alt="Decline"
+                        />
                       </Button>
                     </Form>
                   </>
@@ -346,15 +370,20 @@ function FriendTable({
                       type="submit"
                       className="bg-rose-500 rounded-full w-8 h-8 md:w-10 md:h-10"
                     >
-                      {deleteFriendLoading ? (
-                        <Image
-                          className="w-4 h-4"
-                          src={buttonLoading}
-                          alt="Delete"
-                        />
-                      ) : (
-                        <Image className="w-4 h-4" src={trash} alt="Delete" />
-                      )}
+                      <Image
+                        className={`w-4 h-4 ${
+                          deleteFriendLoading ? "block" : "hidden"
+                        }`}
+                        src={buttonLoading}
+                        alt="Delete"
+                      />
+                      <Image
+                        className={`w-4 h-4 ${
+                          deleteFriendLoading ? "hidden" : "block"
+                        }`}
+                        src={trash}
+                        alt="Delete"
+                      />
                     </Button>
                   </Form>
                 )}

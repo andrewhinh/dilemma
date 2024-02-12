@@ -120,8 +120,11 @@ function ResetPassword() {
       <Header>
         <h1 className="p-2 text-4xl md:text-6xl">Reset Password</h1>
       </Header>
-      {!verifiedUserMessage ? (
-        <Form onSubmit={handleSendEmail}>
+      <div className="flex flex-col gap-8">
+        <Form
+          onSubmit={handleSendEmail}
+          className={!verifiedUserMessage && !verifiedCode ? "block" : "hidden"}
+        >
           <Input
             type="id"
             name="id"
@@ -130,62 +133,68 @@ function ResetPassword() {
             onChange={(e) => setId(e.target.value)}
           />
           <FormButton>
-            {loading ? (
-              <Image src={buttonLoading} className="w-6 h-6" alt="Send Email" />
-            ) : (
-              <p>Send Email</p>
-            )}
+            <Image
+              src={buttonLoading}
+              className={`w-6 h-6 ${loading ? "block" : "hidden"}`}
+              alt="Send Email"
+            />
+            <p>Send Email</p>
           </FormButton>
         </Form>
-      ) : (
-        <Form onSubmit={verifiedCode ? handlePwdSubmit : handleCodeSubmit}>
-          {!verifiedCode ? (
-            <>
-              <p>{verifiedUserMessage}</p>
-              <Input
-                type="text"
-                name="code"
-                value={code}
-                placeholder="Code"
-                autoFocus
-                onChange={(e) => setCode(e.target.value)}
-              />
-            </>
-          ) : (
-            <>
-              <div className="gap-2 flex flex-col text-left">
-                <Input
-                  type="password"
-                  name="password"
-                  value={password}
-                  placeholder="New Password"
-                  autoFocus
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <Input
-                  type="password"
-                  name="confirmPassword"
-                  value={confirmPassword}
-                  placeholder="Confirm New Password"
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                />
-              </div>
-            </>
-          )}
+        <Form
+          onSubmit={handleCodeSubmit}
+          className={verifiedUserMessage && !verifiedCode ? "block" : "hidden"}
+        >
+          <p>{verifiedUserMessage}</p>
+          <Input
+            type="text"
+            name="code"
+            value={code}
+            placeholder="Code"
+            autoFocus
+            onChange={(e) => setCode(e.target.value)}
+          />
           <FormButton>
-            {loading ? (
-              <Image
-                src={buttonLoading}
-                className="w-6 h-6"
-                alt={verifiedCode ? "Reset Password" : "Verify Code"}
-              />
-            ) : (
-              <p>{verifiedCode ? "Reset Password" : "Verify Code"}</p>
-            )}
+            <Image
+              src={buttonLoading}
+              className={`w-6 h-6 ${loading ? "block" : "hidden"}`}
+              alt="Verify Code"
+            />
+            <p>Verify Code</p>
           </FormButton>
         </Form>
-      )}
-      {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
+        <Form
+          onSubmit={handlePwdSubmit}
+          className={verifiedUserMessage && verifiedCode ? "block" : "hidden"}
+        >
+          <div className="gap-2 flex flex-col text-left">
+            <Input
+              type="password"
+              name="password"
+              value={password}
+              placeholder="New Password"
+              autoFocus
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <Input
+              type="password"
+              name="confirmPassword"
+              value={confirmPassword}
+              placeholder="Confirm New Password"
+              onChange={(e) => setConfirmPassword(e.target.value)}
+            />
+          </div>
+          <FormButton>
+            <Image
+              src={buttonLoading}
+              className={`w-6 h-6 ${loading ? "block" : "hidden"}`}
+              alt="Reset Password"
+            />
+            <p>Reset Password</p>
+          </FormButton>
+        </Form>
+        {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
+      </div>
     </>
   );
 }

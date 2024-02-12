@@ -37,8 +37,6 @@ test:
 
 # Run app
 dev:
-	make script m="init"
-	make migrate
 	python app/main.py
 
 # Connect to database
