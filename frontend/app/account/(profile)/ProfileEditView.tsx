@@ -12,12 +12,12 @@ import Input from "../../ui/Input";
 import { FormButton } from "../../ui/Button";
 import buttonLoading from "@/public/button-loading.svg";
 
-function EditView() {
+function EditView({ show }: { show: boolean }) {
   const { state: constState, dispatch: constDispatch } = useConst();
   const { state: accountState, dispatch: accountDispatch } = useAccount();
   const logOut = useLogOut();
 
-  const { email } = constState;
+  const { email, provider } = constState;
   const { canUpdateUser } = accountState;
 
   const [tempEmail, setTempEmail] = useState(email);
@@ -167,90 +167,105 @@ function EditView() {
   };
 
   return (
-    <Main className="relative z-0 gap-16">
-      {!verifiedEmailMessage ? (
-        <Form onSubmit={handleSendEmail}>
-          <div className="flex flex-col gap-4 w-48 md:w-60">
-            <div className="flex flex-col gap-2">
-              <Input
-                id="email"
-                type="text"
-                value={tempEmail}
-                placeholder="Email"
-                onChange={(e) => {
-                  setTempEmail(e.target.value);
-                  if (e.target.value !== email) {
-                    if (e.target.value === "" && email === null) {
-                      accountDispatch({
-                        type: "SET_CAN_UPDATE_USER",
-                        payload: false,
-                      });
-                    } else {
-                      accountDispatch({
-                        type: "SET_CAN_UPDATE_USER",
-                        payload: true,
-                      });
-                    }
-                  } else {
+    <Main className={`relative z-0 gap-16 ${show ? "block" : "hidden"}`}>
+      <Input
+        id="showEmail"
+        type="text"
+        value={tempEmail}
+        placeholder="Email"
+        readonly
+        className={`w-48 md:w-60 ${
+          provider !== "dilemma" ? "block" : "hidden"
+        }`}
+      />
+      <Form
+        onSubmit={handleSendEmail}
+        className={
+          provider === "dilemma" && !verifiedEmailMessage ? "block" : "hidden"
+        }
+      >
+        <div className="flex flex-col gap-4 w-48 md:w-60">
+          <div className="flex flex-col gap-2">
+            <Input
+              id="writeEmail"
+              type="text"
+              value={tempEmail}
+              placeholder="Email"
+              onChange={(e) => {
+                setTempEmail(e.target.value);
+                if (e.target.value !== email) {
+                  if (e.target.value === "" && email === null) {
                     accountDispatch({
                       type: "SET_CAN_UPDATE_USER",
                       payload: false,
                     });
+                  } else {
+                    accountDispatch({
+                      type: "SET_CAN_UPDATE_USER",
+                      payload: true,
+                    });
                   }
-                }}
-              />
-            </div>
-            <FormButton
-              noHover={canUpdateUser}
-              onClick={() => {
-                constDispatch({
-                  type: "SET_EMAIL",
-                  payload: tempEmail,
-                });
+                } else {
+                  accountDispatch({
+                    type: "SET_CAN_UPDATE_USER",
+                    payload: false,
+                  });
+                }
               }}
-            >
-              {updateEmailLoading ? (
-                <Image
-                  src={buttonLoading}
-                  className="w-6 h-6"
-                  alt="Update Email"
-                />
-              ) : (
-                <p>Update Email</p>
-              )}
-            </FormButton>
-            {updateEmailErrorMsg && (
-              <p className="text-rose-500">{updateEmailErrorMsg}</p>
-            )}
+            />
           </div>
-        </Form>
-      ) : (
-        <Form onSubmit={handleCodeSubmit}>
-          <p>{verifiedEmailMessage}</p>
-          <Input
-            type="text"
-            name="code"
-            value={code}
-            placeholder="Code"
-            autoFocus
-            onChange={(e) => setCode(e.target.value)}
-          />
-          <FormButton>
-            {updateEmailLoading ? (
-              <Image
-                src={buttonLoading}
-                className="w-6 h-6"
-                alt="Verify Code"
-              />
-            ) : (
-              <p>Verify Code</p>
-            )}
+          <FormButton
+            noHover={canUpdateUser}
+            onClick={() => {
+              constDispatch({
+                type: "SET_EMAIL",
+                payload: tempEmail,
+              });
+            }}
+          >
+            <Image
+              src={buttonLoading}
+              className={`w-6 h-6 ${updateEmailLoading ? "block" : "hidden"}`}
+              alt="Update Email"
+            />
+            <p className={`${updateEmailLoading ? "hidden" : "block"}`}>
+              Update Email
+            </p>
           </FormButton>
           {updateEmailErrorMsg && (
             <p className="text-rose-500">{updateEmailErrorMsg}</p>
           )}
-        </Form>
-      )}
+        </div>
+      </Form>
+      <Form
+        onSubmit={handleCodeSubmit}
+        className={
+          provider === "dilemma" && verifiedEmailMessage ? "block" : "hidden"
+        }
+      >
+        <p>{verifiedEmailMessage}</p>
+        <Input
+          type="text"
+          name="code"
+          value={code}
+          placeholder="Code"
+          autoFocus
+          onChange={(e) => setCode(e.target.value)}
+        />
+        <FormButton>
+          <Image
+            src={buttonLoading}
+            className={`w-6 h-6 ${updateEmailLoading ? "block" : "hidden"}`}
+            alt="Verify Code"
+          />
+          <p className={`${updateEmailLoading ? "hidden" : "block"}`}>
+            Verify Code
+          </p>
+        </FormButton>
+        {updateEmailErrorMsg && (
+          <p className="text-rose-500">{updateEmailErrorMsg}</p>
+        )}
+      </Form>
       <Form onSubmit={(e) => handleUpdatePassword(e)}>
         <div className="flex flex-col gap-4 w-48 md:w-60">
           <div className="flex flex-col gap-2">
@@ -270,11 +285,14 @@ function EditView() {
             />
           </div>
           <FormButton>
-            {pwdLoading ? (
-              <Image src={buttonLoading} className="w-6 h-6" alt="Update" />
-            ) : (
-              <p>Update Password</p>
-            )}
+            <Image
+              src={buttonLoading}
+              className={`w-6 h-6 ${pwdLoading ? "block" : "hidden"}`}
+              alt="Update"
+            />
+            <p className={`${pwdLoading ? "hidden" : "block"}`}>
+              Update Password
+            </p>
           </FormButton>
         </div>
         {pwdErrorMsg && <p className="text-rose-500">{pwdErrorMsg}</p>}
@@ -300,11 +318,14 @@ function EditView() {
             />
           </div>
           <FormButton className="bg-rose-500">
-            {deleteAccountLoading ? (
-              <Image src={buttonLoading} className="w-6 h-6" alt="Delete" />
-            ) : (
-              <p>Delete Account</p>
-            )}
+            <Image
+              src={buttonLoading}
+              className={`w-6 h-6 ${deleteAccountLoading ? "block" : "hidden"}`}
+              alt="Delete"
+            />
+            <p className={`${deleteAccountLoading ? "hidden" : "block"}`}>
+              Delete Account
+            </p>
           </FormButton>
         </div>
         {deleteAccountErrorMsg && (

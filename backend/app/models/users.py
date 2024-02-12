@@ -34,6 +34,8 @@ class UserBase(SQLModel):
     """User base model."""
 
     join_date: datetime = Field(default_factory=datetime.utcnow)
+    provider: str = Field(default="dilemma", index=True)
+
     profile_picture: Optional[str] = Field(default=None)
     email: Optional[str] = Field(default=None, index=True)
     username: Optional[str] = Field(default=None, index=True)
@@ -49,7 +51,6 @@ class User(UserBase, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     uid: UUID = Field(default_factory=lambda: uuid4(), unique=True)
-    provider: str = Field(default="dilemma", index=True)
 
     hashed_password: Optional[str] = Field(default=None)
     refresh_token: Optional[str] = Field(default=None)

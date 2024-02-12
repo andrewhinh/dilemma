@@ -4,6 +4,7 @@ import React, { createContext, useReducer, useContext } from "react";
 
 interface User {
   joinDate: Date;
+  provider: string;
   profilePicture: string;
   email: string;
   username: string;
@@ -16,6 +17,7 @@ interface User {
 // Type for the user object that is returned from the backend
 interface UserBackend {
   join_date?: string;
+  provider?: string;
   profile_picture?: string;
   email?: string;
   username?: string;
@@ -40,23 +42,27 @@ interface Friend extends FriendBase {
   friendship_date: string;
 }
 
-interface UserWithFriends extends User {
+interface CompleteUser extends User {
   sentFriendRequests: FriendRequest[];
   incomingFriendRequests: FriendRequest[];
   friends: Friend[];
+  provider: string;
 }
 
 export type { UserBackend, FriendRequest, Friend };
 
-interface State extends UserWithFriends {
+interface State extends CompleteUser {
+  verifiedLoggedOut: boolean;
   isLoggedIn: boolean;
   getUserInfo: boolean;
 }
 
 const initialState: State = {
+  verifiedLoggedOut: false,
   isLoggedIn: false,
   getUserInfo: true,
   joinDate: new Date(),
+  provider: "",
   profilePicture: "",
   email: "",
   username: "",
@@ -87,12 +93,16 @@ const ConstContext = createContext<ConstContextType>({
 
 const reducer = (state: State, action: Action): State => {
   switch (action.type) {
+    case "SET_VERIFIED_LOGGED_OUT":
+      return { ...state, verifiedLoggedOut: action.payload };
     case "SET_LOGGED_IN":
       return { ...state, isLoggedIn: action.payload };
     case "SET_GET_USER_INFO":
       return { ...state, getUserInfo: action.payload };
     case "SET_JOIN_DATE":
       return { ...state, joinDate: action.payload };
+    case "SET_PROVIDER":
+      return { ...state, provider: action.payload };
     case "SET_PROFILE_PICTURE":
       return { ...state, profilePicture: action.payload };
     case "SET_EMAIL":

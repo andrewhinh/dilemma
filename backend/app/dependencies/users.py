@@ -51,7 +51,9 @@ CREDENTIALS_EXCEPTION = HTTPException(
 )
 
 
-def get_user(session: Session, provider: str = None, email: str = None, username: str = None) -> User | None:
+def get_user(
+    session: Session, disabled: bool = None, provider: str = None, email: str = None, username: str = None
+) -> User | None:
     """
     Get user.
 
@@ -72,6 +74,10 @@ def get_user(session: Session, provider: str = None, email: str = None, username
         User if exists, else None
     """
     statement = select(User)
+
+    if disabled is not None:
+        statement = statement.where(User.disabled == disabled)
+
     if provider:
         statement = statement.where(User.provider == provider)
 
@@ -444,7 +450,11 @@ def google_get_user_info_from_access_token(access_token: str) -> dict[str, str]:
         raise CREDENTIALS_EXCEPTION from None
 
 
-def google_get_user_from_user_info(session: Session, user_info: dict) -> User:
+def google_get_user_from_user_info(
+    session: Session,
+    user_info: dict,
+    disabled: bool = None,
+) -> User:
     """
     Get user from Google access token.
 
@@ -467,7 +477,9 @@ def google_get_user_from_user_info(session: Session, user_info: dict) -> User:
     """
     provider = "google"
     email = user_info.get("email")
-    return get_user(session, provider, email)
+    if disabled is not None:
+        return get_user(session, disabled=disabled, provider=provider, email=email)
+    return get_user(session, provider=provider, email=email)
 
 
 def set_redirect_fe(response: RedirectResponse, route: str) -> RedirectResponse:
@@ -579,7 +591,7 @@ def get_user_from_token(session: Session, provider: str, token: str) -> User:
     else:
         raise CREDENTIALS_EXCEPTION
 
-    db_user = get_user(session, provider, email)
+    db_user = get_user(session, disabled=False, provider=provider, email=email)
     if db_user is None:
         raise CREDENTIALS_EXCEPTION
     return db_user
@@ -710,7 +722,7 @@ def verify_user_update(session: Session, current_user: User, user_data: dict):
         del user_data["confirm_password"]
 
 
-def get_sent_friend_request_links(current_user: User) -> List[FriendRequest]:
+def get_sent_friend_request_links(current_user: User, status: str = "pending") -> List[FriendRequest]:
     """
     Get sent friend request links.
 
@@ -724,7 +736,7 @@ def get_sent_friend_request_links(current_user: User) -> List[FriendRequest]:
     List[FriendRequest]
         Sent friend request links
     """
-    return [link for link in current_user.sender_links if link.status == "pending"]
+    return [link for link in current_user.sender_links if link.status == status]
 
 
 def get_sent_friend_requests(current_user: User, status: str = "pending") -> List[User]:
@@ -744,7 +756,7 @@ def get_sent_friend_requests(current_user: User, status: str = "pending") -> Lis
     return [link.receiver for link in current_user.sender_links if link.status == status]
 
 
-def get_incoming_friend_request_links(current_user: User) -> List[FriendRequest]:
+def get_incoming_friend_request_links(current_user: User, status: str = "pending") -> List[FriendRequest]:
     """
     Get incoming friend request links.
 
@@ -758,7 +770,7 @@ def get_incoming_friend_request_links(current_user: User) -> List[FriendRequest]
     List[FriendRequest]
         Incoming friend request links
     """
-    return [link for link in current_user.receiver_links if link.status == "pending"]
+    return [link for link in current_user.receiver_links if link.status == status]
 
 
 def get_incoming_friend_requests(current_user: User, status: str = "pending") -> List[User]:
@@ -778,7 +790,7 @@ def get_incoming_friend_requests(current_user: User, status: str = "pending") ->
     return [link.sender for link in current_user.receiver_links if link.status == status]
 
 
-def get_friend_links(current_user: User) -> List[Friend]:
+def get_friend_links(current_user: User, status: str = "confirmed") -> List[Friend]:
     """
     Get friends links.
 
@@ -792,8 +804,8 @@ def get_friend_links(current_user: User) -> List[Friend]:
     List[Friend]
         Friend links
     """
-    return [link for link in current_user.friend_1_links if link.status == "confirmed"] + [
-        link for link in current_user.friend_2_links if link.status == "confirmed"
+    return [link for link in current_user.friend_1_links if link.status == status] + [
+        link for link in current_user.friend_2_links if link.status == status
     ]
 
 

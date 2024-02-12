@@ -20,15 +20,6 @@ function Spec() {
           Experience a new way to learn.
         </p>
       </div>
-      <div className="button gap-2 flex flex-col md:flex-row items-center justify-center">
-        <Link href="/signup">
-          <Button className="px-4 py-2 whitespace-nowrap">Join Now</Button>
-        </Link>
-        <p className="text-base md:text-lg">or</p>
-        <Link href="/login">
-          <Button className="px-4 py-2">Login</Button>
-        </Link>
-      </div>
     </>
   );
 }

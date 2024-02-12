@@ -9,22 +9,21 @@ import Main from "../../ui/Main";
 import Form from "../../ui/Form";
 import Input from "../../ui/Input";
 import { FormButton } from "../../ui/Button";
-import FriendTable from "./FriendTable";
+import FriendsTable from "./FriendsTable";
 import buttonLoading from "@/public/button-loading.svg";
 
-function FriendView() {
+function FriendView({ show }: { show: boolean }) {
   const { state: constState } = useConst();
   const { state: accountState } = useAccount();
   const setUser = useSetUser();
   const getSentFriendRequests = useGetSentFriendRequests();
 
-  const { sentFriendRequests, incomingFriendRequests, friends } = constState;
+  const { sentFriendRequests, incomingFriendRequests } = constState;
 
   const {
     revertRequestErrorMsg,
     acceptRequestErrorMsg,
     declineRequestErrorMsg,
-    deleteFriendErrorMsg,
   } = accountState;
 
   const [requestUsername, setRequestUsername] = useState("");
@@ -60,7 +59,7 @@ function FriendView() {
   };
 
   return (
-    <Main className="relative z-0 gap-16">
+    <Main className={`relative z-0 gap-16 ${show ? "block" : "hidden"}`}>
       <Form onSubmit={(e) => handlesendFriendRequest(e)}>
         <div className="flex flex-col gap-4 w-48 md:w-60">
           <Input
@@ -71,15 +70,14 @@ function FriendView() {
             onChange={(e) => setRequestUsername(e.target.value)}
           />
           <FormButton className="whitespace-nowrap">
-            {sendRequestLoading ? (
-              <Image
-                className="w-6 h-6"
-                src={buttonLoading}
-                alt="Send Request"
-              />
-            ) : (
-              <p>Send Request</p>
-            )}
+            <Image
+              className={`w-6 h-6 ${sendRequestLoading ? "block" : "hidden"}`}
+              src={buttonLoading}
+              alt="Send Request"
+            />
+            <p className={`${sendRequestLoading ? "hidden" : "block"}`}>
+              Send Request
+            </p>
           </FormButton>
         </div>
         {sendRequestErrorMsg && (
@@ -88,7 +86,7 @@ function FriendView() {
       </Form>
       <div className="gap-6 flex flex-col text-center items-center justify-center">
         <div className="w-full">
-          <FriendTable
+          <FriendsTable
             title="Sent Requests"
             data={sentFriendRequests}
             type="sent"
@@ -100,7 +98,7 @@ function FriendView() {
       </div>
       <div className="gap-6 flex flex-col text-center items-center justify-center">
         <div className="w-full">
-          <FriendTable
+          <FriendsTable
             title="Incoming Requests"
             data={incomingFriendRequests}
             type="incoming"
@@ -111,14 +109,6 @@ function FriendView() {
         )}
         {declineRequestErrorMsg && (
           <p className="text-rose-500">{declineRequestErrorMsg}</p>
-        )}
-      </div>
-      <div className="gap-6 flex flex-col text-center items-center justify-center">
-        <div className="w-full">
-          <FriendTable title="Friends" data={friends} type="friends" />
-        </div>
-        {deleteFriendErrorMsg && (
-          <p className="text-rose-500">{deleteFriendErrorMsg}</p>
         )}
       </div>
     </Main>

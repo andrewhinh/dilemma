@@ -9,6 +9,7 @@ interface InputProps {
   accept?: string;
   onChange?: (e: any) => void;
   className?: string;
+  readonly?: boolean;
 }
 
 function Input({
@@ -21,6 +22,7 @@ function Input({
   accept,
   onChange,
   className,
+  readonly,
 }: InputProps) {
   const defaultClassName = "h-10 text-zinc-500 bg-slate-300 p-2";
 
@@ -37,6 +39,7 @@ function Input({
       className={
         className ? `${className} ${defaultClassName}` : defaultClassName
       }
+      readOnly={readonly}
     />
   );
 }

@@ -8,7 +8,7 @@ interface MainProps {
 
 function Main({ children, className }: MainProps) {
   const defaultClassName =
-    "p-24 h-full flex-1 flex flex-col text-center items-center justify-center";
+    "p-24 flex-1 flex flex-col text-center items-center justify-center";
 
   return (
     <main
