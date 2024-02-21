@@ -15,7 +15,7 @@ aiosignal==1.3.1
     # via aiohttp
 alembic==1.13.1
     # via
-    #   -r requirements/prod.in
+    #   -r prod.in
     #   optuna
 annotated-types==0.6.0
     # via pydantic
@@ -40,7 +40,7 @@ click==8.1.7
     # via uvicorn
 colorlog==6.8.0
     # via optuna
-cryptography==41.0.7
+cryptography==42.0.4
     # via python-jose
 dataclasses-json==0.6.3
     # via
@@ -53,11 +53,11 @@ dill==0.3.7
     #   datasets
     #   multiprocess
 dspy-ai==2.0.8
-    # via -r requirements/prod.in
+    # via -r prod.in
 ecdsa==0.18.0
     # via python-jose
 fastapi==0.108.0
-    # via -r requirements/prod.in
+    # via -r prod.in
 filelock==3.13.1
     # via huggingface-hub
 frozenlist==1.4.1
@@ -67,11 +67,12 @@ frozenlist==1.4.1
 fsspec[http]==2023.10.0
     # via
     #   datasets
+    #   fsspec
     #   huggingface-hub
 greenlet==3.0.3
     # via sqlalchemy
 gunicorn==21.2.0
-    # via -r requirements/prod.in
+    # via -r prod.in
 h11==0.14.0
     # via uvicorn
 httptools==0.6.1
@@ -92,7 +93,7 @@ jsonpatch==1.33
 jsonpointer==2.4
     # via jsonpatch
 langchain==0.0.352
-    # via -r requirements/prod.in
+    # via -r prod.in
 langchain-community==0.0.6
     # via langchain
 langchain-core==0.1.3
@@ -107,7 +108,7 @@ langsmith==0.0.75
 mako==1.3.0
     # via alembic
 markdown==3.5.2
-    # via -r requirements/prod.in
+    # via -r prod.in
 markupsafe==2.1.3
     # via mako
 marshmallow==3.20.1
@@ -130,7 +131,7 @@ numpy==1.26.2
     #   pyarrow
 openai==0.28.1
     # via
-    #   -r requirements/prod.in
+    #   -r prod.in
     #   dspy-ai
 optuna==3.4.0
     # via dspy-ai
@@ -147,9 +148,9 @@ pandas==2.1.1
     #   datasets
     #   dspy-ai
 passlib[bcrypt]==1.7.4
-    # via -r requirements/prod.in
+    # via -r prod.in
 psycopg2==2.9.9
-    # via -r requirements/prod.in
+    # via -r prod.in
 pyarrow==14.0.2
     # via datasets
 pyasn1==0.5.1
@@ -169,7 +170,7 @@ pydantic==2.5.3
 pydantic-core==2.14.6
     # via pydantic
 pydantic-settings==2.1.0
-    # via -r requirements/prod.in
+    # via -r prod.in
 python-dateutil==2.8.2
     # via pandas
 python-dotenv==1.0.0
@@ -177,9 +178,9 @@ python-dotenv==1.0.0
     #   pydantic-settings
     #   uvicorn
 python-jose[cryptography]==3.3.0
-    # via -r requirements/prod.in
+    # via -r prod.in
 python-multipart==0.0.6
-    # via -r requirements/prod.in
+    # via -r prod.in
 pytz==2023.3.post1
     # via pandas
 pyyaml==6.0.1
@@ -220,7 +221,7 @@ sqlalchemy==2.0.24
     #   optuna
     #   sqlmodel
 sqlmodel==0.0.14
-    # via -r requirements/prod.in
+    # via -r prod.in
 starlette==0.32.0.post1
     # via fastapi
 tenacity==8.2.3
@@ -253,7 +254,7 @@ ujson==5.8.0
 urllib3==2.1.0
     # via requests
 uvicorn[standard]==0.25.0
-    # via -r requirements/prod.in
+    # via -r prod.in
 uvloop==0.19.0
     # via uvicorn
 watchfiles==0.21.0
