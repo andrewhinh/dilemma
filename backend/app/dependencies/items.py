@@ -1,118 +1,176 @@
 """Dependencies for items endpoints."""
-# import dspy
-# from dspy.datasets import HotPotQA
-# from dspy.teleprompt import BootstrapFewShotWithRandomSearch
-# from dsp.utils import deduplicate
-from langchain.callbacks.base import Callbacks
-from langchain.chat_models import ChatOpenAI
-from langchain.prompts import PromptTemplate
+
+from functools import partial
+
+import arxiv
+import dspy
+from dsp.utils import deduplicate
 
 from app.config import get_settings
+from app.models.items import ArXivResponse
 
 SETTINGS = get_settings()
-DSPY_CONFIG = {
-    "lm": "gpt-4-1106-preview",
-    "rm": "https://ec2-35-87-71-196.us-west-2.compute.amazonaws.com:8893/api/search",
-    "train_size": 100,
-    "dev_size": 0,
-    "test_size": 0,
-    "passages_per_hop": 5,
-    "max_hops": 3,
-    "max_length": 1000,
-    "frac_same": 0.8,
-}
+
+ARXIV_CLIENT = arxiv.Client()
 
 
-# def create_dspy():
-#     """Create a DSPy-based model."""
-
-#     # Configure DSPy.
-#     turbo = dspy.OpenAI(model=DSPY_CONFIG["lm"], api_key=SETTINGS.openai_api_key, model_type="chat")
-#     colbertv2_wiki18_abstracts = dspy.ColBERTv2(url=DSPY_CONFIG["rm"])
-#     dspy.settings.configure(lm=turbo, rm=colbertv2_wiki18_abstracts)
-
-#     # Load the dataset.
-#     dataset = HotPotQA(
-#         train_size=DSPY_CONFIG["train_size"], dev_size=DSPY_CONFIG["dev_size"], test_size=DSPY_CONFIG["test_size"]
-#     )
-
-#     # Tell DSPy that the 'question' field is the input. Any other fields are labels and/or metadata.
-#     trainset = [x.with_inputs("question") for x in dataset.train]
-
-#     # Create signatures for a multi-hop question answering program.
-#     class GenerateAnswer(dspy.Signature):
-#         """Answer questions with short factoid answers."""
-
-#         context = dspy.InputField(desc="may contain relevant facts")
-#         question = dspy.InputField()
-#         answer = dspy.OutputField(desc="often between 1 and 5 words")
-
-#     class GenerateSearchQuery(dspy.Signature):
-#         """Write a simple search query that will help answer a complex question."""
-
-#         context = GenerateAnswer.signature.context
-#         question = dspy.InputField()
-#         query = dspy.OutputField()
-
-#     # Define a multi-hop question answering program.
-#     class SimplifiedBaleen(dspy.Module):
-#         def __init__(self, passages_per_hop=DSPY_CONFIG["passages_per_hop"], max_hops=DSPY_CONFIG["max_hops"]):
-#             super().__init__()
-
-#             self.generate_query = [dspy.ChainOfThought(GenerateSearchQuery) for _ in range(max_hops)]
-#             self.retrieve = dspy.Retrieve(k=passages_per_hop)
-#             self.generate_answer = dspy.ChainOfThought(GenerateAnswer)
-#             self.max_hops = max_hops
-
-#         def forward(self, question):
-#             context = []
-
-#             for hop in range(self.max_hops):
-#                 query = self.generate_query[hop](context=context, question=question).query
-#                 passages = self.retrieve(query).passages
-#                 context = deduplicate(context + passages)
-
-#             pred = self.generate_answer(context=context, question=question)
-#             return dspy.Prediction(context=context, answer=pred.answer)
-
-#     # Define a validation metric.
-#     def validate_context_and_answer_and_hops(example, pred, trace=None):
-#         if not dspy.evaluate.answer_exact_match(example, pred):
-#             return False
-#         if not dspy.evaluate.answer_passage_match(example, pred):
-#             return False
-
-#         hops = [example.question] + [outputs.query for *_, outputs in trace if "query" in outputs]
-
-#         if max([len(h) for h in hops]) > DSPY_CONFIG["max_length"]:
-#             return False
-#         if any(
-#             dspy.evaluate.answer_exact_match_str(hops[idx], hops[:idx], frac=DSPY_CONFIG["frac_same"])
-#             for idx in range(2, len(hops))
-#         ):
-#             return False
-
-#         return True
-
-#     # Set up a basic teleprompter, which will compile our RAG program.
-#     teleprompter = BootstrapFewShotWithRandomSearch(metric=validate_context_and_answer_and_hops)
-
-#     # Compile!
-#     compiled_baleen = teleprompter.compile(SimplifiedBaleen(), teacher=SimplifiedBaleen(), trainset=trainset)
-#     return compiled_baleen
-
-
-def create_llm(callbacks: Callbacks, model: str, temperature: float) -> ChatOpenAI:
-    """Create an LLM instance."""
-    return ChatOpenAI(
-        openai_api_key=SETTINGS.openai_api_key,
-        streaming=bool(callbacks),
-        callbacks=callbacks,
-        model=model,
-        temperature=temperature,
+def search_arxiv(topic: str, max_results: int = 10) -> list[ArXivResponse]:
+    """Search arXiv for articles."""
+    results = []
+    response = list(
+        ARXIV_CLIENT.results(
+            arxiv.Search(
+                query=topic,
+                max_results=max_results,
+                sort_by=arxiv.SortCriterion.SubmittedDate,
+            )
+        )
     )
+    for result in response:
+        result.authors = [author.name for author in result.authors]
+        results.append(
+            ArXivResponse(
+                entry_id=result.entry_id,
+                updated=result.updated,
+                published=result.published,
+                title=result.title,
+                authors=result.authors,
+                summary=result.summary,
+                comment=result.comment,
+                journal_ref=result.journal_ref,
+                primary_category=result.primary_category,
+                categories=result.categories,
+            )
+        )
+
+    return results
 
 
-def create_prompt(system: str) -> PromptTemplate:
-    """Create a prompt template."""
-    return PromptTemplate.from_template(template=system)
+def search_arxiv_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1, **kwargs):
+    """Search arXiv for articles."""
+    # Initialize the model
+    lm = dspy.OpenAI(model=model, api_key=SETTINGS.openai_api_key, model_type="chat")
+    dspy.settings.configure(lm=lm, trace=[])
+
+    # Define problem signature
+    class GenerateSearchQuery(dspy.Signature):
+        """
+        Given a topic, generate a search query for arXiv.
+
+        The following table lists the field prefixes for all the fields that can be searched:
+            prefix	explanation
+            ti	    Title
+            au	    Author
+            abs	    Abstract
+            co	    Comment
+            jr	    Journal Reference
+            cat	    Subject Category
+            rn	    Report Number
+            id_list	Id
+            all	    All of the above
+
+        The following table lists the three possible Boolean operators.
+            AND
+            OR
+            ANDNOT
+
+        The table below lists the two grouping operators used in the API.
+            symbol	      encoding explanation
+            ( )	          %28 %29  Used to group Boolean expressions for Boolean operator precedence.
+            double quotes %22 %22  Used to group multiple words into phrases to search a particular field.
+            space	      +	       Used to extend a search_query to include multiple fields.
+
+        e.g.: To search for articles with "checkerboard" in the title and "del_maestro" as an author, the query would be:
+            au:del_maestro AND ti:checkerboard
+        """
+
+        context = dspy.InputField(desc="may contain relevant articles")
+        topic = dspy.InputField()
+        query = dspy.OutputField()
+
+    # Define program
+    class SimplifiedBaleen(dspy.Module):
+        def __init__(
+            self,
+        ):
+            super().__init__()
+
+            self.generate_query = [dspy.ChainOfThought(GenerateSearchQuery) for _ in range(max_hops)]
+            self.retrieve = (
+                search_arxiv
+                if not kwargs.get("max_results")
+                else partial(search_arxiv, max_results=kwargs.get("max_results"))
+            )
+
+        def forward(self, topic):
+            if max_hops == 1:
+                query = self.generate_query[0](context=[], topic=topic).query
+                results = self.retrieve(query)
+                return results
+            else:
+                context = []
+                for hop in range(max_hops):
+                    query = self.generate_query[hop](context=context, topic=topic).query
+                    results = self.retrieve(query)
+
+                    (
+                        entry_ids,
+                        updated_dates,
+                        published_dates,
+                        titles,
+                        author_groups,
+                        summaries,
+                        comments,
+                        journal_refs,
+                        primary_categories,
+                        category_groups,
+                    ) = zip(
+                        *[
+                            (
+                                result.entry_id,
+                                result.updated,
+                                result.published,
+                                result.title,
+                                result.authors,
+                                result.summary,
+                                result.comment,
+                                result.journal_ref,
+                                result.primary_category,
+                                result.categories,
+                            )
+                            for result in results
+                        ],
+                        strict=False,
+                    )
+                    passages = [
+                        f"{entry_id} {str(updated_date)} {str(published_date)} {title} {', '.join(authors)} {summary} {comment} {journal_ref} {primary_category} {', '.join(categories)}"
+                        for (
+                            entry_id,
+                            updated_date,
+                            published_date,
+                            title,
+                            authors,
+                            summary,
+                            comment,
+                            journal_ref,
+                            primary_category,
+                            categories,
+                        ) in zip(
+                            entry_ids,
+                            updated_dates,
+                            published_dates,
+                            titles,
+                            author_groups,
+                            summaries,
+                            comments,
+                            journal_refs,
+                            primary_categories,
+                            category_groups,
+                            strict=False,
+                        )
+                    ]
+                    context = deduplicate(context + passages)
+                return results
+
+    # Run the program
+    return SimplifiedBaleen()(topic=topic)
