@@ -1,9 +1,9 @@
 """Models for the application."""
+
 from datetime import datetime
 from typing import List, Optional
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel
 from sqlmodel import Field, Relationship, SQLModel
 
 
@@ -173,7 +173,7 @@ class Friend(SQLModel, table=True):
     )
 
 
-class FriendReadBase(BaseModel):
+class FriendReadBase(SQLModel):
     """Friend read base model."""
 
     uid: UUID

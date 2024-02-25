@@ -3,7 +3,6 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { sendRequest } from "../lib/api";
 
-import Form from "../ui/Form";
 import { Button } from "../ui/Button";
 import googleIcon from "@/public/google-icon.svg";
 import buttonLoading from "@/public/button-loading.svg";

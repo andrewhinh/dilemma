@@ -6,7 +6,7 @@ function Support() {
       <div className="justify-center md:justify-end flex flex-1">
         <h3 className="text-lg font-semibold">
           <a
-            href="mailto:andrew@dilemma.work"
+            href={`mailto:${process.env.NEXT_PUBLIC_SUPPORT_EMAIL}`}
             className="hover:opacity-50 transition 300ms ease-in-out"
           >
             Contact Support

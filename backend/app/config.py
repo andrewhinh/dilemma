@@ -32,8 +32,6 @@ class Settings(BaseSettings):
             )
         )
 
-    openai_api_key: str = ""
-
     jwt_secret: str = secrets.token_urlsafe(32)
     access_token_expire_minutes: int = 0
     refresh_token_expire_minutes: int = 0
@@ -50,6 +48,8 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     google_client_secret: str = ""
     google_redirect_uri: str = ""
+
+    openai_api_key: str = ""
 
     model_config = SettingsConfigDict(env_file=".env")
 

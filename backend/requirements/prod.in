@@ -6,9 +6,9 @@ python-multipart
 uvicorn[standard]
 pydantic-settings
 sqlmodel
-psycopg2
+psycopg2-binary
 Markdown
 alembic
-langchain
 openai
 dspy-ai
+arxiv

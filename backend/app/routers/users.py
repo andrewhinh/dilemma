@@ -1,4 +1,5 @@
 """User routes."""
+
 from datetime import datetime
 from typing import Annotated, List, Optional
 
@@ -115,11 +116,11 @@ async def verify_email(
         session.commit()
 
         body = f"""
-## Welcome!
+**Welcome!**
 
 Head back to the website and enter the following code to continue:
 
-## {verify_code.code}
+**{verify_code.code}**
 
 If you did not request this code, please ignore this email.
         """
@@ -465,17 +466,19 @@ async def forgot_password(
 
     if verified_user:
         recovery_code = AuthCode(
-            email=verified_user.email, request_type="recovery", expire_date=datetime.utcnow() + RECOVERY_CODE_EXPIRES
+            email=verified_user.email,
+            request_type="recovery",
+            expire_date=datetime.utcnow() + RECOVERY_CODE_EXPIRES,
         )
         session.add(recovery_code)
         session.commit()
 
         body = f"""
-## You've requested a password reset.
+**You've requested a password reset.**
 
 Head back to the website and enter the following code to continue:
 
-## {recovery_code.code}
+**{recovery_code.code}**
 
 If you did not request this code, please ignore this email.
         """
@@ -622,11 +625,11 @@ async def verify_email_update(
         session.commit()
 
         body = f"""
-## You've requested to update your email.
+**You've requested to update your email.**
 
 Head back to the website and enter the following code to continue:
 
-## {verify_code.code}
+**{verify_code.code}**
 
 If you did not request this code, please ignore this email.
         """

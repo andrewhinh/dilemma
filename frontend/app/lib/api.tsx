@@ -10,7 +10,9 @@ import { cookies } from "next/headers";
 const removeTrailingSlash = (url: string | undefined) =>
   url ? url.replace(/\/$/, "") : "";
 
-// const websocketUrlBase = `wss://${removeProtocol(removeTrailingSlash(process.env.API_URL))}`;
+// const websocketUrlBase = `wss://${removeProtocol(
+//   removeTrailingSlash(process.env.API_URL)
+// )}`;
 // const websocketUrlPort = process.env.API_PORT ? `:${process.env.API_PORT}` : "";
 // const websocketURL = `${websocketUrlBase}${websocketUrlPort}`;
 
@@ -67,46 +69,56 @@ const sendRequest = async (route: string, method: string, data: any = null) => {
   return result;
 };
 
-// const sendWebsocket = (
-//     websocket: WebSocket,
-//     setText: (value: string | ((prevValue: string) => string)) => void
-//   ) => {
-//     let timeout: number | NodeJS.Timeout | null | undefined = null;
+// const sendWebsocket = async (
+//   route: string,
+//   setText: (value: string | ((prevValue: string) => string)) => void,
+//   setIsFetchingComplete: (isComplete: boolean) => void,
+//   defaultMessage: string | null = null
+// ) => {
+//   const websocket = new WebSocket(websocketURL + route);
+//   let timeout: number | NodeJS.Timeout | null | undefined = null;
 
-//     websocket.onopen = () => {
-//       timeout = setTimeout(() => {
-//         websocket.close(1011, "timeout");
-//       }, 15000);
-//     };
-
-//     websocket.onmessage = (event: MessageEvent) => {
-//       if (timeout !== null) {
-//         clearTimeout(timeout);
-//       }
-//       const data = JSON.parse(event.data);
-
-//       if (data.status === "ERROR") {
-//         websocket.close(1011, "error");
-//       } else if (data.status === "DONE") {
-//         setText(data.result);
-//         websocket.close(1000, "success");
-//       } else {
-//         setText((prevMessage: string) => prevMessage + data.message);
-//       }
-//     };
-
-//     websocket.onclose = (event) => {
-//       if (timeout !== null) {
-//         clearTimeout(timeout);
-//       }
-//       if (event.code !== 1000) {
-//         setText("There was an error. Please try again later.");
-//       }
-//     };
-
-//     websocket.onerror = () => {
-//       websocket.close(1011, "error");
-//     };
+//   websocket.onopen = () => {
+//     timeout = setTimeout(() => {
+//       setText(defaultMessage || "");
+//       setIsFetchingComplete(true);
+//       websocket.close(1011, "timeout");
+//     }, 15000);
 //   };
 
-export { sendRequest };
+//   websocket.onmessage = (event: MessageEvent) => {
+//     if (timeout !== null) {
+//       clearTimeout(timeout);
+//     }
+//     const data = JSON.parse(event.data);
+
+//     if (data.status === "ERROR") {
+//       setText(defaultMessage || "");
+//       setIsFetchingComplete(true);
+//       websocket.close(1011, "error");
+//     } else if (data.status === "DONE") {
+//       setText(data.result);
+//       setIsFetchingComplete(true);
+//       websocket.close(1000, "success");
+//     } else {
+//       setText((prevMessage: string) => prevMessage + data.message);
+//     }
+//   };
+
+//   websocket.onclose = (event) => {
+//     if (timeout !== null) {
+//       clearTimeout(timeout);
+//     }
+//     if (event.code !== 1000) {
+//       setText("There was an error. Please try again later.");
+//     }
+//   };
+
+//   websocket.onerror = () => {
+//     setText(defaultMessage || "");
+//     setIsFetchingComplete(true);
+//     websocket.close(1011, "error");
+//   };
+// };
+
+export { sendRequest }; // sendWebsocket
