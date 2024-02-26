@@ -4,10 +4,13 @@ from functools import partial
 
 import arxiv
 import dspy
+import wikipedia
 from dsp.utils import deduplicate
+from dspy.predict import Retry
+from dspy.primitives.assertions import assert_transform_module, backtrack_handler
 
 from app.config import get_settings
-from app.models.items import ArXivResponse
+from app.models.items import ArXivResponse, WikipediaResponse
 
 SETTINGS = get_settings()
 
@@ -16,38 +19,48 @@ ARXIV_CLIENT = arxiv.Client()
 
 def search_arxiv(topic: str, max_results: int = 10) -> list[ArXivResponse]:
     """Search arXiv for articles."""
-    results = []
-    response = list(
-        ARXIV_CLIENT.results(
+    return [
+        ArXivResponse(
+            entry_id=result.entry_id,
+            updated=result.updated,
+            published=result.published,
+            title=result.title,
+            authors=[author.name for author in result.authors],
+            summary=result.summary,
+            comment=result.comment,
+            journal_ref=result.journal_ref,
+            primary_category=result.primary_category,
+            categories=result.categories,
+        )
+        for result in ARXIV_CLIENT.results(
             arxiv.Search(
                 query=topic,
                 max_results=max_results,
                 sort_by=arxiv.SortCriterion.SubmittedDate,
             )
         )
-    )
-    for result in response:
-        result.authors = [author.name for author in result.authors]
-        results.append(
-            ArXivResponse(
-                entry_id=result.entry_id,
-                updated=result.updated,
-                published=result.published,
-                title=result.title,
-                authors=result.authors,
-                summary=result.summary,
-                comment=result.comment,
-                journal_ref=result.journal_ref,
-                primary_category=result.primary_category,
-                categories=result.categories,
-            )
+    ]
+
+
+def search_wikipedia(topic: str) -> WikipediaResponse:
+    """Search Wikipedia for an article."""
+    try:
+        response = wikipedia.page(topic)
+        return WikipediaResponse(
+            categories=response.categories,
+            images=response.images,
+            links=response.links,
+            references=response.references,
+            summary=response.summary,
+            title=response.title,
+            url=response.url,
         )
+    except wikipedia.exceptions.DisambiguationError as e:
+        raise e.options from e
 
-    return results
 
-
-def search_arxiv_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1, **kwargs):
-    """Search arXiv for articles."""
+def search_arxiv_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1, **kwargs) -> list[ArXivResponse]:
+    """Search arXiv for articles using model."""
     # Initialize the model
     lm = dspy.OpenAI(model=model, api_key=SETTINGS.openai_api_key, model_type="chat")
     dspy.settings.configure(lm=lm, trace=[])
@@ -174,3 +187,59 @@ def search_arxiv_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: in
 
     # Run the program
     return SimplifiedBaleen()(topic=topic)
+
+
+def search_wikipedia_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1) -> WikipediaResponse:
+    """Search Wikipedia for an article using model."""
+    # Initialize the model
+    lm = dspy.OpenAI(model=model, api_key=SETTINGS.openai_api_key, model_type="chat")
+    dspy.settings.configure(lm=lm, trace=[])
+
+    # Define problem signature
+    class GenerateSearchQuery(dspy.Signature):
+        """
+        Given a topic, generate a search query for wikipedia.
+
+        Be wary of generating vague titles that lead to a disambiguation page:
+        e.g. "Mercury" could refer to the planet, the element, the Roman god, the automobile brand, etc.
+             To search for the planet, the query would be "Mercury (planet)".
+        """
+
+        context = dspy.InputField(desc="may contain relevant articles")
+        topic = dspy.InputField()
+        query = dspy.OutputField()
+
+    # Define program
+    class SimplifiedBaleen(dspy.Module):
+        def __init__(
+            self,
+        ):
+            super().__init__()
+
+            self.generate_query = [dspy.ChainOfThought(GenerateSearchQuery) for _ in range(max_hops)]
+            self.retrieve = search_wikipedia
+
+        def forward(self, topic):
+            if max_hops == 1:
+                query = self.generate_query[0](context=[], topic=topic).query
+                try:
+                    return self.retrieve(query)
+                except wikipedia.exceptions.DisambiguationError as e:
+                    dspy.Assert(
+                        True,
+                        f"Please make the title more specific: {e.options}",
+                        target_module=GenerateSearchQuery,
+                    )
+            else:
+                context = []
+                for hop in range(max_hops):
+                    query = self.generate_query[hop](context=context, topic=topic).query
+                    result = self.retrieve(query)
+                    passages = [
+                        f"{', '.join(result.categories)} {', '.join(result.images)} {', '.join(result.links)} {', '.join(result.references)} {result.summary} {result.title} {result.url}"
+                    ]
+                    context = deduplicate(context + passages)
+                return result
+
+    # Run the program
+    return assert_transform_module(SimplifiedBaleen().map_named_predictors(Retry), backtrack_handler)(topic=topic)

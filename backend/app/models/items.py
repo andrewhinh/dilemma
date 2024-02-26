@@ -13,7 +13,7 @@ class Retrieve(SQLModel):
     query: str
 
 
-# ArXiv Response model
+# Response models
 class ArXivResponse(SQLModel):
     """ArXiv Response model."""
 
@@ -27,3 +27,15 @@ class ArXivResponse(SQLModel):
     journal_ref: Optional[str]
     primary_category: str
     categories: list[str]
+
+
+class WikipediaResponse(SQLModel):
+    """Wikipedia Response model."""
+
+    categories: list[str]
+    images: list[str]
+    links: list[str]
+    references: list[str]
+    summary: str
+    title: str
+    url: str

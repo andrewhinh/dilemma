@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Security
 
-from app.dependencies.items import search_arxiv_with_llm
+from app.dependencies.items import search_arxiv_with_llm, search_wikipedia_with_llm
 from app.dependencies.security import verify_api_key
 from app.models.items import Retrieve
 
@@ -14,9 +14,18 @@ router = APIRouter(
 
 
 @router.post("/search/arxiv")
-async def create_path(retrieve: Retrieve) -> dict[str, list]:
+async def search_arxiv(retrieve: Retrieve) -> dict[str, list]:
     """Endpoint for searching arXiv."""
     results = search_arxiv_with_llm(
         topic=retrieve.query,
     )
     return {"response": results}
+
+
+@router.post("/search/wikipedia")
+async def search_wikipedia(retrieve: Retrieve) -> dict[str, list]:
+    """Endpoint for searching arXiv."""
+    result = search_wikipedia_with_llm(
+        title=retrieve.query,
+    )
+    return {"response": result}
