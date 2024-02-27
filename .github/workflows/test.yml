@@ -28,8 +28,7 @@ jobs:
           key: v1-${{ env.pythonLocation }}-${{ hashFiles('backend/requirements/dev.txt') }}-${{ hashFiles('backend/requirements/prod.txt') }}
       - name: Install dependencies with pip
         run: |
-          pip install uv==0.1.10
-          uv pip install --quiet -r backend/requirements/prod.txt -r backend/requirements/dev.txt
+          pip install --quiet -r backend/requirements/prod.txt -r backend/requirements/dev.txt
 
   integration-tests:
     runs-on: ubuntu-latest
@@ -51,5 +50,4 @@ jobs:
           key: v1-${{ env.pythonLocation }}-${{ hashFiles('backend/requirements/dev.txt') }}-${{ hashFiles('backend/requirements/prod.txt') }}
       - name: Install dependencies with pip
         run: |
-          pip install uv==0.1.10
-          uv pip install --quiet -r backend/requirements/prod.txt -r backend/requirements/dev.txt
+          pip install --quiet -r backend/requirements/prod.txt -r backend/requirements/dev.txt

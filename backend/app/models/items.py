@@ -39,3 +39,20 @@ class WikipediaResponse(SQLModel):
     summary: str
     title: str
     url: str
+
+
+class GitHubResponse(SQLModel):
+    """GitHub Response model."""
+
+    created_at: datetime
+    description: Optional[str]
+    forks_count: int
+    full_name: str
+    language: Optional[str]
+    open_issues_count: int
+    pushed_at: datetime
+    stargazers_count: int
+    subscribers_count: int
+    topics: Optional[list[str]]
+    updated_at: datetime
+    url: str

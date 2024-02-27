@@ -50,6 +50,8 @@ class Settings(BaseSettings):
     google_redirect_uri: str = ""
 
     openai_api_key: str = ""
+    github_username: str = ""
+    github_password: str = ""
 
     model_config = SettingsConfigDict(env_file=".env")
 

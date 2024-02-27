@@ -1,5 +1,7 @@
 """Dependencies for items endpoints."""
 
+import signal
+from contextlib import contextmanager
 from functools import partial
 
 import arxiv
@@ -8,58 +10,141 @@ import wikipedia
 from dsp.utils import deduplicate
 from dspy.predict import Retry
 from dspy.primitives.assertions import assert_transform_module, backtrack_handler
+from github import Github
+from github.Auth import Login
 
 from app.config import get_settings
-from app.models.items import ArXivResponse, WikipediaResponse
+from app.models.items import ArXivResponse, GitHubResponse, WikipediaResponse
 
 SETTINGS = get_settings()
+GITHUB_USERNAME = SETTINGS.github_username
+GITHUB_PASSWORD = SETTINGS.github_password
 
 ARXIV_CLIENT = arxiv.Client()
+GITHUB_CLIENT = Github(auth=Login(GITHUB_USERNAME, GITHUB_PASSWORD))
+API_TIMEOUT = 10  # seconds
 
 
-def search_arxiv(topic: str, max_results: int = 10) -> list[ArXivResponse]:
+class TimeoutException(Exception):
+    """Exception raised when a timeout occurs."""
+
+    pass
+
+
+@contextmanager
+def time_limit(seconds):
+    def signal_handler(signum, frame):
+        raise TimeoutException
+
+    signal.signal(signal.SIGALRM, signal_handler)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+
+
+# Basic search functions
+def search_arxiv(query: str, max_results: int = 10) -> list[ArXivResponse | None]:
     """Search arXiv for articles."""
-    return [
-        ArXivResponse(
-            entry_id=result.entry_id,
-            updated=result.updated,
-            published=result.published,
-            title=result.title,
-            authors=[author.name for author in result.authors],
-            summary=result.summary,
-            comment=result.comment,
-            journal_ref=result.journal_ref,
-            primary_category=result.primary_category,
-            categories=result.categories,
-        )
-        for result in ARXIV_CLIENT.results(
-            arxiv.Search(
-                query=topic,
-                max_results=max_results,
-                sort_by=arxiv.SortCriterion.SubmittedDate,
+    try:
+        with time_limit(API_TIMEOUT):
+            results = ARXIV_CLIENT.results(
+                arxiv.Search(
+                    query=query,
+                    max_results=max_results,
+                    sort_by=arxiv.SortCriterion.SubmittedDate,
+                )
             )
-        )
-    ]
+            if not results:
+                raise Exception("No results found")
+            return [
+                ArXivResponse(
+                    entry_id=result.entry_id,
+                    updated=result.updated,
+                    published=result.published,
+                    title=result.title,
+                    authors=[author.name for author in result.authors],
+                    summary=result.summary,
+                    comment=result.comment if result.comment else None,
+                    journal_ref=result.journal_ref if result.journal_ref else None,
+                    primary_category=result.primary_category,
+                    categories=result.categories,
+                )
+                for result in results
+            ]
+    except TimeoutException:
+        print("arXiv", query, "timed out")
+        return []
+    except Exception as e:
+        print("arXiv", query, e)
+        return []
 
 
-def search_wikipedia(topic: str) -> WikipediaResponse:
+def search_wikipedia(title: str) -> WikipediaResponse | list[str | None]:
     """Search Wikipedia for an article."""
     try:
-        response = wikipedia.page(topic)
-        return WikipediaResponse(
-            categories=response.categories,
-            images=response.images,
-            links=response.links,
-            references=response.references,
-            summary=response.summary,
-            title=response.title,
-            url=response.url,
-        )
+        with time_limit(API_TIMEOUT):
+            response = wikipedia.page(title)
+            return WikipediaResponse(
+                categories=response.categories,
+                images=response.images,
+                links=response.links,
+                references=response.references,
+                summary=response.summary,
+                title=response.title,
+                url=response.url,
+            )
     except wikipedia.exceptions.DisambiguationError as e:
-        raise e.options from e
+        print("Wikipedia", title, e)
+        return e.options
+    except TimeoutException:
+        print("Wikipedia", title, "timed out")
+        return []
+    except Exception as e:
+        print("Wikipedia", title, e)
+        return []
 
 
-def search_arxiv_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1, **kwargs) -> list[ArXivResponse]:
+def search_github(
+    query: str, max_results: int = 10, sort: str = "stars", order: str = "desc"
+) -> list[GitHubResponse | None]:
+    """Search GitHub for a repository."""
+    try:
+        with time_limit(API_TIMEOUT):
+            repos = GITHUB_CLIENT.search_repositories(query, sort, order)
+            if not repos:
+                raise Exception("No results found")
+
+            return [
+                GitHubResponse(
+                    created_at=repo.created_at,
+                    description=repo.description if repo.description else None,
+                    forks_count=repo.forks_count,
+                    full_name=repo.full_name,
+                    language=repo.language if repo.language else None,
+                    open_issues_count=repo.open_issues_count,
+                    pushed_at=repo.pushed_at,
+                    stargazers_count=repo.stargazers_count,
+                    subscribers_count=repo.subscribers_count,
+                    topics=repo.topics if repo.topics else None,
+                    updated_at=repo.updated_at,
+                    url=repo.url,
+                )
+                for repo in repos[:max_results]
+            ]
+    except TimeoutException:
+        print("GitHub", query, "timed out")
+        return []
+    except Exception as e:
+        print("GitHub", query, e)
+        return []
+
+
+# Search functions with LLM
+def search_arxiv_with_llm(
+    topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1, **kwargs
+) -> list[ArXivResponse | None]:
     """Search arXiv for articles using model."""
     # Initialize the model
     lm = dspy.OpenAI(model=model, api_key=SETTINGS.openai_api_key, model_type="chat")
@@ -119,78 +204,94 @@ def search_arxiv_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: in
             if max_hops == 1:
                 query = self.generate_query[0](context=[], topic=topic).query
                 results = self.retrieve(query)
-                return results
+                dspy.Suggest(
+                    len(results) > 0,
+                    "Please generate a valid search query.",
+                    target_module=GenerateSearchQuery,
+                )
             else:
                 context = []
                 for hop in range(max_hops):
                     query = self.generate_query[hop](context=context, topic=topic).query
                     results = self.retrieve(query)
-
-                    (
-                        entry_ids,
-                        updated_dates,
-                        published_dates,
-                        titles,
-                        author_groups,
-                        summaries,
-                        comments,
-                        journal_refs,
-                        primary_categories,
-                        category_groups,
-                    ) = zip(
-                        *[
-                            (
-                                result.entry_id,
-                                result.updated,
-                                result.published,
-                                result.title,
-                                result.authors,
-                                result.summary,
-                                result.comment,
-                                result.journal_ref,
-                                result.primary_category,
-                                result.categories,
-                            )
-                            for result in results
-                        ],
-                        strict=False,
+                    dspy.Suggest(
+                        len(results) > 0,
+                        "Please generate a valid search query.",
+                        target_module=GenerateSearchQuery,
                     )
+
                     passages = [
-                        f"{entry_id} {str(updated_date)} {str(published_date)} {title} {', '.join(authors)} {summary} {comment} {journal_ref} {primary_category} {', '.join(categories)}"
-                        for (
-                            entry_id,
-                            updated_date,
-                            published_date,
-                            title,
-                            authors,
-                            summary,
-                            comment,
-                            journal_ref,
-                            primary_category,
-                            categories,
-                        ) in zip(
-                            entry_ids,
-                            updated_dates,
-                            published_dates,
-                            titles,
-                            author_groups,
-                            summaries,
-                            comments,
-                            journal_refs,
-                            primary_categories,
-                            category_groups,
-                            strict=False,
-                        )
+                        f"{result.entry_id} {str(result.updated)} {str(result.published)} {result.title} {', '.join(result.authors)} {result.summary} {result.comment} {result.journal_ref} {result.primary_category} {', '.join(result.categories)}"
+                        for result in results
                     ]
                     context = deduplicate(context + passages)
-                return results
+            return results
 
     # Run the program
     return SimplifiedBaleen()(topic=topic)
 
 
-def search_wikipedia_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1) -> WikipediaResponse:
+def search_wikipedia_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1) -> WikipediaResponse | None:
     """Search Wikipedia for an article using model."""
+    # Initialize the model
+    lm = dspy.OpenAI(model=model, api_key=SETTINGS.openai_api_key, model_type="chat")
+    dspy.settings.configure(lm=lm, trace=[])
+
+    # Define problem signature
+    class GenerateTitle(dspy.Signature):
+        """
+        Given a topic, generate a relevant wikipedia page title.
+
+        Be wary of generating vague titles that lead to a disambiguation page:
+        e.g. "Mercury" could refer to the planet, the element, the Roman god, the automobile brand, etc.
+             To search for the planet, the query would be "Mercury (planet)".
+        """
+
+        context = dspy.InputField(desc="may contain relevant articles")
+        topic = dspy.InputField()
+        title = dspy.OutputField()
+
+    # Define program
+    class SimplifiedBaleen(dspy.Module):
+        def __init__(
+            self,
+        ):
+            super().__init__()
+
+            self.generate_title = [dspy.ChainOfThought(GenerateTitle) for _ in range(max_hops)]
+            self.retrieve = search_wikipedia
+
+        def forward(self, topic):
+            if max_hops == 1:
+                title = self.generate_title[0](context=[], topic=topic).query
+                result = self.retrieve(title)
+                dspy.Suggest(
+                    isinstance(result, WikipediaResponse),
+                    "Please generate a valid title.",
+                    target_module=GenerateTitle,
+                )
+            else:
+                context = []
+                for hop in range(max_hops):
+                    title = self.generate_title[hop](context=context, topic=topic).query
+                    result = self.retrieve(title)
+                    dspy.Suggest(
+                        isinstance(result, WikipediaResponse),
+                        "Please generate a valid title.",
+                        target_module=GenerateTitle,
+                    )
+                    passages = [
+                        f"{', '.join(result.categories)} {', '.join(result.images)} {', '.join(result.links)} {', '.join(result.references)} {result.summary} {result.title} {result.url}"
+                    ]
+                    context = deduplicate(context + passages)
+            return result
+
+    # Run the program
+    return assert_transform_module(SimplifiedBaleen().map_named_predictors(Retry), backtrack_handler)(topic=topic)
+
+
+def search_github_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1) -> GitHubResponse | None:
+    """Search GitHub for a repository using model."""
     # Initialize the model
     lm = dspy.OpenAI(model=model, api_key=SETTINGS.openai_api_key, model_type="chat")
     dspy.settings.configure(lm=lm, trace=[])
@@ -198,11 +299,19 @@ def search_wikipedia_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops
     # Define problem signature
     class GenerateSearchQuery(dspy.Signature):
         """
-        Given a topic, generate a search query for wikipedia.
+        Given a topic, generate a search query for GitHub.
 
-        Be wary of generating vague titles that lead to a disambiguation page:
-        e.g. "Mercury" could refer to the planet, the element, the Roman god, the automobile brand, etc.
-             To search for the planet, the query would be "Mercury (planet)".
+        The table below shows options to filter the results:
+
+        This search	            Finds repositories with…
+        cat stars:>100	        Find cat repositories with greater than 100 stars.
+        user:defunkt	        Get all repositories from the user defunkt.
+        pugs pushed:>2013-01-28	Pugs repositories pushed to since Jan 28, 2013.
+        node.js forks:<200	    Find all node.js repositories with less than 200 forks.
+        jquery size:1024..4089	Find jquery repositories between the sizes 1024 and 4089 kB.
+        gitx fork:true	        Repository search includes forks of gitx.
+        gitx fork:only	        Repository search returns only forks of gitx.
+
         """
 
         context = dspy.InputField(desc="may contain relevant articles")
@@ -217,29 +326,34 @@ def search_wikipedia_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops
             super().__init__()
 
             self.generate_query = [dspy.ChainOfThought(GenerateSearchQuery) for _ in range(max_hops)]
-            self.retrieve = search_wikipedia
+            self.retrieve = search_github
 
         def forward(self, topic):
             if max_hops == 1:
                 query = self.generate_query[0](context=[], topic=topic).query
-                try:
-                    return self.retrieve(query)
-                except wikipedia.exceptions.DisambiguationError as e:
-                    dspy.Assert(
-                        True,
-                        f"Please make the title more specific: {e.options}",
-                        target_module=GenerateSearchQuery,
-                    )
+                results = self.retrieve(query)
+                dspy.Suggest(
+                    len(results) > 0,
+                    "Please generate a valid search query.",
+                    target_module=GenerateSearchQuery,
+                )
             else:
                 context = []
                 for hop in range(max_hops):
                     query = self.generate_query[hop](context=context, topic=topic).query
-                    result = self.retrieve(query)
+                    results = self.retrieve(query)
+                    dspy.Suggest(
+                        len(results) > 0,
+                        "Please generate a valid search query.",
+                        target_module=GenerateSearchQuery,
+                    )
+
                     passages = [
-                        f"{', '.join(result.categories)} {', '.join(result.images)} {', '.join(result.links)} {', '.join(result.references)} {result.summary} {result.title} {result.url}"
+                        f"{str(result.created_at)} {result.description} {result.forks_count} {result.full_name} {result.language} {result.open_issues_count} {str(result.pushed_at)} {result.stargazers_count} {result.subscribers_count} {', '.join(result.topics)} {str(result.updated_at)}"
+                        for result in results
                     ]
                     context = deduplicate(context + passages)
-                return result
+            return results
 
     # Run the program
     return assert_transform_module(SimplifiedBaleen().map_named_predictors(Retry), backtrack_handler)(topic=topic)
