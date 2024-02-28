@@ -8,7 +8,7 @@ env:
 
 # Compile and install exact pip packages
 install:
-	pip install uv==0.1.10
+	pip install uv==0.1.11
 	uv pip compile requirements/prod.in -o requirements/prod.txt && uv pip compile requirements/dev.in -o requirements/dev.txt
 	uv pip sync requirements/prod.txt requirements/dev.txt
 
@@ -81,6 +81,6 @@ fix:
 
 # Bump versions of transitive dependencies
 upgrade:
-	pip install uv==0.1.10
+	pip install uv==0.1.11
 	uv pip compile --upgrade requirements/prod.in -o requirements/prod.txt && uv pip compile --upgrade requirements/dev.in -o requirements/dev.txt
 	uv pip sync requirements/prod.txt requirements/dev.txt

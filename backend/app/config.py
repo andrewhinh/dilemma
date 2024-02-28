@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     github_username: str = ""
     github_password: str = ""
+    youtube_api_key: str = ""
 
     model_config = SettingsConfigDict(env_file=".env")
 

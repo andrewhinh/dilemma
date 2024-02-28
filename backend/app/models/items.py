@@ -56,3 +56,13 @@ class GitHubResponse(SQLModel):
     topics: Optional[list[str]]
     updated_at: datetime
     url: str
+
+
+class YouTubeResponse(SQLModel):
+    """YouTube Response model."""
+
+    kind: str
+    title: str
+    description: str
+    publishedAt: datetime
+    url: str

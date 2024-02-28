@@ -6,9 +6,16 @@ from app.dependencies.items import (
     search_arxiv_with_llm,
     search_github_with_llm,
     search_wikipedia_with_llm,
+    search_youtube_with_llm,
 )
 from app.dependencies.security import verify_api_key
-from app.models.items import ArXivResponse, GitHubResponse, Retrieve, WikipediaResponse
+from app.models.items import (
+    ArXivResponse,
+    GitHubResponse,
+    Retrieve,
+    WikipediaResponse,
+    YouTubeResponse,
+)
 
 router = APIRouter(
     tags=["items"],
@@ -42,3 +49,12 @@ async def search_github(retrieve: Retrieve) -> dict[str, list[GitHubResponse | N
         topic=retrieve.query,
     )
     return {"response": results}
+
+
+@router.post("/search/youtube")
+async def search_youtube(retrieve: Retrieve) -> dict[str, list[YouTubeResponse | None]]:
+    """Endpoint for searching youtube."""
+    result = search_youtube_with_llm(
+        topic=retrieve.query,
+    )
+    return {"response": result}
