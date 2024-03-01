@@ -1,5 +1,10 @@
 """Main application and routing logic for the API."""
 
+import logging
+
+logging.basicConfig()
+
+
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

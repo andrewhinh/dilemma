@@ -5,6 +5,7 @@ from fastapi import APIRouter, Security
 from app.dependencies.items import (
     search_arxiv_with_llm,
     search_github_with_llm,
+    search_open_library_with_llm,
     search_wikipedia_with_llm,
     search_youtube_with_llm,
 )
@@ -12,6 +13,7 @@ from app.dependencies.security import verify_api_key
 from app.models.items import (
     ArXivResponse,
     GitHubResponse,
+    OpenLibraryResponse,
     Retrieve,
     WikipediaResponse,
     YouTubeResponse,
@@ -55,6 +57,15 @@ async def search_github(retrieve: Retrieve) -> dict[str, list[GitHubResponse | N
 async def search_youtube(retrieve: Retrieve) -> dict[str, list[YouTubeResponse | None]]:
     """Endpoint for searching youtube."""
     result = search_youtube_with_llm(
+        topic=retrieve.query,
+    )
+    return {"response": result}
+
+
+@router.post("/search/open-library")
+async def search_open_library(retrieve: Retrieve) -> dict[str, OpenLibraryResponse | None]:
+    """Endpoint for searching open library."""
+    result = search_open_library_with_llm(
         topic=retrieve.query,
     )
     return {"response": result}

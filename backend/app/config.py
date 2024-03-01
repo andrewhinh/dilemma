@@ -53,6 +53,8 @@ class Settings(BaseSettings):
     github_username: str = ""
     github_password: str = ""
     youtube_api_key: str = ""
+    open_library_access_key: str = ""
+    open_library_secret_key: str = ""
 
     model_config = SettingsConfigDict(env_file=".env")
 

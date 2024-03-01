@@ -66,3 +66,22 @@ class YouTubeResponse(SQLModel):
     description: str
     publishedAt: datetime
     url: str
+
+
+class OpenLibraryAuthor(SQLModel):
+    """OpenLibrary Author model."""
+
+    name: str
+    olid: str  # id
+
+
+class OpenLibraryResponse(SQLModel):
+    """OpenLibrary Response model."""
+
+    authors: list[OpenLibraryAuthor]
+    olid: str  # id
+    publish_year: Optional[int]
+    publisher: Optional[str]
+    subtitle: Optional[str]
+    title: str
+    url: str

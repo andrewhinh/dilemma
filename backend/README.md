@@ -32,9 +32,11 @@ make setup
 Create a `.env` file:
 
 ```bash
-# Get your OpenAI API key: https://platform.openai.com/signup
 # Get your SMTP_SSL_PASSWORD: https://myaccount.google.com/apppasswords
 # Get your GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET: https://console.cloud.google.com/apis/credentials
+# Get your OpenAI API key: https://platform.openai.com/signup
+# Get your YouTube API key: https://console.cloud.google.com/apis/library/youtube.googleapis.com
+# Get your Open Library keys in ~/.config/ol.ini after running: $(ol --configure --email <your email here>)
 API_URL=<backend URL here>
 API_KEY=$(openssl rand -hex 32)
 DB_ECHO=True
@@ -42,7 +44,6 @@ POSTGRES_SERVER=localhost
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=secret
 POSTGRES_DB=dilemma
-OPENAI_API_KEY=<your key here>
 JWT_SECRET=$(openssl rand -hex 32)
 ACCESS_TOKEN_EXPIRE_MINUTES=11520
 REFRESH_TOKEN_EXPIRE_MINUTES=43200
@@ -57,6 +58,12 @@ FRONTEND_URL=<frontend URL here>
 GOOGLE_CLIENT_ID=<your client ID here>
 GOOGLE_CLIENT_SECRET=<your client secret here>
 GOOGLE_REDIRECT_URI=${FRONTEND_URL}/home
+OPENAI_API_KEY=<your key here>
+GITHUB_USERNAME=<your username here>
+GITHUB_PASSWORD=<your password here>
+YOUTUBE_API_KEY=<your key here>
+OPEN_LIBRARY_ACCESS_KEY=<your key here>
+OPEN_LIBRARY_SECRET_KEY=<your key here>
 
 cat <<EOF > .env.test
 API_URL=$API_URL
@@ -66,7 +73,6 @@ POSTGRES_SERVER=$POSTGRES_SERVER
 POSTGRES_USER=$POSTGRES_USER
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 POSTGRES_DB=$POSTGRES_DB
-OPENAI_API_KEY=$OPENAI_API_KEY
 JWT_SECRET=$JWT_SECRET
 ACCESS_TOKEN_EXPIRE_MINUTES=$ACCESS_TOKEN_EXPIRE_MINUTES
 REFRESH_TOKEN_EXPIRE_MINUTES=$REFRESH_TOKEN_EXPIRE_MINUTES
@@ -81,6 +87,12 @@ FRONTEND_URL=$FRONTEND_URL
 GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
 GOOGLE_REDIRECT_URI=$GOOGLE_REDIRECT_URI
+OPENAI_API_KEY=$OPENAI_API_KEY
+GITHUB_USERNAME=$GITHUB_USERNAME
+GITHUB_PASSWORD=$GITHUB_PASSWORD
+YOUTUBE_API_KEY=$YOUTUBE_API_KEY
+OPEN_LIBRARY_ACCESS_KEY=$OPEN_LIBRARY_ACCESS_KEY
+OPEN_LIBRARY_SECRET_KEY=$OPEN_LIBRARY_SECRET_KEY
 EOF
 ```
 
