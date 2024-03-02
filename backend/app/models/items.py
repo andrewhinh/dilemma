@@ -1,7 +1,6 @@
 """Item models."""
 
 from datetime import datetime
-from typing import Optional
 
 from sqlmodel import SQLModel
 
@@ -23,8 +22,8 @@ class ArXivResponse(SQLModel):
     title: str
     authors: list[str]
     summary: str
-    comment: Optional[str]
-    journal_ref: Optional[str]
+    comment: str | None
+    journal_ref: str | None
     primary_category: str
     categories: list[str]
 
@@ -45,15 +44,15 @@ class GitHubResponse(SQLModel):
     """GitHub Response model."""
 
     created_at: datetime
-    description: Optional[str]
+    description: str | None
     forks_count: int
     full_name: str
-    language: Optional[str]
+    language: str | None
     open_issues_count: int
     pushed_at: datetime
     stargazers_count: int
     subscribers_count: int
-    topics: Optional[list[str]]
+    topics: list[str] | None
     updated_at: datetime
     url: str
 
@@ -80,8 +79,27 @@ class OpenLibraryResponse(SQLModel):
 
     authors: list[OpenLibraryAuthor]
     olid: str  # id
-    publish_year: Optional[int]
-    publisher: Optional[str]
-    subtitle: Optional[str]
+    publish_year: int | None
+    publisher: str | None
+    subtitle: str | None
     title: str
     url: str
+
+
+class UdemyInstructor(SQLModel):
+    """Udemy Instructor model."""
+
+    display_name: str
+    job_title: str
+    url: str
+
+
+class UdemyResponse(SQLModel):
+    """Udemy Response model."""
+
+    title: str
+    url: str
+    is_paid: bool
+    price: str
+    visible_instructors: list[UdemyInstructor]
+    headline: str

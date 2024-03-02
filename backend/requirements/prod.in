@@ -16,3 +16,4 @@ wikipedia
 PyGithub
 python-youtube
 openlibrary-client @ git+https://github.com/internetarchive/openlibrary-client.git
+pyudemy

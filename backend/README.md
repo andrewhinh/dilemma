@@ -37,6 +37,7 @@ Create a `.env` file:
 # Get your OpenAI API key: https://platform.openai.com/signup
 # Get your YouTube API key: https://console.cloud.google.com/apis/library/youtube.googleapis.com
 # Get your Open Library keys in ~/.config/ol.ini after running: $(ol --configure --email <your email here>)
+# Get your Udemy keys: https://www.udemy.com/user/edit-api-clients/
 API_URL=<backend URL here>
 API_KEY=$(openssl rand -hex 32)
 DB_ECHO=True
@@ -64,6 +65,8 @@ GITHUB_PASSWORD=<your password here>
 YOUTUBE_API_KEY=<your key here>
 OPEN_LIBRARY_ACCESS_KEY=<your key here>
 OPEN_LIBRARY_SECRET_KEY=<your key here>
+UDEMY_CLIENT_ID=<your client ID here>
+UDEMY_CLIENT_SECRET=<your client secret here>
 
 cat <<EOF > .env.test
 API_URL=$API_URL
@@ -93,6 +96,8 @@ GITHUB_PASSWORD=$GITHUB_PASSWORD
 YOUTUBE_API_KEY=$YOUTUBE_API_KEY
 OPEN_LIBRARY_ACCESS_KEY=$OPEN_LIBRARY_ACCESS_KEY
 OPEN_LIBRARY_SECRET_KEY=$OPEN_LIBRARY_SECRET_KEY
+UDEMY_CLIENT_ID=$UDEMY_CLIENT_ID
+UDEMY_CLIENT_SECRET=$UDEMY_CLIENT_SECRET
 EOF
 ```
 

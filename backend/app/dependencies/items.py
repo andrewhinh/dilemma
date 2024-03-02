@@ -16,6 +16,7 @@ from dspy.primitives.assertions import assert_transform_module, backtrack_handle
 from github import Github
 from github.Auth import Login
 from olclient import OpenLibrary, config
+from pyudemy import Udemy
 from pyyoutube import Client
 
 from app.config import get_settings
@@ -24,6 +25,8 @@ from app.models.items import (
     GitHubResponse,
     OpenLibraryAuthor,
     OpenLibraryResponse,
+    UdemyInstructor,
+    UdemyResponse,
     WikipediaResponse,
     YouTubeResponse,
 )
@@ -36,11 +39,14 @@ GITHUB_PASSWORD = SETTINGS.github_password
 YOUTUBE_API_KEY = SETTINGS.youtube_api_key
 OPEN_LIBRARY_ACCESS_KEY = SETTINGS.open_library_access_key
 OPEN_LIBRARY_SECRET_KEY = SETTINGS.open_library_secret_key
+UDEMY_CLIENT_ID = SETTINGS.udemy_client_id
+UDEMY_CLIENT_SECRET = SETTINGS.udemy_client_secret
 
 ARXIV_CLIENT = arxiv.Client()
 GITHUB_CLIENT = Github(auth=Login(GITHUB_USERNAME, GITHUB_PASSWORD))
 YOUTUBE_CLIENT = Client(api_key=YOUTUBE_API_KEY)
 OL_CLIENT = OpenLibrary(credentials=config.Credentials(access=OPEN_LIBRARY_ACCESS_KEY, secret=OPEN_LIBRARY_SECRET_KEY))
+UDEMY_CLIENT = Udemy(UDEMY_CLIENT_ID, UDEMY_CLIENT_SECRET)
 
 
 # Timeout handling
@@ -74,7 +80,6 @@ def search_arxiv(query: str, max_results: int = 10) -> list[ArXivResponse]:
             arxiv.Search(
                 query=query,
                 max_results=max_results,
-                sort_by=arxiv.SortCriterion.SubmittedDate,
             )
         )
         if not results:
@@ -146,7 +151,7 @@ def search_youtube(query: str, max_results: int = 10, types="channel,playlist,vi
         type=types,
     ).items
     if not response:
-        return []
+        return results
 
     for item in response:
         kind = item.id.kind.split("#")[-1]
@@ -193,6 +198,42 @@ def search_open_library(title: str, author: str = None) -> OpenLibraryResponse:
         title=result.title,
         url=f"https://openlibrary.org/works/{olid}",
     )
+
+
+def search_udemy(
+    query: str, category: str = None, subcategory: str = None, max_results: int = 10
+) -> list[UdemyResponse]:
+    """Search Udemy for courses."""
+    results = []
+    response = UDEMY_CLIENT.courses(
+        page=1, page_size=max_results, search=query, category=category, subcategory=subcategory
+    )
+
+    if not response["results"]:
+        return results
+
+    url = "https://www.udemy.com"
+    for item in response["results"]:
+        temp = item["visible_instructors"]
+        instructors = [
+            UdemyInstructor(
+                display_name=inst["display_name"],
+                job_title=inst["job_title"],
+                url=url + inst["url"],
+            )
+            for inst in temp
+        ]
+        results.append(
+            UdemyResponse(
+                title=item["title"],
+                url=url + item["url"],
+                is_paid=item["is_paid"],
+                price=item["price"],
+                visible_instructors=instructors,
+                headline=item["headline"],
+            )
+        )
+    return results
 
 
 # Search functions with LLM
@@ -655,6 +696,103 @@ def search_open_library_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_h
                     passages = [message]
                     context = deduplicate(context + passages)
             return result
+
+    # Run the program
+    return assert_transform_module(SimplifiedBaleen().map_named_predictors(Retry), backtrack_handler)(topic=topic)
+
+
+def search_udemy_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1, **kwargs) -> list[UdemyResponse]:
+    """Search Udemy for courses using model."""
+    # Initialize the model
+    lm = dspy.OpenAI(model=model, api_key=SETTINGS.openai_api_key, model_type="chat")
+    dspy.settings.configure(lm=lm, trace=[])
+
+    # Define problem signature
+    class GenerateSearchKeys(dspy.Signature):
+        """
+        Given a topic, generate a search query, category, and subcategory for Udemy.
+
+        These are the following valid categories:
+        Business, Design, Development, Finance & Accounting, Health & Fitness, IT & Software, Lifestyle, Marketing, Music, Office Productivity, Personal Development, Photography & Video, Teaching & Academics, Udemy Free Resource Center, Vodafone
+
+        These are the following valid subcategories:
+        3D & Animation, Accounting & Bookkeeping, Affiliate Marketing, Apple, Architectural Design, Arts & Crafts, Beauty & Makeup, Branding, Business Analytics & Intelligence, Business Law, Business Strategy, Career Development, Commercial Photography, Communication, Compliance, Content Marketing, Creativity, Cryptocurrency & Blockchain, Dance, Data Science, Database Design & Development, Design Tools, Digital Marketing, Digital Photography, E-Commerce, Economics, Engineering, Entrepreneurship, Esoteric Practices, Essential Tech Skills, Fashion Design, Finance, Finance Cert & Exam Prep, Financial Modeling & Analysis, Fitness, Food & Beverage, Game Design, Game Development, Gaming, General Health, Google, Graphic Design & Illustration, Growth Hacking, Happiness, Hardware, Home Improvement & Gardening, Human Resources, Humanities, Industry, Influence, Instruments, Interior Design, Investing & Trading, IT Certifications, Language Learning, Leadership, Management, Marketing Analytics & Automation, Marketing Fundamentals, Martial Arts & Self Defense, Math, Media, Meditation, Memory & Study Skills, Mental Health, Microsoft, Mobile Development, Money Management Tools, Motivation, Music Fundamentals, Music Production, Music Software, Music Techniques, Network & Security, No-Code Development, Nutrition & Diet, Online Education, Operating Systems & Servers, Operations, Oracle, Other Business, Other Design, Other Finance & Accounting, Other Health & Fitness, Other IT & Software, Other Lifestyle, Other Marketing, Other Music, Other Office Productivity, Other Personal Development, Other Photography & Video, Other Teaching & Academics, Paid Advertising, Parenting & Relationships, Personal Brand Building, Personal Growth & Wellness, Personal Productivity, Personal Transformation, Pet Care & Training, Photography, Photography Tools, Portrait Photography, Product Marketing, Productivity & Professional Skills, Programming Languages, Project Management, Public Relations, Real Estate, Religion & Spirituality, Safety & First Aid, Sales, SAP, Science, Search Engine Optimization, Self Esteem & Confidence, Social Media Marketing, Social Science, Software Development Tools, Software Engineering, Software Testing, Sports, Stress Management, Taxes, Teacher Training, Test Prep, Travel, User Experience Design, Video & Mobile Marketing, Video Design, Vocal, Vodafone, Web Design, Web Development, Yoga
+        """
+
+        context = dspy.InputField(desc="may contain relevant articles")
+        topic = dspy.InputField()
+        query = dspy.OutputField()
+        category = dspy.OutputField()
+        subcategory = dspy.OutputField()
+
+    # Define program
+    class SimplifiedBaleen(dspy.Module):
+        def __init__(
+            self,
+        ):
+            super().__init__()
+
+            self.generate_search = [dspy.ChainOfThought(GenerateSearchKeys) for _ in range(max_hops)]
+            self.retrieve = (
+                search_udemy
+                if not kwargs.get("max_results")
+                else partial(search_udemy, max_results=kwargs.get("max_results"))
+            )
+
+        def forward(self, topic):
+            results = []
+            context = []
+            for hop in range(max_hops):
+                try:
+                    with time_limit(API_TIMEOUT):
+                        pred = self.generate_search[hop](context=context, topic=topic)
+                        query, category, subcategory = pred.query, pred.category, pred.subcategory
+                except TimeoutException:
+                    logger.error("Udemy %s generate timed out", topic)
+                    logger.error("Falling back to default search.")
+                    query = topic
+                    category = None
+                    subcategory = None
+                except Exception:
+                    logger.error("Udemy %s %s", topic, traceback.format_exc())
+                    logger.error("Falling back to default search.")
+                    query = topic
+                    category = None
+                    subcategory = None
+
+                try:
+                    with time_limit(API_TIMEOUT):
+                        results = self.retrieve(query, category, subcategory)
+                        if len(results) > 0:
+                            passages = [
+                                f"{result.title} {result.url} {result.is_paid} {result.price} {', '.join([inst.display_name for inst in result.visible_instructors])} {', '.join([inst.job_title for inst in result.visible_instructors])} {', '.join([inst.url for inst in result.visible_instructors])} {result.headline}"
+                                for result in results
+                            ]
+                            context = deduplicate(context + passages)
+
+                        else:
+                            message = "No results found."
+                            dspy.Suggest(
+                                False,
+                                message,
+                                target_module=GenerateSearchKeys,
+                            )
+                            passages = [message]
+                            context = deduplicate(context + passages)
+                except TimeoutException:
+                    logger.error("Udemy %s retrieve timed out", query)
+                except Exception as e:
+                    logger.error("Udemy %s %s", query, traceback.format_exc())
+                    message = str(e)
+                    dspy.Suggest(
+                        False,
+                        message,
+                        target_module=GenerateSearchKeys,
+                    )
+                    passages = [message]
+                    context = deduplicate(context + passages)
+
+            return results
 
     # Run the program
     return assert_transform_module(SimplifiedBaleen().map_named_predictors(Retry), backtrack_handler)(topic=topic)

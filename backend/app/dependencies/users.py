@@ -1,11 +1,12 @@
 """Dependencies for user endpoints."""
+
 import smtplib
 import uuid
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
-from typing import Annotated, List, Optional
+from typing import Annotated
 
 import requests
 from fastapi import Cookie, Depends, HTTPException, Response
@@ -615,8 +616,8 @@ def delete_auth_cookies(response: Response, cookies: list[str] = None) -> None:
 async def get_current_user(
     *,
     session: Session = Depends(get_session),
-    access_token: Optional[str] = Cookie(default=None),
-    provider: Optional[str] = Cookie(default=None),
+    access_token: str | None = Cookie(default=None),
+    provider: str | None = Cookie(default=None),
 ) -> User:
     """
     Get current user.
@@ -722,7 +723,7 @@ def verify_user_update(session: Session, current_user: User, user_data: dict):
         del user_data["confirm_password"]
 
 
-def get_sent_friend_request_links(current_user: User, status: str = "pending") -> List[FriendRequest]:
+def get_sent_friend_request_links(current_user: User, status: str = "pending") -> list[FriendRequest]:
     """
     Get sent friend request links.
 
@@ -733,13 +734,13 @@ def get_sent_friend_request_links(current_user: User, status: str = "pending") -
 
     Returns
     -------
-    List[FriendRequest]
+    list[FriendRequest]
         Sent friend request links
     """
     return [link for link in current_user.sender_links if link.status == status]
 
 
-def get_sent_friend_requests(current_user: User, status: str = "pending") -> List[User]:
+def get_sent_friend_requests(current_user: User, status: str = "pending") -> list[User]:
     """
     Get sent friend requests.
 
@@ -750,13 +751,13 @@ def get_sent_friend_requests(current_user: User, status: str = "pending") -> Lis
 
     Returns
     -------
-    List[User]
+    list[User]
         Sent friend requests
     """
     return [link.receiver for link in current_user.sender_links if link.status == status]
 
 
-def get_incoming_friend_request_links(current_user: User, status: str = "pending") -> List[FriendRequest]:
+def get_incoming_friend_request_links(current_user: User, status: str = "pending") -> list[FriendRequest]:
     """
     Get incoming friend request links.
 
@@ -767,13 +768,13 @@ def get_incoming_friend_request_links(current_user: User, status: str = "pending
 
     Returns
     -------
-    List[FriendRequest]
+    list[FriendRequest]
         Incoming friend request links
     """
     return [link for link in current_user.receiver_links if link.status == status]
 
 
-def get_incoming_friend_requests(current_user: User, status: str = "pending") -> List[User]:
+def get_incoming_friend_requests(current_user: User, status: str = "pending") -> list[User]:
     """
     Get incoming friend requests.
 
@@ -784,13 +785,13 @@ def get_incoming_friend_requests(current_user: User, status: str = "pending") ->
 
     Returns
     -------
-    List[User]
+    list[User]
         Incoming friend requests
     """
     return [link.sender for link in current_user.receiver_links if link.status == status]
 
 
-def get_friend_links(current_user: User, status: str = "confirmed") -> List[Friend]:
+def get_friend_links(current_user: User, status: str = "confirmed") -> list[Friend]:
     """
     Get friends links.
 
@@ -801,7 +802,7 @@ def get_friend_links(current_user: User, status: str = "confirmed") -> List[Frie
 
     Returns
     -------
-    List[Friend]
+    list[Friend]
         Friend links
     """
     return [link for link in current_user.friend_1_links if link.status == status] + [
@@ -809,7 +810,7 @@ def get_friend_links(current_user: User, status: str = "confirmed") -> List[Frie
     ]
 
 
-def get_friends(current_user: User, status: str = "confirmed") -> List[User]:
+def get_friends(current_user: User, status: str = "confirmed") -> list[User]:
     """
     Get friends.
 
@@ -820,7 +821,7 @@ def get_friends(current_user: User, status: str = "confirmed") -> List[User]:
 
     Returns
     -------
-    List[User]
+    list[User]
         Friend
     """
     return [link.friend_1 for link in current_user.friend_1_links if link.status == status] + [

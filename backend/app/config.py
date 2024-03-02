@@ -1,6 +1,6 @@
 import secrets
 from functools import lru_cache
-from typing import Any, Dict, Optional
+from typing import Any
 
 from pydantic import PostgresDsn, validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,10 +16,10 @@ class Settings(BaseSettings):
     postgres_user: str = ""
     postgres_password: str = ""
     postgres_db: str = ""
-    database_uri: Optional[str] = None
+    database_uri: str | None = None
 
     @validator("database_uri", pre=True)
-    def assemble_db_connection(cls, v: Optional[str], values: Dict[str, Any]) -> Any:
+    def assemble_db_connection(cls, v: str | None, values: dict[str, Any]) -> Any:
         if isinstance(v, str):
             return v
         return str(
@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     youtube_api_key: str = ""
     open_library_access_key: str = ""
     open_library_secret_key: str = ""
+    udemy_client_id: str = ""
+    udemy_client_secret: str = ""
 
     model_config = SettingsConfigDict(env_file=".env")
 

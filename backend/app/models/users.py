@@ -1,7 +1,6 @@
 """Models for the application."""
 
 from datetime import datetime
-from typing import List, Optional
 from uuid import UUID, uuid4
 
 from sqlmodel import Field, Relationship, SQLModel
@@ -11,7 +10,7 @@ from sqlmodel import Field, Relationship, SQLModel
 class AuthCode(SQLModel, table=True):
     """Verification code model."""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     email: str = Field(default=None, index=True)
     code: str = Field(default_factory=lambda: uuid4().hex[:6])
 
@@ -19,13 +18,13 @@ class AuthCode(SQLModel, table=True):
     request_type: str = Field(default=None, index=True)
     request_date: datetime = Field(default_factory=datetime.utcnow)
     expire_date: datetime = Field(default=None)
-    usage_date: Optional[datetime] = Field(default=None)
+    usage_date: datetime | None = Field(default=None)
 
 
 class GoogleAuth(SQLModel):
     """Google auth model."""
 
-    code: Optional[str] = None
+    code: str | None = None
     state: str
 
 
@@ -36,26 +35,26 @@ class UserBase(SQLModel):
     join_date: datetime = Field(default_factory=datetime.utcnow)
     provider: str = Field(default="dilemma", index=True)
 
-    profile_picture: Optional[str] = Field(default=None)
-    email: Optional[str] = Field(default=None, index=True)
-    username: Optional[str] = Field(default=None, index=True)
-    fullname: Optional[str] = Field(default=None)
-    disabled: Optional[bool] = False
+    profile_picture: str | None = Field(default=None)
+    email: str | None = Field(default=None, index=True)
+    username: str | None = Field(default=None, index=True)
+    fullname: str | None = Field(default=None)
+    disabled: bool | None = False
 
-    account_view: Optional[str] = Field(default="profile")
-    is_sidebar_open: Optional[bool] = Field(default=True)
+    account_view: str | None = Field(default="profile")
+    is_sidebar_open: bool | None = Field(default=True)
 
 
 class User(UserBase, table=True):
     """User model."""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     uid: UUID = Field(default_factory=lambda: uuid4(), unique=True)
 
-    hashed_password: Optional[str] = Field(default=None)
-    refresh_token: Optional[str] = Field(default=None)
+    hashed_password: str | None = Field(default=None)
+    refresh_token: str | None = Field(default=None)
 
-    sender_links: Optional[List["FriendRequest"]] = Relationship(
+    sender_links: list["FriendRequest"] | None = Relationship(
         back_populates="sender",
         sa_relationship_kwargs={
             "foreign_keys": "FriendRequest.user_uid",
@@ -63,7 +62,7 @@ class User(UserBase, table=True):
             "cascade": "all, delete",
         },
     )
-    receiver_links: Optional[List["FriendRequest"]] = Relationship(
+    receiver_links: list["FriendRequest"] | None = Relationship(
         back_populates="receiver",
         sa_relationship_kwargs={
             "foreign_keys": "FriendRequest.friend_uid",
@@ -72,7 +71,7 @@ class User(UserBase, table=True):
         },
     )
 
-    friend_1_links: Optional[List["Friend"]] = Relationship(
+    friend_1_links: list["Friend"] | None = Relationship(
         back_populates="friend_1",
         sa_relationship_kwargs={
             "foreign_keys": "Friend.user_uid",
@@ -80,7 +79,7 @@ class User(UserBase, table=True):
             "cascade": "all, delete",
         },
     )
-    friend_2_links: Optional[List["Friend"]] = Relationship(
+    friend_2_links: list["Friend"] | None = Relationship(
         back_populates="friend_2",
         sa_relationship_kwargs={
             "foreign_keys": "Friend.friend_uid",
@@ -100,8 +99,8 @@ class UserCreate(UserBase):
     """User create model."""
 
     password: str
-    confirm_password: Optional[str] = None
-    code: Optional[str] = None
+    confirm_password: str | None = None
+    code: str | None = None
 
 
 class UserRead(UserBase):
@@ -113,24 +112,24 @@ class UserRead(UserBase):
 class UserUpdate(SQLModel):
     """User update model."""
 
-    code: Optional[str] = None
+    code: str | None = None
 
-    profile_picture: Optional[str] = None
-    email: Optional[str] = None
-    username: Optional[str] = None
-    fullname: Optional[str] = None
-    password: Optional[str] = None
-    confirm_password: Optional[str] = None
+    profile_picture: str | None = None
+    email: str | None = None
+    username: str | None = None
+    fullname: str | None = None
+    password: str | None = None
+    confirm_password: str | None = None
 
-    account_view: Optional[str] = None
-    is_sidebar_open: Optional[bool] = None
+    account_view: str | None = None
+    is_sidebar_open: bool | None = None
 
 
 # Friends
 class FriendRequest(SQLModel, table=True):
     """Friend request link model."""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     user_uid: UUID = Field(default=None, foreign_key="user.uid")
     friend_uid: UUID = Field(default=None, foreign_key="user.uid")
 
@@ -153,7 +152,7 @@ class FriendRequest(SQLModel, table=True):
 class Friend(SQLModel, table=True):
     """Friend link model."""
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     user_uid: UUID = Field(default=None, foreign_key="user.uid")
     friend_uid: UUID = Field(default=None, foreign_key="user.uid")
 
@@ -178,7 +177,7 @@ class FriendReadBase(SQLModel):
 
     uid: UUID
     join_date: datetime
-    profile_picture: Optional[str]
+    profile_picture: str | None
     username: str
 
 
