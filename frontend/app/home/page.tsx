@@ -16,7 +16,8 @@ import { useConst } from "../providers";
 
 import { LoggedInNav } from "../ui/Nav";
 import Main from "../ui/Main";
-import { File } from "../ui/Upload";
+import Recommendations from "./Recommendations";
+import CreateBox from "./CreateBox";
 import Support from "./Support";
 import pageLoading from "@/public/page-loading.svg";
 
@@ -81,8 +82,10 @@ function Base() {
         }`}
       >
         <LoggedInNav />
-        <Main>
-          <File />
+        <Main className="gap-20">
+          <Recommendations />
+          <p>---Or---</p>
+          <CreateBox />
         </Main>
         <Support />
       </div>

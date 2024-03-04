@@ -9,6 +9,7 @@ import { useAuthEffect } from "./lib/callbacks";
 import { LoggedOutNav } from "./ui/Nav";
 import Main from "./ui/Main";
 import Spec from "./home/Spec";
+import Recommendations from "./home/Recommendations";
 import { Button } from "./ui/Button";
 import Support from "./home/Support";
 import pageLoading from "@/public/page-loading.svg";
@@ -34,6 +35,7 @@ function App() {
         <LoggedOutNav showSignUp={false} />
         <Main className="gap-12 md:gap-24">
           <Spec />
+          <Recommendations />
           <Button
             onClick={() => {
               router.push("/signup");

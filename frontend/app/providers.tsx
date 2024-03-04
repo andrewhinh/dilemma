@@ -49,7 +49,30 @@ interface CompleteUser extends User {
   provider: string;
 }
 
-export type { UserBackend, FriendRequest, Friend };
+interface PathItem {
+  title: string;
+  description: string;
+  uid: string;
+  views: number;
+  likes: number;
+  dislikes: number;
+  comments: number;
+}
+
+interface Path {
+  uid: string;
+  author: string;
+  created: Date;
+  topic: string;
+  description: string;
+  items: PathItem[];
+  views: number;
+  likes: number;
+  dislikes: number;
+  comments: number;
+}
+
+export type { UserBackend, FriendRequest, Friend, Path };
 
 interface State extends CompleteUser {
   verifiedLoggedOut: boolean;
