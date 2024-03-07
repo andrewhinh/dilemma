@@ -1,5 +1,6 @@
 """Dependencies for items endpoints."""
 
+import ast
 import logging
 import signal
 import traceback
@@ -25,11 +26,13 @@ from app.models.items import (
     GitHubResponse,
     OpenLibraryAuthor,
     OpenLibraryResponse,
+    Path,
     UdemyInstructor,
     UdemyResponse,
     WikipediaResponse,
     YouTubeResponse,
 )
+from app.models.users import User
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +76,7 @@ def time_limit(seconds):
 
 
 # Basic search functions
-def search_arxiv(query: str, max_results: int = 10) -> list[ArXivResponse]:
+def search_arxiv(query: str, max_results: int = 15) -> list[ArXivResponse]:
     """Search arXiv for articles."""
     with time_limit(API_TIMEOUT):
         results = ARXIV_CLIENT.results(
@@ -106,17 +109,14 @@ def search_wikipedia(title: str) -> WikipediaResponse:
     with time_limit(API_TIMEOUT):
         response = wikipedia.page(title)
         return WikipediaResponse(
-            categories=response.categories,
             images=response.images,
-            links=response.links,
-            references=response.references,
             summary=response.summary,
             title=response.title,
             url=response.url,
         )
 
 
-def search_github(query: str, max_results: int = 10, sort: str = "stars", order: str = "desc") -> list[GitHubResponse]:
+def search_github(query: str, max_results: int = 15, sort: str = "stars", order: str = "desc") -> list[GitHubResponse]:
     """Search GitHub for a repository."""
     repos = GITHUB_CLIENT.search_repositories(query, sort, order)
     if not repos:
@@ -141,7 +141,7 @@ def search_github(query: str, max_results: int = 10, sort: str = "stars", order:
     ]
 
 
-def search_youtube(query: str, max_results: int = 10, types="channel,playlist,video") -> list[YouTubeResponse]:
+def search_youtube(query: str, max_results: int = 15, types="channel,playlist,video") -> list[YouTubeResponse]:
     """Search YouTube for videos."""
     results = []
     response = YOUTUBE_CLIENT.search.list(
@@ -201,7 +201,7 @@ def search_open_library(title: str, author: str = None) -> OpenLibraryResponse:
 
 
 def search_udemy(
-    query: str, category: str = None, subcategory: str = None, max_results: int = 10
+    query: str, category: str = None, subcategory: str = None, max_results: int = 15
 ) -> list[UdemyResponse]:
     """Search Udemy for courses."""
     results = []
@@ -237,7 +237,9 @@ def search_udemy(
 
 
 # Search functions with LLM
-def search_arxiv_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1, **kwargs) -> list[ArXivResponse]:
+async def search_arxiv_with_llm(
+    topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1, **kwargs
+) -> list[ArXivResponse]:
     """Search arXiv for articles using model."""
     # Initialize the model
     lm = dspy.OpenAI(model=model, api_key=SETTINGS.openai_api_key, model_type="chat")
@@ -345,7 +347,7 @@ def search_arxiv_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: in
     return assert_transform_module(SimplifiedBaleen().map_named_predictors(Retry), backtrack_handler)(topic=topic)
 
 
-def search_wikipedia_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1) -> WikipediaResponse:
+async def search_wikipedia_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1) -> WikipediaResponse:
     """Search Wikipedia for an article using model."""
     # Initialize the model
     lm = dspy.OpenAI(model=model, api_key=SETTINGS.openai_api_key, model_type="chat")
@@ -436,7 +438,7 @@ def search_wikipedia_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops
     return assert_transform_module(SimplifiedBaleen().map_named_predictors(Retry), backtrack_handler)(topic=topic)
 
 
-def search_github_with_llm(
+async def search_github_with_llm(
     topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1, **kwargs
 ) -> list[GitHubResponse]:
     """Search GitHub for a repository using model."""
@@ -534,7 +536,7 @@ def search_github_with_llm(
     return assert_transform_module(SimplifiedBaleen().map_named_predictors(Retry), backtrack_handler)(topic=topic)
 
 
-def search_youtube_with_llm(
+async def search_youtube_with_llm(
     topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1, **kwargs
 ) -> list[YouTubeResponse]:
     """Search YouTube for videos using model."""
@@ -619,7 +621,9 @@ def search_youtube_with_llm(
     return assert_transform_module(SimplifiedBaleen().map_named_predictors(Retry), backtrack_handler)(topic=topic)
 
 
-def search_open_library_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1) -> OpenLibraryResponse:
+async def search_open_library_with_llm(
+    topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1
+) -> OpenLibraryResponse:
     """Search Open Library for works using model."""
     # Initialize the model
     lm = dspy.OpenAI(model=model, api_key=SETTINGS.openai_api_key, model_type="chat")
@@ -701,7 +705,9 @@ def search_open_library_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_h
     return assert_transform_module(SimplifiedBaleen().map_named_predictors(Retry), backtrack_handler)(topic=topic)
 
 
-def search_udemy_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1, **kwargs) -> list[UdemyResponse]:
+async def search_udemy_with_llm(
+    topic: str, model: str = "gpt-3.5-turbo", max_hops: int = 1, **kwargs
+) -> list[UdemyResponse]:
     """Search Udemy for courses using model."""
     # Initialize the model
     lm = dspy.OpenAI(model=model, api_key=SETTINGS.openai_api_key, model_type="chat")
@@ -796,3 +802,94 @@ def search_udemy_with_llm(topic: str, model: str = "gpt-3.5-turbo", max_hops: in
 
     # Run the program
     return assert_transform_module(SimplifiedBaleen().map_named_predictors(Retry), backtrack_handler)(topic=topic)
+
+
+def create_path_from_search(search_results: dict, model: str = "gpt-4-turbo-preview", max_hops: int = 1) -> Path:
+    """Create a path from search results using model."""
+    # Initialize the model
+    lm = dspy.OpenAI(model=model, api_key=SETTINGS.openai_api_key, model_type="chat")
+    dspy.settings.configure(lm=lm, trace=[])
+
+    # Define problem signature
+    class GeneratePath(dspy.Signature):
+        """
+        Given search results for educational material, create a list (representing a curriculum) of the results.
+        Only include the most relevant results that minimize redundancy and total cost.
+        Order the list in a sequence that makes sense for learning the material.
+        Each element in the list may be an individual search result or a sub-list of search results to be studied concurrently.
+
+        e.g. {"arxiv": ["1st", "3rd"], "wikipedia": {"2nd"}, "youtube": ["4th", "4th"], ...} -> ["1st", "2nd", "3rd", ["4th", "4th"], ...]
+
+        However, to reduce costs, instead of directly returning the elements, return the indices of the elements in the search results.
+
+        e.g. {"arxiv": ["1st", "3rd"], "wikipedia": {"2nd"}, "youtube": ["4th", "4th"], ...} -> [{"arxiv": 0}, {"wikipedia": 0}, {"arxiv": 1}, [{"youtube": 0}, {"youtube": 1}], ...]
+        """
+
+        context = dspy.InputField(desc="may contain relevant paths")
+        search_results = dspy.InputField()
+        path = dspy.OutputField()
+
+    # Define program
+    class SimplifiedBaleen(dspy.Module):
+        def __init__(
+            self,
+        ):
+            super().__init__()
+
+            self.generate_path = [dspy.ChainOfThought(GeneratePath) for _ in range(max_hops)]
+
+        def forward(self, search_results):
+            path = []
+            context = []
+            str_search_results = repr(search_results)
+            for hop in range(max_hops):
+                try:
+                    with time_limit(API_TIMEOUT):
+                        str_path = self.generate_path[hop](context=context, search_results=str_search_results).path
+                        temp_path = ast.literal_eval(str_path)
+                        path = [
+                            search_results[list(element.keys())[0]][list(element.values())[0]]
+                            if isinstance(element, dict)
+                            else [
+                                search_results[list(sub_element.keys())[0]][list(sub_element.values())[0]]
+                                for sub_element in element
+                            ]
+                            for element in temp_path
+                        ]
+
+                        if len(path) > 0:
+                            passages = [str_path]
+                            context = deduplicate(context + passages)
+
+                        else:
+                            message = "No elements in the path."
+                            dspy.Suggest(
+                                False,
+                                message,
+                                target_module=GeneratePath,
+                            )
+                            passages = [message]
+                            context = deduplicate(context + passages)
+                except TimeoutException:
+                    logger.error("Path timed out")
+                except Exception as e:
+                    logger.error("Path %s", traceback.format_exc())
+                    message = str(e)
+                    dspy.Suggest(
+                        False,
+                        message,
+                        target_module=GeneratePath,
+                    )
+                    passages = [message]
+                    context = deduplicate(context + passages)
+
+            return path
+
+    # Run the program
+    return assert_transform_module(SimplifiedBaleen().map_named_predictors(Retry), backtrack_handler)(
+        search_results=search_results
+    )
+
+
+def get_top_paths(user: User | None) -> list[Path]:
+    pass

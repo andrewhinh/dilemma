@@ -5,13 +5,18 @@ from uuid import UUID, uuid4
 
 from sqlmodel import Field, Relationship, SQLModel
 
+# Max lengths (in characters)
+MAX_EMAIL_LENGTH = 320
+MAX_USERNAME_LENGTH = 32
+MAX_FULLNAME_LENGTH = 100
+
 
 # Misc auth
 class AuthCode(SQLModel, table=True):
     """Verification code model."""
 
     id: int | None = Field(default=None, primary_key=True)
-    email: str = Field(default=None, index=True)
+    email: str = Field(default=None, max_length=MAX_EMAIL_LENGTH, index=True)
     code: str = Field(default_factory=lambda: uuid4().hex[:6])
 
     status: str = Field(default="pending", index=True)
@@ -36,9 +41,9 @@ class UserBase(SQLModel):
     provider: str = Field(default="dilemma", index=True)
 
     profile_picture: str | None = Field(default=None)
-    email: str | None = Field(default=None, index=True)
-    username: str | None = Field(default=None, index=True)
-    fullname: str | None = Field(default=None)
+    email: str | None = Field(default=None, max_length=MAX_EMAIL_LENGTH, index=True)
+    username: str | None = Field(default=None, max_length=MAX_USERNAME_LENGTH, index=True)
+    fullname: str | None = Field(default=None, max_length=MAX_FULLNAME_LENGTH)
     disabled: bool | None = False
 
     account_view: str | None = Field(default="profile")

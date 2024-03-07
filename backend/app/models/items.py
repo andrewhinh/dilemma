@@ -1,8 +1,13 @@
 """Item models."""
 
 from datetime import datetime
+from uuid import UUID, uuid4
 
-from sqlmodel import SQLModel
+from sqlmodel import JSON, Column, Field, SQLModel
+
+# Max lengths (in characters)
+MAX_QUERY_LENGTH = 100
+MAX_DESCRIPTION_LENGTH = 1000
 
 
 # Retrieve model
@@ -31,10 +36,7 @@ class ArXivResponse(SQLModel):
 class WikipediaResponse(SQLModel):
     """Wikipedia Response model."""
 
-    categories: list[str]
     images: list[str]
-    links: list[str]
-    references: list[str]
     summary: str
     title: str
     url: str
@@ -103,3 +105,53 @@ class UdemyResponse(SQLModel):
     price: str
     visible_instructors: list[UdemyInstructor]
     headline: str
+
+
+# Path
+class PathBase(SQLModel):
+    """Path base model."""
+
+    title: str = Field(default=None, max_length=MAX_QUERY_LENGTH)
+    description: str | None = Field(default=None, max_length=MAX_DESCRIPTION_LENGTH)
+    author: str = Field(default=None)
+    created: datetime = Field(default_factory=datetime.utcnow)
+    items: list[str] = Field(default=None, sa_column=Column(JSON))
+    likes: int = Field(default=None)
+    dislikes: int = Field(default=None)
+    comments: list[str] = Field(default=None, sa_column=Column(JSON))
+
+    # Needed for Column(JSON)
+    class Config:
+        """Configuration for PathBase class."""
+
+        arbitrary_types_allowed = True
+
+
+class Path(PathBase, table=True):
+    """Path model."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    uid: UUID = Field(default_factory=lambda: uuid4(), unique=True)
+
+
+class PathCreate(PathBase):
+    """Path create model."""
+
+    pass
+
+
+class PathRead(PathBase):
+    """Path read model."""
+
+    uid: UUID
+
+
+class PathUpdate(SQLModel):
+    """Path update model."""
+
+    title: str | None = None
+    description: str | None = None
+    items: list | None = None
+    likes: int | None = None
+    dislikes: int | None = None
+    comments: list | None = None
