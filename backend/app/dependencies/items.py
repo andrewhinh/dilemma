@@ -1,6 +1,7 @@
 """Dependencies for items endpoints."""
 
 import logging
+import math
 import signal
 from contextlib import contextmanager
 from uuid import UUID
@@ -9,7 +10,7 @@ import pandas
 from homeharvest import scrape_property
 
 from app.config import get_settings
-from app.models.items import Property
+from app.models.items import AltPhoto, Property
 
 logger = logging.getLogger(__name__)
 
@@ -63,38 +64,72 @@ def get_home_data(location: str) -> list[Property]:
         properties = pandas.DataFrame()
 
     list_properties = []
-    print(properties.loc[0])
     for _, row in properties.iterrows():
+        if "alt_photos" in row:
+            alt_photos = [AltPhoto(url=url) for url in row["alt_photos"].split(",")]
         list_properties.append(
             Property(
-                property_url=row["property_url"],
-                mls=row["mls"],
-                mls_id=row["mls_id"],
-                status=row["status"],
-                street=row["street"],
-                unit=row["unit"],
-                city=row["city"],
-                state=row["state"],
-                zip_code=row["zip_code"],
-                style=row["style"],
-                beds=row["beds"],
-                full_baths=row["full_baths"],
-                half_baths=row["half_baths"],
-                sqft=row["sqft"],
-                year_built=row["year_built"],
-                days_on_mls=row["days_on_mls"],
-                list_price=row["list_price"],
-                list_date=row["list_date"],
-                sold_price=row["sold_price"],
-                last_sold_date=row["last_sold_date"],
-                lot_sqft=row["lot_sqft"],
-                price_per_sqft=row["price_per_sqft"],
-                latitude=row["latitude"],
-                longitude=row["longitude"],
-                stories=row["stories"],
-                hoa_fee=row["hoa_fee"],
-                parking_garage=row["parking_garage"],
-                primary_photo=row["primary_photo"],
+                property_url=row["property_url"] if "property_url" in row else None,
+                mls=row["mls"] if "mls" in row else None,
+                mls_id=row["mls_id"] if "mls_id" in row else None,
+                status=row["status"] if "status" in row else None,
+                street=row["street"] if "street" in row else None,
+                unit=row["unit"] if "unit" in row else None,
+                city=row["city"] if "city" in row else None,
+                state=row["state"] if "state" in row else None,
+                zip_code=row["zip_code"] if "zip_code" in row else None,
+                style=row["style"].name if "style" in row else None,
+                beds=row["beds"] if "beds" in row else None,
+                full_baths=row["full_baths"] if "full_baths" in row else None,
+                half_baths=row["half_baths"] if "half_baths" in row else None,
+                sqft=row["sqft"] if "sqft" in row else None,
+                year_built=row["year_built"] if "year_built" in row else None,
+                stories=row["stories"] if "stories" in row else None,
+                lot_sqft=row["lot_sqft"] if "lot_sqft" in row else None,
+                days_on_mls=row["days_on_mls"] if "days_on_mls" in row else None,
+                list_price=row["list_price"]
+                if "list_price" in row
+                and row["list_price"] is not None
+                and not math.isinf(row["list_price"])
+                and not math.isnan(row["list_price"])
+                else None,
+                list_date=row["list_date"] if "list_date" in row else None,
+                pending_date=row["pending_date"] if "pending_date" in row else None,
+                sold_price=row["sold_price"]
+                if "sold_price" in row
+                and row["sold_price"] is not None
+                and not math.isinf(row["sold_price"])
+                and not math.isnan(row["sold_price"])
+                else None,
+                last_sold_date=row["last_sold_date"] if "last_sold_date" in row else None,
+                price_per_sqft=row["price_per_sqft"]
+                if "price_per_sqft" in row
+                and row["price_per_sqft"] is not None
+                and not math.isinf(row["price_per_sqft"])
+                and not math.isnan(row["price_per_sqft"])
+                else None,
+                hoa_fee=row["hoa_fee"]
+                if "hoa_fee" in row
+                and row["hoa_fee"] is not None
+                and not math.isinf(row["hoa_fee"])
+                and not math.isnan(row["hoa_fee"])
+                else None,
+                latitude=row["latitude"]
+                if "latitude" in row
+                and row["latitude"] is not None
+                and not math.isinf(row["latitude"])
+                and not math.isnan(row["latitude"])
+                else None,
+                longitude=row["longitude"]
+                if "longitude" in row
+                and row["longitude"] is not None
+                and not math.isinf(row["longitude"])
+                and not math.isnan(row["longitude"])
+                else None,
+                parking_garage=row["parking_garage"] if "parking_garage" in row else None,
+                primary_photo=row["primary_photo"] if "primary_photo" in row else None,
+                alt_photos=alt_photos,
+                neighborhoods=row["neighborhoods"] if "neighborhoods" in row else None,
             )
         )
 

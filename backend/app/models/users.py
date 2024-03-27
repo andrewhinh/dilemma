@@ -59,12 +59,14 @@ class User(UserBase, table=True):
     hashed_password: str | None = Field(default=None)
     refresh_token: str | None = Field(default=None)
 
+    # Relationships involving FriendRequest
     sender_links: list["FriendRequest"] | None = Relationship(
         back_populates="sender",
         sa_relationship_kwargs={
             "foreign_keys": "FriendRequest.user_uuid",
             "lazy": "selectin",
             "cascade": "all, delete",
+            "overlaps": "receiver_links",  # Added overlaps parameter here
         },
     )
     receiver_links: list["FriendRequest"] | None = Relationship(
@@ -73,15 +75,18 @@ class User(UserBase, table=True):
             "foreign_keys": "FriendRequest.friend_uuid",
             "lazy": "selectin",
             "cascade": "all, delete",
+            "overlaps": "sender_links",  # Added overlaps parameter here
         },
     )
 
+    # Relationships involving Friend
     friend_1_links: list["Friend"] | None = Relationship(
         back_populates="friend_1",
         sa_relationship_kwargs={
             "foreign_keys": "Friend.user_uuid",
             "lazy": "selectin",
             "cascade": "all, delete",
+            "overlaps": "friend_2_links",  # Added overlaps parameter here
         },
     )
     friend_2_links: list["Friend"] | None = Relationship(
@@ -90,6 +95,7 @@ class User(UserBase, table=True):
             "foreign_keys": "Friend.friend_uuid",
             "lazy": "selectin",
             "cascade": "all, delete",
+            "overlaps": "friend_1_links",  # Added overlaps parameter here
         },
     )
 
@@ -166,13 +172,19 @@ class Friend(SQLModel, table=True):
     friend_1: User = Relationship(
         back_populates="friend_1_links",
         sa_relationship_kwargs={
-            "foreign_keys": "Friend.friend_uuid",
+            "foreign_keys": "Friend.user_uuid",
+            "lazy": "selectin",
+            "cascade": "all, delete",
+            "overlaps": "friend_2_links",  # Added overlaps parameter here
         },
     )
     friend_2: User = Relationship(
         back_populates="friend_2_links",
         sa_relationship_kwargs={
-            "foreign_keys": "Friend.user_uuid",
+            "foreign_keys": "Friend.friend_uuid",
+            "lazy": "selectin",
+            "cascade": "all, delete",
+            "overlaps": "friend_1_links",  # Added overlaps parameter here
         },
     )
 
