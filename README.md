@@ -1,14 +1,14 @@
 # Dilemma
 
-Get the experience for that job.
+Buy and sell homes with ease.
 
 ## Problem
 
-Getting a job without experience companies value is hard. Getting experience without a job is also hard.
+Buying and selling homes shouldn't require a real estate agent. At the end of the day, it's just a transaction between two parties.
 
 ## Solution
 
-Dilemma: a platform that connects you with courses and hands-on projects valued by leading companies.
+Dilemma: a platform that connects buyers and sellers directly.
 
 ## Contributing
 
