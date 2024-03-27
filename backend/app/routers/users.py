@@ -1,6 +1,7 @@
 """User routes."""
+
 from datetime import datetime
-from typing import Annotated, List, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, Security
 from fastapi.responses import RedirectResponse
@@ -325,9 +326,9 @@ async def refresh_token(
     *,
     session: Session = Depends(get_session),
     response: Response,
-    access_token: Optional[str] = Cookie(default=None),
-    refresh_token: Optional[str] = Cookie(default=None),
-    provider: Optional[str] = Cookie(default=None),
+    access_token: str | None = Cookie(default=None),
+    refresh_token: str | None = Cookie(default=None),
+    provider: str | None = Cookie(default=None),
 ):
     """Refresh token.
 
@@ -343,7 +344,7 @@ async def refresh_token(
     Returns
     -------
     Token
-        token_type and uid
+        token_type and uuid
     """
     # Check if access token is valid
     try:
@@ -380,9 +381,9 @@ async def logout(
     *,
     session: Session = Depends(get_session),
     response: Response,
-    access_token: Optional[str] = Cookie(default=None),
-    refresh_token: Optional[str] = Cookie(default=None),
-    provider: Optional[str] = Cookie(default=None),
+    access_token: str | None = Cookie(default=None),
+    refresh_token: str | None = Cookie(default=None),
+    provider: str | None = Cookie(default=None),
 ):
     """Logout.
 
@@ -577,7 +578,7 @@ async def verify_email_update(
     *,
     current_user: Annotated[User, Depends(get_current_active_user)],
     session: Session = Depends(get_session),
-    provider: Optional[str] = Cookie(default=None),
+    provider: str | None = Cookie(default=None),
     user: UserUpdate,
 ):
     """Verify new email.
@@ -707,7 +708,7 @@ async def update_user(
     Returns
     -------
     Token
-        token_type and uid
+        token_type and uuid
     """
     user_data = new_user.model_dump(exclude_unset=True)
     verify_user_update(session, current_user, user_data)
@@ -865,7 +866,7 @@ async def decline_friend_request(
         raise HTTPException(status_code=404, detail="Friend not found")
 
 
-@router.get("/friends/requests/sent", response_model=List[FriendRequestRead])
+@router.get("/friends/requests/sent", response_model=list[FriendRequestRead])
 async def read_sent_friend_requests(
     *,
     current_user: Annotated[User, Depends(get_current_active_user)],
@@ -874,7 +875,7 @@ async def read_sent_friend_requests(
     friend_requests = get_sent_friend_requests(current_user)
     friend_requests = [
         FriendRequestRead(
-            uid=friend_request.uid,
+            uuid=friend_request.uuid,
             join_date=friend_request.join_date,
             profile_picture=friend_request.profile_picture,
             username=friend_request.username,
@@ -885,7 +886,7 @@ async def read_sent_friend_requests(
     return friend_requests
 
 
-@router.get("/friends/requests/incoming", response_model=List[FriendRequestRead])
+@router.get("/friends/requests/incoming", response_model=list[FriendRequestRead])
 async def read_incoming_friend_requests(
     *,
     current_user: Annotated[User, Depends(get_current_active_user)],
@@ -894,7 +895,7 @@ async def read_incoming_friend_requests(
     friend_requests = get_incoming_friend_requests(current_user)
     friend_requests = [
         FriendRequestRead(
-            uid=friend_request.uid,
+            uuid=friend_request.uuid,
             join_date=friend_request.join_date,
             profile_picture=friend_request.profile_picture,
             username=friend_request.username,
@@ -907,7 +908,7 @@ async def read_incoming_friend_requests(
 
 
 # Friend management
-@router.get("/friends/", response_model=List[FriendRead])
+@router.get("/friends/", response_model=list[FriendRead])
 async def read_friends(
     *,
     current_user: Annotated[User, Depends(get_current_active_user)],
@@ -916,7 +917,7 @@ async def read_friends(
     friends = get_friends(current_user)
     friends = [
         FriendRead(
-            uid=friend.uid,
+            uuid=friend.uuid,
             join_date=friend.join_date,
             profile_picture=friend.profile_picture,
             username=friend.username,

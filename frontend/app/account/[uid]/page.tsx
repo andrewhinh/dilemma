@@ -38,7 +38,7 @@ function Account() {
   const getUser = useGetUser();
   const updateUser = useUpdateUser();
 
-  const { getUserInfo, accountView, isSideBarOpen, uid } = constState;
+  const { getUserInfo, accountView, isSideBarOpen, uuid } = constState;
   const [profileHover, setProfileHover] = useState(false);
   const [profileEditHover, setProfileEditHover] = useState(false);
   const [friendHover, setFriendHover] = useState(false);
@@ -50,7 +50,7 @@ function Account() {
       logOut("/login");
     },
     onSuccess: () => {
-      if (pathname.split("/")[2] !== uid) router.push(`/account/${uid}`);
+      if (pathname.split("/")[2] !== uuid) router.push(`/account/${uuid}`);
       if (getUserInfo) {
         getUser();
         constDispatch({ type: "SET_GET_USER_INFO", payload: false });

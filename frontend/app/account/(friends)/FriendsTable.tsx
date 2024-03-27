@@ -221,7 +221,7 @@ function FriendTable({
       </thead>
       <tbody className="bg-slate-100 shadow-md">
         {data.map((row) => (
-          <tr key={row.uid} className="border-t border-zinc-500">
+          <tr key={row.uuid} className="border-t border-zinc-500">
             <td className="p-4 flex justify-between">
               <div className="flex flex-1 gap-2 justify-start items-center">
                 <div className="group relative inline-block">

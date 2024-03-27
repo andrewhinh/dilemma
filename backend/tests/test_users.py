@@ -1,4 +1,5 @@
 """Test the user routes."""
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
@@ -43,7 +44,7 @@ def user_data_fixture(base_client: TestClient):
     assert response.status_code == 200
     assert data["access_token"] is not None
     assert data["token_type"] == "bearer"
-    assert data["uid"] is not None
+    assert data["uuid"] is not None
     return credentials
 
 
@@ -69,7 +70,7 @@ def test_login_user(user_data: dict, client: TestClient):
     assert response.status_code == 200
     assert data["access_token"] is not None
     assert data["token_type"] == "bearer"
-    assert data["uid"] is not None
+    assert data["uuid"] is not None
 
 
 def test_read_user(current_user: User, client: TestClient):

@@ -73,7 +73,7 @@ function LoggedInNav() {
   const router = useRouter();
   const getUser = useGetUser();
   const { state, dispatch } = useConst();
-  const { getUserInfo, profilePicture, uid } = state;
+  const { getUserInfo, profilePicture, uuid } = state;
   const logOut = useLogOut();
 
   const [showDropdown, setShowDropdown] = useState(false);
@@ -111,7 +111,7 @@ function LoggedInNav() {
             <Button
               className="p-3 whitespace-nowrap"
               onClick={() => {
-                router.push("/account/" + uid);
+                router.push("/account/" + uuid);
               }}
             >
               My Account

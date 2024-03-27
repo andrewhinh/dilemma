@@ -14,11 +14,11 @@ const Redirect = () => {
   const { state } = useConst();
   const logOut = useLogOut();
 
-  const { uid } = state;
+  const { uuid } = state;
 
   useAuthEffect({
     onSuccess: () => {
-      router.push("/account/" + uid);
+      router.push("/account/" + uuid);
     },
     onError: () => {
       logOut("/login");

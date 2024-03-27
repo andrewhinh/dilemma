@@ -1,7 +1,4 @@
-import Link from "next/link";
-
 import Header from "../ui/Header";
-import { Button } from "../ui/Button";
 
 function Spec() {
   return (

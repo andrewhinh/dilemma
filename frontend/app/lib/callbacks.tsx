@@ -69,7 +69,7 @@ const useLogOut = () => {
           fullname: "",
           account_view: "",
           is_sidebar_open: false,
-          uid: "",
+          uuid: "",
         });
         dispatch({
           type: "SET_SENT_FRIEND_REQUESTS",

@@ -12,6 +12,7 @@ ignore = [
     "E203", "E402", "E501",  # whitespace, import, line length
     "S101", "S113", "S311", "S105",  # assert removed in bytecode, no request timeout, pRNG not secure, hardcoded password
     "ANN", "ANN002", "ANN003", "ANN101", "ANN102", "ANN202",  # ignore all for now, but always ignore some
+    "B008", # ignore function calls in argument defaults
     "D100", "D102", "D103", "D104", "D105",  # missing docstrings
     "D200", "D205", "D400", "D401",  # whitespace issues and first line content
 ]
@@ -36,4 +37,6 @@ mypy-init-return = true
 # ignore data files in data/
 "*/data/*.py" = ["F", "I"]
 # ignore hardcoded passwords and assert statements in users.py
-"*/users.py" = ["B008", "S106"]
+"*/users.py" = ["S106"]
+# ignore excess complexity
+"*/items.py" = ["C901"]

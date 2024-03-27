@@ -11,7 +11,7 @@ interface User {
   fullname: string;
   accountView: string;
   isSideBarOpen: boolean;
-  uid: string;
+  uuid: string;
 }
 
 // Type for the user object that is returned from the backend
@@ -24,11 +24,11 @@ interface UserBackend {
   fullname?: string;
   account_view?: string;
   is_sidebar_open?: boolean;
-  uid?: string;
+  uuid?: string;
 }
 
 interface FriendBase {
-  uid: string;
+  uuid: string;
   join_date: Date;
   profile_picture?: string;
   username: string;
@@ -69,7 +69,7 @@ const initialState: State = {
   fullname: "",
   accountView: "",
   isSideBarOpen: false,
-  uid: "",
+  uuid: "",
   sentFriendRequests: [],
   incomingFriendRequests: [],
   friends: [],
@@ -116,7 +116,7 @@ const reducer = (state: State, action: Action): State => {
     case "SET_IS_SIDEBAR_OPEN":
       return { ...state, isSideBarOpen: action.payload };
     case "SET_UID":
-      return { ...state, uid: action.payload };
+      return { ...state, uuid: action.payload };
     case "SET_SENT_FRIEND_REQUESTS":
       return { ...state, sentFriendRequests: action.payload };
     case "SET_INCOMING_FRIEND_REQUESTS":

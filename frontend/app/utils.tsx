@@ -102,7 +102,7 @@ const useSetUser = () => {
     });
     constDispatch({
       type: "SET_UID",
-      payload: data.uid,
+      payload: data.uuid,
     });
   };
 };

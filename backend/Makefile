@@ -8,9 +8,9 @@ env:
 
 # Compile and install exact pip packages
 install:
-	pip install pip-tools==7.1.0 setuptools==68.0.0
-	pip-compile requirements/prod.in && pip-compile requirements/dev.in
-	pip-sync requirements/prod.txt requirements/dev.txt
+	pip install uv==0.1.24
+	uv pip compile requirements/prod.in -o requirements/prod.txt && uv pip compile requirements/dev.in -o requirements/dev.txt
+	uv pip sync requirements/prod.txt requirements/dev.txt
 
 # Setup
 setup:
@@ -37,11 +37,40 @@ test:
 
 # Run app
 dev:
-	python app/main.py
+	sudo -u postgres psql -c "SELECT 1 FROM pg_database WHERE datname = 'dilemma'" | grep -q 1 || sudo -u postgres createdb dilemma; python app/main.py
+
+# Login to Docker
+login:
+	env $(cat ../.env | xargs) docker login -u "$$DOCKERHUB_USERNAME" --password "$$DOCKERHUB_PASSWORD"
+
+# Build Docker image
+build:
+	docker build --build-arg ENV_FILE=.env -t andrewhinh/dilemma:local-latest .
+build-dev:
+	docker build --build-arg ENV_FILE=.env.development -t andrewhinh/dilemma:dev-latest .
+build-prod:
+	docker build --build-arg ENV_FILE=.env.production -t andrewhinh/dilemma:prod-latest .
+
+# Run Docker image
+run:
+	docker run -p 8000:8000 andrewhinh/dilemma:local-latest
+run-dev:
+	docker run -p 8000:8000 andrewhinh/dilemma:dev-latest
+run-prod:
+	docker run -p 8000:8000 andrewhinh/dilemma:prod-latest
+
+# Push Docker image
+push-dev:
+	make login
+	docker push andrewhinh/dilemma:dev-latest
+push-prod:
+	make login
+	docker push andrewhinh/dilemma:prod-latest
+
 
 # Connect to database
 db:
-	sudo -u postgres psql
+	sudo -u postgres psql -c "SELECT 1 FROM pg_database WHERE datname = 'dilemma'" | grep -q 1 || sudo -u postgres createdb dilemma; sudo -u postgres psql -d dilemma
 
 # Start linting server
 lint:
@@ -53,6 +82,6 @@ fix:
 
 # Bump versions of transitive dependencies
 upgrade:
-	pip install pip-tools==7.1.0 setuptools==68.0.0
-	pip-compile --upgrade requirements/prod.in && pip-compile --upgrade requirements/dev.in
-	pip-sync requirements/prod.txt requirements/dev.txt
+	pip install uv==0.1.24
+	uv pip compile --upgrade requirements/prod.in -o requirements/prod.txt && uv pip compile --upgrade requirements/dev.in -o requirements/dev.txt
+	uv pip sync requirements/prod.txt requirements/dev.txt
