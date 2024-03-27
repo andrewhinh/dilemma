@@ -2,7 +2,14 @@
 
 from uuid import UUID, uuid4
 
+from pydantic import BaseModel
 from sqlmodel import Field, Relationship, SQLModel
+
+
+class Request(BaseModel):
+    """Request model."""
+
+    query: str
 
 
 class AltPhoto(SQLModel, table=True):

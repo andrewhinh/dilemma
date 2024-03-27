@@ -2,9 +2,13 @@
 
 from fastapi import APIRouter, Security
 
-from app.dependencies.items import get_home_data
+from app.dependencies.items import HomesFinder
 from app.dependencies.security import verify_api_key
-from app.models.items import Property
+from app.models.items import Property, Request
+
+# Program
+find_homes = HomesFinder()
+
 
 router = APIRouter(
     tags=["items"],
@@ -14,6 +18,8 @@ router = APIRouter(
 
 
 @router.post("/home-data", response_model=dict[str, list[Property]])
-async def home_data(location: str):
-    """Get home data from location."""
-    return {"data": get_home_data(location)}
+async def home_data(request: Request):
+    """Get home data from query."""
+    return {
+        "data": find_homes(request.query).homes,
+    }

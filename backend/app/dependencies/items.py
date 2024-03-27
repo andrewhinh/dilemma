@@ -1,13 +1,21 @@
 """Dependencies for items endpoints."""
 
+import json
 import logging
 import math
+import random
 import signal
+import traceback
 from contextlib import contextmanager
+from datetime import datetime
+from functools import partial
 from uuid import UUID
 
-import pandas
+import dspy
+from dsp.utils import deduplicate
+from fastapi.encoders import jsonable_encoder
 from homeharvest import scrape_property
+from pydantic import BaseModel, Field
 
 from app.config import get_settings
 from app.models.items import AltPhoto, Property
@@ -18,9 +26,11 @@ SETTINGS = get_settings()
 OPENAI_API_KEY = SETTINGS.openai_api_key
 
 DEFAULT_MODEL = "gpt-3.5-turbo"
-DEFAULT_MAX_HOPS = 2
+DEFAULT_MAX_HOPS = 3
 DEFAULT_TEMPERATURE = 0.7
 DEFAULT_DELTA = 0.0001
+DEFAULT_MAX_RESULTS = 5
+DEFAULT_MAX_RETRIES = 3
 DEFAULT_TIMEOUT = 10  # seconds
 
 
@@ -51,17 +61,28 @@ def time_limit(seconds):
 
 
 # Get home data
-def get_home_data(location: str) -> list[Property]:
+def get_home_data(
+    location: str,
+    listing_type: str = "for_sale",
+    radius: float = None,  # miles
+    mls_only: bool = False,  # only show properties with MLS
+    past_days: int = None,
+    date_from: str = None,  # "YYYY-MM-DD"
+    date_to: str = None,
+    foreclosure: bool = None,
+    max_results: int = DEFAULT_MAX_RESULTS,
+) -> list[Property]:
     """Get home data from location."""
-    try:
-        with time_limit(DEFAULT_TIMEOUT):
-            properties = scrape_property(
-                location=location,
-                listing_type="for_sale",
-            )
-    except TimeoutException:
-        logger.error("Timeout occurred while fetching home data.")
-        properties = pandas.DataFrame()
+    properties = scrape_property(
+        location=location,
+        listing_type=listing_type,
+        radius=radius,
+        mls_only=mls_only,
+        past_days=past_days,
+        date_from=date_from,
+        date_to=date_to,
+        foreclosure=foreclosure,
+    )
 
     list_properties = []
     for _, row in properties.iterrows():
@@ -133,4 +154,125 @@ def get_home_data(location: str) -> list[Property]:
             )
         )
 
-    return list_properties
+    return list_properties[:max_results]
+
+
+# Param generation problem
+class Input(BaseModel):
+    """Input model."""
+
+    context: list[str] = Field(description="may contain relevant context")
+    query: str = Field()
+    current_date: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Output(BaseModel):
+    """Output model."""
+
+    location: str = Field(description="zip code, a full address, or city/state, etc.")
+    radius: float | None = Field(description="miles")
+    mls_only: bool | None = Field(description="if true, only show properties with MLS")
+    date_from: str | None = Field(description="YYYY-MM-DD")
+    date_to: str | None = Field(description="YYYY-MM-DD")
+    foreclosure: bool | None = Field(description="if true, only show foreclosure listings")
+
+
+class GenerateParams(dspy.Signature):
+    """
+    Given query, generate parameters for scraping property data from Realtor.com.
+
+    Required:
+    :param location: Location to search (e.g. "Dallas, TX", "85281", "2530 Al Lipscomb Way")
+
+    Optional:
+    :param radius: Get properties within _ (e.g. 1.0) miles. Only applicable for individual addresses.
+    :param mls_only: If set, fetches only listings with MLS IDs.
+    :param date_from, date_to: Get properties sold or listed (dependent on your listing_type) between these dates. format: 2021-01-28
+    :param foreclosure: If set, fetches only foreclosure listings.
+    """
+
+    input: Input = dspy.InputField()
+    output: Output = dspy.OutputField()
+
+
+# Query -> Homes
+class HomesFinder(dspy.Module):
+    """Find homes from query."""
+
+    def __init__(
+        self,
+        model: str = DEFAULT_MODEL,
+        max_hops: int = DEFAULT_MAX_HOPS,
+        temperature: float = DEFAULT_TEMPERATURE,
+        delta: float = DEFAULT_DELTA,
+        max_results: int = DEFAULT_MAX_RESULTS,
+        max_retries: int = DEFAULT_MAX_RETRIES,
+        gen_timeout: int = DEFAULT_TIMEOUT,
+        retrieve_timeout: int = DEFAULT_TIMEOUT,
+    ):
+        super().__init__()
+
+        self.lm = dspy.OpenAI(model=model, api_key=OPENAI_API_KEY, model_type="chat")
+        self.max_hops = max_hops
+        self.temperature = temperature
+        self.delta = delta
+        self.gen_timeout = gen_timeout
+        self.retrieve_timeout = retrieve_timeout
+
+        self.retrieve = partial(get_home_data, max_results=max_results)
+        self.generate_params = [
+            dspy.TypedChainOfThought(signature=GenerateParams, max_retries=max_retries) for _ in range(max_hops)
+        ]
+
+    def forward(self, query):
+        context, homes = [], []
+
+        for hop in range(self.max_hops):
+            try:
+                with time_limit(self.gen_timeout):
+                    with dspy.context(lm=self.lm):
+                        pred = self.generate_params[hop](
+                            input=Input(
+                                context=context,
+                                query=query,
+                            ),
+                            config={"temperature": self.temperature + self.delta * random.randint(-1, 1)},
+                        ).output
+            except TimeoutException:
+                logger.error("Params generation timeout")
+                homes = ["Timeout"]
+                context = deduplicate(context + homes)
+                continue
+            except Exception:
+                logger.error(traceback.format_exc())
+                homes = [traceback.format_exc()]
+                context = deduplicate(context + homes)
+                continue
+
+            try:
+                with time_limit(self.retrieve_timeout):
+                    homes = self.retrieve(
+                        location=pred.location,
+                        radius=pred.radius,
+                        mls_only=pred.mls_only,
+                        date_from=pred.date_from,
+                        date_to=pred.date_to,
+                        foreclosure=pred.foreclosure,
+                    )
+                    context = deduplicate(context + [json.dumps(jsonable_encoder(home)) for home in homes])
+            except TimeoutException:
+                logger.error("Homes retrieval timeout")
+                homes = ["Timeout"]
+                context = deduplicate(context + homes)
+                continue
+            except Exception:
+                logger.error(traceback.format_exc())
+                homes = [traceback.format_exc()]
+                context = deduplicate(context + homes)
+                continue
+
+        if len(homes) > 0 and isinstance(homes[0], str):  # if error
+            homes = []
+        return dspy.Prediction(
+            homes=homes,
+        )
