@@ -26,7 +26,7 @@ SETTINGS = get_settings()
 OPENAI_API_KEY = SETTINGS.openai_api_key
 
 DEFAULT_MODEL = "gpt-3.5-turbo"
-DEFAULT_MAX_HOPS = 3
+DEFAULT_MAX_HOPS = 2
 DEFAULT_TEMPERATURE = 0.7
 DEFAULT_DELTA = 0.0001
 DEFAULT_MAX_RESULTS = 5
@@ -63,13 +63,13 @@ def time_limit(seconds):
 # Get home data
 def get_home_data(
     location: str,
-    listing_type: str = "for_sale",
-    radius: float = None,  # miles
-    mls_only: bool = False,  # only show properties with MLS
-    past_days: int = None,
-    date_from: str = None,  # "YYYY-MM-DD"
-    date_to: str = None,
-    foreclosure: bool = None,
+    listing_type: str,  # for_rent, for_sale, sold
+    radius: float | None = None,  # miles
+    mls_only: bool | None = None,  # only show properties with MLS
+    past_days: int | None = None,
+    date_from: str | None = None,  # "YYYY-MM-DD"
+    date_to: str | None = None,
+    foreclosure: bool | None = None,
     max_results: int = DEFAULT_MAX_RESULTS,
 ) -> list[Property]:
     """Get home data from location."""
@@ -170,11 +170,13 @@ class Output(BaseModel):
     """Output model."""
 
     location: str = Field(description="zip code, a full address, or city/state, etc.")
+    listing_type: str = Field(description="for_rent, for_sale, sold")
     radius: float | None = Field(description="miles")
     mls_only: bool | None = Field(description="if true, only show properties with MLS")
+    past_days: int | None = Field(description="number of days in the past")
     date_from: str | None = Field(description="YYYY-MM-DD")
     date_to: str | None = Field(description="YYYY-MM-DD")
-    foreclosure: bool | None = Field(description="if true, only show foreclosure listings")
+    foreclosure: bool | None = Field(description="if true, only show foreclosure properties")
 
 
 class GenerateParams(dspy.Signature):
@@ -226,6 +228,16 @@ class HomesFinder(dspy.Module):
 
     def forward(self, query):
         context, homes = [], []
+        location, listing_type, radius, mls_only, past_days, date_from, date_to, foreclosure = (
+            "",
+            "",
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
 
         for hop in range(self.max_hops):
             try:
@@ -238,41 +250,68 @@ class HomesFinder(dspy.Module):
                             ),
                             config={"temperature": self.temperature + self.delta * random.randint(-1, 1)},
                         ).output
+                    location, listing_type, radius, mls_only, past_days, date_from, date_to, foreclosure = (
+                        pred.location,
+                        pred.listing_type,
+                        pred.radius,
+                        pred.mls_only,
+                        pred.past_days,
+                        pred.date_from,
+                        pred.date_to,
+                        pred.foreclosure,
+                    )
             except TimeoutException:
-                logger.error("Params generation timeout")
-                homes = ["Timeout"]
+                message = "Params generation timeout"
+                logger.error(message)
+                homes = [message]
                 context = deduplicate(context + homes)
                 continue
             except Exception:
-                logger.error(traceback.format_exc())
-                homes = [traceback.format_exc()]
+                message = traceback.format_exc()
+                logger.error(message)
+                homes = [message]
                 context = deduplicate(context + homes)
                 continue
 
             try:
                 with time_limit(self.retrieve_timeout):
                     homes = self.retrieve(
-                        location=pred.location,
-                        radius=pred.radius,
-                        mls_only=pred.mls_only,
-                        date_from=pred.date_from,
-                        date_to=pred.date_to,
-                        foreclosure=pred.foreclosure,
+                        location=location,
+                        listing_type=listing_type,
+                        radius=radius,
+                        mls_only=mls_only,
+                        past_days=past_days,
+                        date_from=date_from,
+                        date_to=date_to,
+                        foreclosure=foreclosure,
                     )
                     context = deduplicate(context + [json.dumps(jsonable_encoder(home)) for home in homes])
             except TimeoutException:
-                logger.error("Homes retrieval timeout")
-                homes = ["Timeout"]
+                message = f"Homes retrieval timeout for location: {location}, listing_type: {listing_type}, radius: {radius}, mls_only: {mls_only}, past_days: {past_days}, date_from: {date_from}, date_to: {date_to}, foreclosure: {foreclosure}"
+                logger.error(message)
+                homes = [message]
                 context = deduplicate(context + homes)
                 continue
             except Exception:
-                logger.error(traceback.format_exc())
-                homes = [traceback.format_exc()]
+                message = (
+                    f"Homes retrieval error for location: {location}, listing_type: {listing_type}, radius: {radius}, mls_only: {mls_only}, past_days: {past_days}, date_from: {date_from}, date_to: {date_to}, foreclosure: {foreclosure}\n"
+                    + traceback.format_exc()
+                )
+                logger.error(message)
+                homes = [message]
                 context = deduplicate(context + homes)
                 continue
 
         if len(homes) > 0 and isinstance(homes[0], str):  # if error
             homes = []
         return dspy.Prediction(
+            location=location,
+            listing_type=listing_type,
+            radius=radius,
+            mls_only=mls_only,
+            past_days=past_days,
+            date_from=date_from,
+            date_to=date_to,
+            foreclosure=foreclosure,
             homes=homes,
         )

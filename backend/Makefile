@@ -35,6 +35,10 @@ migrate:
 test:
 	pytest tests -s
 
+# Compile
+compile:
+	python scripts/compile.py
+
 # Run app
 dev:
 	sudo -u postgres psql -c "SELECT 1 FROM pg_database WHERE datname = 'dilemma'" | grep -q 1 || sudo -u postgres createdb dilemma; python app/main.py

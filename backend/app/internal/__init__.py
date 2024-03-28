@@ -1,1 +1,1 @@
-"""Admin dependencies + routers."""
+"""Admin."""
