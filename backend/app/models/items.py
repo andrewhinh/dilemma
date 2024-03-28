@@ -16,8 +16,10 @@ class AltPhoto(SQLModel, table=True):
     """Alternate photo model."""
 
     id: int = Field(primary_key=True, index=True)
-    property_uuid: int = Field(foreign_key="property.uuid")
-    url: str
+    uuid: UUID = Field(default_factory=lambda: uuid4(), unique=True)
+    url: str | None = Field(default=None)
+
+    property_uuid: UUID = Field(default=None, foreign_key="property.uuid")
     property: "Property" = Relationship(back_populates="alt_photos")
 
 
@@ -55,5 +57,40 @@ class Property(SQLModel, table=True):
     longitude: float | None = Field(default=None)
     parking_garage: int | None = Field(default=None)
     primary_photo: str | None = Field(default=None)
-    alt_photos: list[AltPhoto] | None = Relationship(back_populates="property")
+    alt_photos: list[AltPhoto | None] = Relationship(back_populates="property")
     neighborhoods: str | None = Field(default=None)
+
+    search_result_uuid: UUID = Field(
+        default=None,
+        foreign_key="searchresult.uuid",
+    )
+    search_result: "SearchResult" = Relationship(back_populates="properties")
+
+
+class SearchResultBase(SQLModel):
+    """Search result base model."""
+
+    location: str = Field(default=None)
+    listing_type: str = Field(default=None)
+    radius: float | None = Field(default=None)
+    mls_only: bool | None = Field(default=None)
+    past_days: int | None = Field(default=None)
+    date_from: str | None = Field(default=None)
+    date_to: str | None = Field(default=None)
+    foreclosure: bool | None = Field(default=None)
+
+
+class SearchResult(SearchResultBase, table=True):
+    """Search result model."""
+
+    id: int = Field(primary_key=True, index=True)
+    uuid: UUID = Field(default_factory=lambda: uuid4(), unique=True)
+
+    properties: list[Property | None] = Relationship(back_populates="search_result")
+
+
+class SearchResultRead(SearchResultBase):
+    """Search result read model."""
+
+    uuid: UUID
+    properties: list[Property | None]

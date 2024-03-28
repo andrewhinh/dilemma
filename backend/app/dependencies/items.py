@@ -26,7 +26,7 @@ SETTINGS = get_settings()
 OPENAI_API_KEY = SETTINGS.openai_api_key
 
 DEFAULT_MODEL = "gpt-3.5-turbo"
-DEFAULT_MAX_HOPS = 2
+DEFAULT_MAX_HOPS = 3
 DEFAULT_TEMPERATURE = 0.7
 DEFAULT_DELTA = 0.0001
 DEFAULT_MAX_RESULTS = 5
@@ -60,8 +60,8 @@ def time_limit(seconds):
         signal.alarm(0)
 
 
-# Get home data
-def get_home_data(
+# Search properties
+def search_properties(
     location: str,
     listing_type: str,  # for_rent, for_sale, sold
     radius: float | None = None,  # miles
@@ -72,7 +72,7 @@ def get_home_data(
     foreclosure: bool | None = None,
     max_results: int = DEFAULT_MAX_RESULTS,
 ) -> list[Property]:
-    """Get home data from location."""
+    """Search properties."""
     properties = scrape_property(
         location=location,
         listing_type=listing_type,
@@ -86,6 +86,7 @@ def get_home_data(
 
     list_properties = []
     for _, row in properties.iterrows():
+        alt_photos = []
         if "alt_photos" in row:
             alt_photos = [AltPhoto(url=url) for url in row["alt_photos"].split(",")]
         list_properties.append(
@@ -181,7 +182,7 @@ class Output(BaseModel):
 
 class GenerateParams(dspy.Signature):
     """
-    Given query, generate parameters for scraping property data from Realtor.com.
+    Given query, generate parameters for searching properties from Realtor.com.
 
     Required:
     :param location: Location to search (e.g. "Dallas, TX", "85281", "2530 Al Lipscomb Way")
@@ -197,9 +198,9 @@ class GenerateParams(dspy.Signature):
     output: Output = dspy.OutputField()
 
 
-# Query -> Homes
-class HomesFinder(dspy.Module):
-    """Find homes from query."""
+# Query -> Properties
+class PropertiesFinder(dspy.Module):
+    """Find properties from query."""
 
     def __init__(
         self,
@@ -221,13 +222,13 @@ class HomesFinder(dspy.Module):
         self.gen_timeout = gen_timeout
         self.retrieve_timeout = retrieve_timeout
 
-        self.retrieve = partial(get_home_data, max_results=max_results)
+        self.retrieve = partial(search_properties, max_results=max_results)
         self.generate_params = [
             dspy.TypedChainOfThought(signature=GenerateParams, max_retries=max_retries) for _ in range(max_hops)
         ]
 
     def forward(self, query):
-        context, homes = [], []
+        context, properties = [], []
         location, listing_type, radius, mls_only, past_days, date_from, date_to, foreclosure = (
             "",
             "",
@@ -263,19 +264,19 @@ class HomesFinder(dspy.Module):
             except TimeoutException:
                 message = "Params generation timeout"
                 logger.error(message)
-                homes = [message]
-                context = deduplicate(context + homes)
+                properties = [message]
+                context = deduplicate(context + properties)
                 continue
             except Exception:
                 message = traceback.format_exc()
                 logger.error(message)
-                homes = [message]
-                context = deduplicate(context + homes)
+                properties = [message]
+                context = deduplicate(context + properties)
                 continue
 
             try:
                 with time_limit(self.retrieve_timeout):
-                    homes = self.retrieve(
+                    properties = self.retrieve(
                         location=location,
                         listing_type=listing_type,
                         radius=radius,
@@ -285,25 +286,25 @@ class HomesFinder(dspy.Module):
                         date_to=date_to,
                         foreclosure=foreclosure,
                     )
-                    context = deduplicate(context + [json.dumps(jsonable_encoder(home)) for home in homes])
+                    context = deduplicate(context + [json.dumps(jsonable_encoder(property)) for property in properties])
             except TimeoutException:
-                message = f"Homes retrieval timeout for location: {location}, listing_type: {listing_type}, radius: {radius}, mls_only: {mls_only}, past_days: {past_days}, date_from: {date_from}, date_to: {date_to}, foreclosure: {foreclosure}"
+                message = f"Properties retrieval timeout for location: {location}, listing_type: {listing_type}, radius: {radius}, mls_only: {mls_only}, past_days: {past_days}, date_from: {date_from}, date_to: {date_to}, foreclosure: {foreclosure}"
                 logger.error(message)
-                homes = [message]
-                context = deduplicate(context + homes)
+                properties = [message]
+                context = deduplicate(context + properties)
                 continue
             except Exception:
                 message = (
-                    f"Homes retrieval error for location: {location}, listing_type: {listing_type}, radius: {radius}, mls_only: {mls_only}, past_days: {past_days}, date_from: {date_from}, date_to: {date_to}, foreclosure: {foreclosure}\n"
+                    f"Properties retrieval error for location: {location}, listing_type: {listing_type}, radius: {radius}, mls_only: {mls_only}, past_days: {past_days}, date_from: {date_from}, date_to: {date_to}, foreclosure: {foreclosure}\n"
                     + traceback.format_exc()
                 )
                 logger.error(message)
-                homes = [message]
-                context = deduplicate(context + homes)
+                properties = [message]
+                context = deduplicate(context + properties)
                 continue
 
-        if len(homes) > 0 and isinstance(homes[0], str):  # if error
-            homes = []
+        if len(properties) > 0 and isinstance(properties[0], str):  # if error
+            properties = []
         return dspy.Prediction(
             location=location,
             listing_type=listing_type,
@@ -313,5 +314,5 @@ class HomesFinder(dspy.Module):
             date_from=date_from,
             date_to=date_to,
             foreclosure=foreclosure,
-            homes=homes,
+            properties=properties,
         )

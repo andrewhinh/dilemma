@@ -636,8 +636,6 @@ async def get_current_user(
     User
         Current user
     """
-    access_token = "ya29.a0Ad52N38rxKUD2FHmFrF0LemVrwghC75qbUvPHYfxeJlkaBub29yQ3NrAZehI5pc3lPFRkRrkP0zXbLLjD3hSKZMC6sN7KVV7jzzHrVCVgYBhu6778vg8_u3M8vYDbL40VOZPOrA4JpGsSV14XIHG10cYzVMA6v34rGwDmwaCgYKAQsSARISFQHGX2MiyX-EAw0NssdSu96BeZc5qg0173"
-    provider = "google"
     if not access_token or not provider:
         raise CREDENTIALS_EXCEPTION
     return get_user_from_token(session, provider, access_token)

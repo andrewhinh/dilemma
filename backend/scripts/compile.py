@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from app.config import get_settings
 from app.dependencies.items import (
-    HomesFinder,
+    PropertiesFinder,
 )
 from app.models.items import Property
 
@@ -62,7 +62,7 @@ class Input(BaseModel):
     query: str = Field()
     current_date: datetime = Field(default_factory=datetime.utcnow)
 
-    location: str = Field(description="location of the homes")
+    location: str = Field(description="location of the properties")
     listing_type: str = Field(description="type of listing")
     radius: float | None = Field(description="radius in miles")
     mls_only: bool | None = Field(description="whether to include only MLS listings")
@@ -70,9 +70,9 @@ class Input(BaseModel):
     date_from: str | None = Field(description="start date")
     date_to: str | None = Field(description="end date")
     foreclosure: bool | None = Field(description="whether to include foreclosures")
-    homes: list[Property] = Field(description="list of homes")
+    properties: list[Property] = Field(description="list of properties")
 
-    assessment_question: str = Field(description="question to assess the relevancy of homes")
+    assessment_question: str = Field(description="question to assess the relevancy of properties")
 
 
 class Output(BaseModel):
@@ -82,14 +82,14 @@ class Output(BaseModel):
 
 
 class Assess(dspy.Signature):
-    """Assess the relevancy of homes along the specified dimension."""
+    """Assess the relevancy of properties along the specified dimension."""
 
     input: Input = dspy.InputField()
     output: Output = dspy.OutputField()
 
 
 def metric(gold, pred, trace=None):
-    query, location, listing_type, radius, mls_only, past_days, date_from, date_to, foreclosure, homes = (
+    query, location, listing_type, radius, mls_only, past_days, date_from, date_to, foreclosure, properties = (
         gold.query,
         pred.location,
         pred.listing_type,
@@ -99,11 +99,11 @@ def metric(gold, pred, trace=None):
         pred.date_from,
         pred.date_to,
         pred.foreclosure,
-        pred.homes,
+        pred.properties,
     )
 
     # Framing the base question for the assessment
-    str_homes = "\n\n".join([json.dumps(jsonable_encoder(home)) for home in homes])
+    str_properties = "\n\n".join([json.dumps(jsonable_encoder(property)) for property in properties])
     base_question = f"""
     The query is: {query}
 
@@ -117,8 +117,8 @@ def metric(gold, pred, trace=None):
     Date To: {date_to}
     Foreclosure: {foreclosure}
 
-    Based on the search, the homes found are:
-    {str_homes}
+    Based on the search, the properties found are:
+    {str_properties}
     """
 
     # Defining the assessment questions
@@ -131,7 +131,7 @@ def metric(gold, pred, trace=None):
         "Is the date from relevant to the query, if specified? If not, return yes.",
         "Is the date to relevant to the query, if specified? If not, return yes.",
         "Is the foreclosure relevant to the query, if specified? If not, return yes.",
-        "Are the homes relevant to the query?",
+        "Are the properties relevant to the query?",
     ]
     questions = [base_question + "\n" + question for question in questions]
 
@@ -150,7 +150,7 @@ def metric(gold, pred, trace=None):
                     date_from=date_from,
                     date_to=date_to,
                     foreclosure=foreclosure,
-                    homes=homes,
+                    properties=properties,
                     assessment_question=question,
                 )
             ).output
@@ -171,13 +171,13 @@ def main():
     optimizer = MIPRO(
         metric=metric,
         prompt_model=PROMPT_LM,
-        task_model=HomesFinder().lm,
+        task_model=PropertiesFinder().lm,
         num_candidates=NUM_CANDIDATES,
         init_temperature=INIT_TEMPERATURE,
         verbose=True,
     )
     compiled_program = optimizer.compile(
-        student=HomesFinder(),
+        student=PropertiesFinder(),
         trainset=trainset,
         num_trials=NUM_TRIALS,
         max_bootstrapped_demos=MAX_BOOTSTRAPPED_DEMOS,
@@ -199,7 +199,7 @@ def main():
         METRIC_MODEL,
         MODEL_PATH,
         TRAIN_TEST_SPLIT,
-        evaluate(HomesFinder()),
+        evaluate(PropertiesFinder()),
         evaluate(compiled_program),
         datetime.utcnow(),
     ]
