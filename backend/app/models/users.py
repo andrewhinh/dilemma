@@ -6,9 +6,9 @@ from uuid import UUID, uuid4
 from sqlmodel import Field, Relationship, SQLModel
 
 # Max lengths (in characters)
-MAX_EMAIL_LENGTH = 320
-MAX_USERNAME_LENGTH = 32
-MAX_FULLNAME_LENGTH = 100
+MAX_EMAIL_LENGTH = 400
+MAX_FIRST_NAME_LENGTH = 700
+MAX_LAST_NAME_LENGTH = 700
 
 
 # Misc auth
@@ -33,6 +33,30 @@ class GoogleAuth(SQLModel):
     state: str
 
 
+# Link models
+class ChatRequest(SQLModel, table=True):
+    """Chat request link model."""
+
+    id: int | None = Field(default=None, primary_key=True)
+
+    request_date: datetime = Field(default_factory=datetime.utcnow)
+    status: str = Field(default="pending")
+
+    requester_uuid: UUID = Field(default=None, foreign_key="user.uuid")
+    receiver_uuid: UUID = Field(default=None, foreign_key="user.uuid")
+    requester: "User" = Relationship(back_populates="requester_links")
+    receiver: "User" = Relationship(back_populates="receiver_links")
+
+
+class UserChatLink(SQLModel, table=True):
+    """User chat link model."""
+
+    id: int | None = Field(default=None, primary_key=True)
+
+    chat_uuid: UUID = Field(default=None, foreign_key="chat.uuid")
+    user_uuid: UUID = Field(default=None, foreign_key="user.uuid")
+
+
 # User
 class UserBase(SQLModel):
     """User base model."""
@@ -42,68 +66,28 @@ class UserBase(SQLModel):
 
     profile_picture: str | None = None
     email: str | None = Field(default=None, max_length=MAX_EMAIL_LENGTH, index=True)
-    username: str | None = Field(default=None, max_length=MAX_USERNAME_LENGTH, index=True)
-    fullname: str | None = Field(default=None, max_length=MAX_FULLNAME_LENGTH)
-    disabled: bool | None = False
+    first_name: str | None = Field(default=None, max_length=MAX_FIRST_NAME_LENGTH)
+    last_name: str | None = Field(default=None, max_length=MAX_LAST_NAME_LENGTH)
 
     account_view: str | None = Field(default="profile")
     is_sidebar_open: bool | None = Field(default=True)
+
+    disabled: bool | None = Field(default=False)
 
 
 class User(UserBase, table=True):
     """User model."""
 
     id: int | None = Field(default=None, primary_key=True)
-    uuid: UUID = Field(default_factory=lambda: uuid4(), unique=True)
+    uuid: UUID = Field(default_factory=uuid4, unique=True)
 
     hashed_password: str | None = Field(default=None)
     refresh_token: str | None = Field(default=None)
 
-    # Relationships involving FriendRequest
-    sender_links: list["FriendRequest"] | None = Relationship(
-        back_populates="sender",
-        sa_relationship_kwargs={
-            "foreign_keys": "FriendRequest.user_uuid",
-            "lazy": "selectin",
-            "cascade": "all, delete",
-            "overlaps": "receiver_links",  # Added overlaps parameter here
-        },
-    )
-    receiver_links: list["FriendRequest"] | None = Relationship(
-        back_populates="receiver",
-        sa_relationship_kwargs={
-            "foreign_keys": "FriendRequest.friend_uuid",
-            "lazy": "selectin",
-            "cascade": "all, delete",
-            "overlaps": "sender_links",  # Added overlaps parameter here
-        },
-    )
+    requester_links: list["ChatRequest"] = Relationship(back_populates="requester")
+    receiver_links: list["ChatRequest"] = Relationship(back_populates="receiver")
 
-    # Relationships involving Friend
-    friend_1_links: list["Friend"] | None = Relationship(
-        back_populates="friend_1",
-        sa_relationship_kwargs={
-            "foreign_keys": "Friend.user_uuid",
-            "lazy": "selectin",
-            "cascade": "all, delete",
-            "overlaps": "friend_2_links",  # Added overlaps parameter here
-        },
-    )
-    friend_2_links: list["Friend"] | None = Relationship(
-        back_populates="friend_2",
-        sa_relationship_kwargs={
-            "foreign_keys": "Friend.friend_uuid",
-            "lazy": "selectin",
-            "cascade": "all, delete",
-            "overlaps": "friend_1_links",  # Added overlaps parameter here
-        },
-    )
-
-
-class UserReference(UserBase):
-    """Model for referencing a user."""
-
-    username: str
+    chats: list["Chat"] = Relationship(back_populates="users", link_model=UserChatLink)
 
 
 class UserCreate(UserBase):
@@ -136,75 +120,79 @@ class UserUpdate(SQLModel):
     is_sidebar_open: bool | None = None
 
 
-# Friends
-class FriendRequest(SQLModel, table=True):
-    """Friend request link model."""
+# Messages
+class MessageBase(SQLModel):
+    """Message base model."""
+
+    created: datetime = Field(default_factory=datetime.utcnow)
+    status: str = Field(default="active")
+    content: str = Field(default="")
+
+
+class Message(MessageBase, table=True):
+    """Message model."""
 
     id: int | None = Field(default=None, primary_key=True)
+    uuid: UUID = Field(default_factory=uuid4, unique=True)
+
+    chat_uuid: UUID = Field(default=None, foreign_key="chat.uuid")
     user_uuid: UUID = Field(default=None, foreign_key="user.uuid")
-    friend_uuid: UUID = Field(default=None, foreign_key="user.uuid")
-
-    request_date: datetime = Field(default_factory=datetime.utcnow)
-    status: str = Field(default="pending")
-    sender: User = Relationship(
-        back_populates="sender_links",
-        sa_relationship_kwargs={
-            "foreign_keys": "FriendRequest.user_uuid",
-        },
-    )
-    receiver: User = Relationship(
-        back_populates="receiver_links",
-        sa_relationship_kwargs={
-            "foreign_keys": "FriendRequest.friend_uuid",
-        },
-    )
 
 
-class Friend(SQLModel, table=True):
-    """Friend link model."""
+class MessageCreate(MessageBase):
+    """Message create model."""
 
-    id: int | None = Field(default=None, primary_key=True)
-    user_uuid: UUID = Field(default=None, foreign_key="user.uuid")
-    friend_uuid: UUID = Field(default=None, foreign_key="user.uuid")
-
-    friendship_date: datetime = Field(default_factory=datetime.utcnow)
-    status: str = Field(default="confirmed")
-    friend_1: User = Relationship(
-        back_populates="friend_1_links",
-        sa_relationship_kwargs={
-            "foreign_keys": "Friend.user_uuid",
-            "lazy": "selectin",
-            "cascade": "all, delete",
-            "overlaps": "friend_2_links",  # Added overlaps parameter here
-        },
-    )
-    friend_2: User = Relationship(
-        back_populates="friend_2_links",
-        sa_relationship_kwargs={
-            "foreign_keys": "Friend.friend_uuid",
-            "lazy": "selectin",
-            "cascade": "all, delete",
-            "overlaps": "friend_1_links",  # Added overlaps parameter here
-        },
-    )
+    content: str
+    user_uuid: UUID
+    chat_uuid: UUID
 
 
-class FriendReadBase(SQLModel):
-    """Friend read base model."""
+class MessageRead(MessageBase):
+    """Message read model."""
 
     uuid: UUID
-    join_date: datetime
-    profile_picture: str | None
-    username: str
+    user_uuid: UUID
+    chat_uuid: UUID
 
 
-class FriendRequestRead(FriendReadBase):
-    """Friend request read model."""
+class MessageUpdate(SQLModel):
+    """Message update model."""
 
-    request_date: datetime
+    content: str | None = None
 
 
-class FriendRead(FriendReadBase):
-    """Friend read model."""
+# Chats
+class ChatBase(SQLModel):
+    """Chat base model."""
 
-    friendship_date: datetime
+    created: datetime = Field(default_factory=datetime.utcnow)
+    status: str = Field(default="active")
+
+
+class Chat(ChatBase, table=True):
+    """Chat model."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    uuid: UUID = Field(default_factory=uuid4, unique=True)
+
+    users: list["User"] = Relationship(back_populates="chats", link_model=UserChatLink)
+
+
+class ChatCreate(ChatBase):
+    """Chat create model."""
+
+    user_uuids: list[UUID]
+
+
+class ChatRead(ChatBase):
+    """Chat read model."""
+
+    uuid: UUID
+    user_uuids: list[UUID]
+
+
+class ChatUpdate(SQLModel):
+    """Chat update model."""
+
+    status: str | None = None
+    user_uuids: list[UUID] | None = None
