@@ -45,19 +45,19 @@ function App() {
           </Header>
           <div className="gap-4 flex flex-col items-center justify-center w-60 md:w-72">
             <p className="text-base md:text-lg">
-              Try out our home search tool:
+              Search properties to buy or rent:
             </p>
             <Search />
           </div>
           <div className="gap-4 flex flex-col items-center justify-center w-60 md:w-72">
             <p className="text-base md:text-lg">
-              To upload documents and connect with buyers and sellers directly:
+              Create an account to contact sellers and create listings:
             </p>
             <Button
               onClick={() => {
                 router.push("/signup");
               }}
-              className="p-3 text-lg md:text-xl w-40 md:w-60 whitespace-nowrap"
+              className="p-3 text-lg md:text-xl w-60 whitespace-nowrap"
             >
               <p>Sign Up</p>
             </Button>

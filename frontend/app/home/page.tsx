@@ -16,6 +16,8 @@ import { useConst } from "../providers";
 
 import { LoggedInNav } from "../ui/Nav";
 import Main from "../ui/Main";
+import Search from "./Search";
+import List from "./List";
 import Support from "./Support";
 import pageLoading from "@/public/page-loading.svg";
 
@@ -81,9 +83,8 @@ function Base() {
       >
         <LoggedInNav />
         <Main className="gap-20">
-          <h1 className="text-3xl md:text-5xl font-bold text-center">
-            Welcome to the app!
-          </h1>
+          <Search />
+          <List />
         </Main>
         <Support />
       </div>

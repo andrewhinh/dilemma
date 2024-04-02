@@ -7,13 +7,23 @@ import { sendRequest } from "../lib/api";
 
 import Form from "../ui/Form";
 import Input from "../ui/Input";
-import { FormButton } from "../ui/Button";
+import { Button } from "../ui/Button";
+import x from "@/public/x.svg";
+import search from "@/public/search.svg";
 import buttonLoading from "@/public/button-loading.svg";
 
 function Search() {
   const router = useRouter();
   const [errorMsg, setErrorMsg] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [query, setQuery] = useState("");
+  const [queryMd, setQueryMd] = useState("");
+
+  const handleClear = () => {
+    setQuery("");
+    setQueryMd("");
+  };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -34,31 +44,56 @@ function Search() {
     }
 
     sendRequest("/property-data", "POST", formDataObj).then((data) => {
-        if (data.detail) {
-            setErrorMsg(data.detail);
-        }
-        setLoading(false);
-        router.push("/search/" + data.uuid);
+      if (data.detail) {
+        setErrorMsg(data.detail);
+      }
+      setLoading(false);
+      router.push("/search/" + data.uuid);
     });
   };
 
   return (
     <Form onSubmit={handleSubmit}>
-      <div className="gap-2 flex flex-col">
+      <div className="relative gap-2 flex">
         <Input
           type="text"
           name="query"
-          placeholder="I'm looking for..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="ZIP, Address, City..."
+          className="block md:hidden w-48"
           autoFocus
         />
-        <FormButton>
+        <Input
+          type="text"
+          name="query-md"
+          value={queryMd}
+          onChange={(e) => setQueryMd(e.target.value)}
+          placeholder="ZIP, Address, City/State, etc."
+          className="hidden md:block md:w-96"
+          autoFocus
+        />
+        <Button
+          type="button"
+          onClick={() => {
+            handleClear();
+          }}
+          className="absolute right-14 top-2 bg-transparent invert"
+        >
+          <Image src={x} className="w-6 h-6" alt="Clear" />
+        </Button>
+        <Button className="w-10">
           <Image
             src={buttonLoading}
             className={`w-6 h-6 ${loading ? "block" : "hidden"}`}
             alt="Search"
           />
-          <p className={`${loading ? "hidden" : "block"}`}>Search</p>
-        </FormButton>
+          <Image
+            src={search}
+            className={`w-6 h-6 ${loading ? "hidden" : "block"}`}
+            alt="Search"
+          />
+        </Button>
       </div>
       {errorMsg && <p className="text-rose-500">{errorMsg}</p>}
     </Form>
