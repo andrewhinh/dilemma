@@ -2,14 +2,12 @@
 
 from datetime import datetime
 from typing import Annotated
-from uuid import UUID
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, Security
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
 
 from app.database import get_session
-from app.dependencies import get_current_user
 from app.dependencies.security import verify_api_key
 from app.dependencies.users import (
     ACCESS_TOKEN_EXPIRES,
@@ -38,21 +36,14 @@ from app.dependencies.users import (
     verify_password,
     verify_user_update,
 )
-from app.models import (
-    Chat,
-    ChatCreate,
-    ChatRead,
-    ChatRequest,
-    ChatUpdate,
-    Message,
-    MessageCreate,
-    MessageRead,
-    MessageUpdate,
-    User,
-)
 from app.models.users import (
     AuthCode,
+    ChatRequest,
+    ChatRequestCreate,
+    ChatRequestRead,
+    ChatRequestUpdate,
     GoogleAuth,
+    User,
     UserCreate,
     UserRead,
     UserUpdate,
@@ -735,268 +726,146 @@ async def delete_user(
     return UserRead.model_validate(current_user)
 
 
-# Chat Request management
-@router.post("/chat-requests/create/{receiver_uuid}", response_model=ChatRequest)
-async def create_chat_request(
-    receiver_uuid: UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)
+# Chat request management
+@router.post("/chat-request/send/", response_model=ChatRequestRead)
+async def send_chat_request(
+    *,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_active_user),
+    request: ChatRequestCreate,
 ):
     """Send a chat request to another user."""
-    if current_user.uuid == receiver_uuid:
+    if current_user.uuid == request.receiver_uuid:
         raise HTTPException(status_code=400, detail="Cannot send chat request to yourself")
 
-    receiver = session.get(User, receiver_uuid)
+    receiver = session.get(User, request.receiver_uuid)
     if not receiver:
         raise HTTPException(status_code=404, detail="Receiver not found")
 
-    chat_request = ChatRequest(requester_uuid=current_user.uuid, receiver_uuid=receiver_uuid)
+    chat_request = ChatRequest(
+        phone_number=request.phone_number,
+        content=request.content,
+        requester_uuid=current_user.uuid,
+        receiver_uuid=request.receiver_uuid,
+    )
     session.add(chat_request)
     session.commit()
     session.refresh(chat_request)
 
-    return chat_request
+    return ChatRequestRead.model_validate(chat_request)
 
 
-@router.post("/chat-requests/revert/{receiver_uuid}", response_model=ChatRequest)
+@router.post("/chat-request/revert/", response_model=ChatRequestRead)
 async def revert_chat_request(
-    receiver_uuid: UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)
+    *,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_active_user),
+    request: ChatRequestUpdate,
 ):
     """Revert a chat request sent to another user."""
     chat_request = session.exec(
         select(ChatRequest).where(
-            ChatRequest.receiver_uuid == receiver_uuid, ChatRequest.requester_uuid == current_user.uuid
+            ChatRequest.receiver_uuid == request.receiver_uuid, ChatRequest.requester_uuid == current_user.uuid
         )
     ).first()
     if not chat_request:
         raise HTTPException(status_code=404, detail="Chat request not found or unauthorized")
 
-    session.delete(chat_request)
+    chat_request.status = "reverted"
+    session.add(chat_request)
     session.commit()
+    session.refresh(chat_request)
 
-    return chat_request
+    return ChatRequestRead.model_validate(chat_request)
 
 
-@router.patch("/chat-requests/accept/{receiver_uuid}", response_model=ChatRead)
+@router.patch("/chat-request/accept/", response_model=ChatRequestRead)
 async def accept_chat_request(
-    receiver_uuid: UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)
+    *,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_active_user),
+    request: ChatRequestUpdate,
 ):
     """Accept a chat request."""
     chat_request = session.exec(
         select(ChatRequest).where(
-            ChatRequest.receiver_uuid == receiver_uuid, ChatRequest.requester_uuid == current_user.uuid
+            ChatRequest.requester_uuid == request.requester_uuid, ChatRequest.receiver_uuid == current_user.uuid
         )
     ).first()
     if not chat_request:
         raise HTTPException(status_code=404, detail="Chat request not found or unauthorized")
 
-    chat = Chat(users=[current_user, session.get(User, receiver_uuid)])
-    session.add(chat)
-    session.delete(chat_request)
+    chat_request.status = "accepted"
+    session.add(chat_request)
     session.commit()
-    session.refresh(chat)
+    session.refresh(chat_request)
 
-    return ChatRead.from_orm(chat)
+    return ChatRequestRead.model_validate(chat_request)
 
 
-@router.patch("/chat-requests/decline/{receiver_uuid}", response_model=ChatRequest)
+@router.patch("/chat-request/decline/", response_model=ChatRequestRead)
 async def decline_chat_request(
-    receiver_uuid: UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)
+    *,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_active_user),
+    request: ChatRequestUpdate,
 ):
     """Decline a chat request."""
     chat_request = session.exec(
         select(ChatRequest).where(
-            ChatRequest.receiver_uuid == receiver_uuid, ChatRequest.requester_uuid == current_user.uuid
+            ChatRequest.requester_uuid == request.requester_uuid, ChatRequest.receiver_uuid == current_user.uuid
         )
     ).first()
     if not chat_request:
         raise HTTPException(status_code=404, detail="Chat request not found or unauthorized")
 
-    session.delete(chat_request)
+    chat_request.status = "declined"
+    session.add(chat_request)
     session.commit()
+    session.refresh(chat_request)
 
-    return chat_request
+    return ChatRequestRead.model_validate(chat_request)
 
 
-@router.patch("/chat-requests/ignore/{receiver_uuid}", response_model=ChatRequest)
+@router.patch("/chat-request/ignore/", response_model=ChatRequestRead)
 async def ignore_chat_request(
-    receiver_uuid: UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)
+    *,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_active_user),
+    request: ChatRequestUpdate,
 ):
     """Ignore a chat request."""
     chat_request = session.exec(
         select(ChatRequest).where(
-            ChatRequest.receiver_uuid == receiver_uuid, ChatRequest.requester_uuid == current_user.uuid
+            ChatRequest.requester_uuid == request.requester_uuid, ChatRequest.receiver_uuid == current_user.uuid
         )
     ).first()
     if not chat_request:
         raise HTTPException(status_code=404, detail="Chat request not found or unauthorized")
 
-    session.delete(chat_request)
+    chat_request.status = "ignored"
+    session.add(chat_request)
     session.commit()
+    session.refresh(chat_request)
 
-    return chat_request
+    return ChatRequestRead.model_validate(chat_request)
 
 
-@router.get("/chat-requests/sent", response_model=list[ChatRequest])
-async def get_sent_chat_requests(
-    session: Session = Depends(get_session), current_user: User = Depends(get_current_user)
-):
+@router.get("/chat-requests/sent", response_model=list[ChatRequestRead])
+async def get_sent_chat_requests(current_user: User = Depends(get_current_active_user)):
     """Get chat requests sent by the current user."""
-    requests = session.exec(select(ChatRequest).where(ChatRequest.requester_uuid == current_user.uuid)).all()
-    return requests
+    return [
+        ChatRequestRead.model_validate(link.receiver)
+        for link in current_user.requester_links
+        if link.status == "pending"
+    ]
 
 
-@router.get("/chat-requests/received", response_model=list[ChatRequest])
-async def get_received_chat_requests(
-    session: Session = Depends(get_session), current_user: User = Depends(get_current_user)
-):
+@router.get("/chat-requests/received", response_model=list[ChatRequestRead])
+async def get_received_chat_requests(current_user: User = Depends(get_current_active_user)):
     """Get chat requests received by the current user."""
-    requests = session.exec(select(ChatRequest).where(ChatRequest.receiver_uuid == current_user.uuid)).all()
-    return requests
-
-
-# Chat management
-@router.post("/chats/create", response_model=ChatRead)
-async def create_chat(
-    chat_data: ChatCreate, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)
-):
-    """Create a new chat with specified users."""
-    users = [session.get(User, uuid) for uuid in chat_data.user_uuids if uuid != current_user.uuid]
-    users.append(current_user)  # Include current user
-
-    chat = Chat(users=users)
-    session.add(chat)
-    session.commit()
-    session.refresh(chat)
-
-    return ChatRead.from_orm(chat)
-
-
-@router.get("/chats/details/{chat_uuid}", response_model=ChatRead)
-async def read_chat(chat_uuid: UUID, session: Session = Depends(get_session)):
-    """Get details of a specific chat."""
-    chat = session.get(Chat, chat_uuid)
-    if not chat:
-        raise HTTPException(status_code=404, detail="Chat not found")
-    return ChatRead.from_orm(chat)
-
-
-@router.patch("/chats/update/{chat_uuid}", response_model=ChatRead)
-async def update_chat(
-    chat_uuid: UUID,
-    chat_update: ChatUpdate,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-):
-    """Update chat information."""
-    chat = session.get(Chat, chat_uuid)
-    if not chat:
-        raise HTTPException(status_code=404, detail="Chat not found")
-
-    if current_user.uuid not in [user.uuid for user in chat.users]:
-        raise HTTPException(status_code=403, detail="User not authorized for this chat")
-
-    for var, value in vars(chat_update).items():
-        setattr(chat, var, value) if value else None
-    session.commit()
-    return ChatRead.from_orm(chat)
-
-
-@router.delete("/chats/delete/{chat_uuid}")
-async def delete_chat(
-    chat_uuid: UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)
-):
-    """Delete a specific chat."""
-    chat = session.get(Chat, chat_uuid)
-    if not chat:
-        raise HTTPException(status_code=404, detail="Chat not found")
-
-    if current_user.uuid not in [user.uuid for user in chat.users]:
-        raise HTTPException(status_code=403, detail="User not authorized to delete this chat")
-
-    session.delete(chat)
-    session.commit()
-    return {"message": "Chat deleted successfully"}
-
-
-# Message management
-@router.post("/chats/{chat_uuid}/messages/send", response_model=MessageRead)
-async def send_message(
-    chat_uuid: UUID,
-    message_data: MessageCreate,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-):
-    """Send a message in a chat."""
-    chat = session.get(Chat, chat_uuid)
-    if not chat or current_user not in chat.users:
-        raise HTTPException(status_code=404, detail="Chat not found or user not part of the chat")
-
-    message = Message(content=message_data.content, user_uuid=current_user.uuid, chat_uuid=chat_uuid)
-    session.add(message)
-    session.commit()
-    session.refresh(message)
-
-    return MessageRead.from_orm(message)
-
-
-@router.get("/chats/{chat_uuid}/messages/list", response_model=list[MessageRead])
-async def get_messages(
-    chat_uuid: UUID, session: Session = Depends(get_session), current_user: User = Depends(get_current_user)
-):
-    """Retrieve all messages from a chat."""
-    chat = session.get(Chat, chat_uuid)
-    if not chat or current_user not in chat.users:
-        raise HTTPException(status_code=404, detail="Chat not found or user not part of the chat")
-
-    messages = session.exec(select(Message).where(Message.chat_uuid == chat_uuid)).all()
-    return [MessageRead.from_orm(message) for message in messages]
-
-
-@router.get("/chats/{chat_uuid}/messages/details/{message_uuid}/", response_model=MessageRead)
-async def get_message(
-    chat_uuid: UUID,
-    message_uuid: UUID,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-):
-    """Retrieve a specific message from a chat."""
-    message = session.get(Message, message_uuid)
-    if not message or message.chat_uuid != chat_uuid or current_user.uuid != message.user_uuid:
-        raise HTTPException(status_code=404, detail="Message not found or user not authorized")
-
-    return MessageRead.from_orm(message)
-
-
-@router.patch("/chats/{chat_uuid}/messages/update/{message_uuid}/", response_model=MessageRead)
-async def update_message(
-    chat_uuid: UUID,
-    message_uuid: UUID,
-    message_update: MessageUpdate,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-):
-    """Update a message in a chat."""
-    message = session.get(Message, message_uuid)
-    if not message or message.chat_uuid != chat_uuid or current_user.uuid != message.user_uuid:
-        raise HTTPException(status_code=404, detail="Message not found or user not authorized")
-
-    for key, value in message_update.dict(exclude_unset=True).items():
-        setattr(message, key, value)
-    session.commit()
-    return MessageRead.from_orm(message)
-
-
-@router.delete("/chats/{chat_uuid}/messages/delete/{message_uuid}/")
-async def delete_message(
-    chat_uuid: UUID,
-    message_uuid: UUID,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-):
-    """Delete a message from a chat."""
-    message = session.get(Message, message_uuid)
-    if not message or message.chat_uuid != chat_uuid or current_user.uuid != message.user_uuid:
-        raise HTTPException(status_code=404, detail="Message not found or user not authorized")
-
-    session.delete(message)
-    session.commit()
-    return {"message": "Message deleted successfully"}
+    return [
+        ChatRequestRead.model_validate(link.requester)
+        for link in current_user.receiver_links
+        if link.status == "pending"
+    ]

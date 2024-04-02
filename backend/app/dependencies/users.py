@@ -18,7 +18,7 @@ from sqlmodel import Session, select
 
 from app.config import get_settings
 from app.database import get_session
-from app.models.users import AuthCode, Friend, FriendRequest, User
+from app.models.users import AuthCode, User
 
 SETTINGS = get_settings()
 
@@ -723,109 +723,3 @@ def verify_user_update(session: Session, current_user: User, user_data: dict):
         user_data["hashed_password"] = get_password_hash(user_data["password"])
         del user_data["password"]
         del user_data["confirm_password"]
-
-
-def get_sent_friend_request_links(current_user: User, status: str = "pending") -> list[FriendRequest]:
-    """
-    Get sent friend request links.
-
-    Parameters
-    ----------
-    current_user : User
-        Current user
-
-    Returns
-    -------
-    list[FriendRequest]
-        Sent friend request links
-    """
-    return [link for link in current_user.sender_links if link.status == status]
-
-
-def get_sent_friend_requests(current_user: User, status: str = "pending") -> list[User]:
-    """
-    Get sent friend requests.
-
-    Parameters
-    ----------
-    current_user : User
-        Current user
-
-    Returns
-    -------
-    list[User]
-        Sent friend requests
-    """
-    return [link.receiver for link in current_user.sender_links if link.status == status]
-
-
-def get_incoming_friend_request_links(current_user: User, status: str = "pending") -> list[FriendRequest]:
-    """
-    Get incoming friend request links.
-
-    Parameters
-    ----------
-    current_user : User
-        Current user
-
-    Returns
-    -------
-    list[FriendRequest]
-        Incoming friend request links
-    """
-    return [link for link in current_user.receiver_links if link.status == status]
-
-
-def get_incoming_friend_requests(current_user: User, status: str = "pending") -> list[User]:
-    """
-    Get incoming friend requests.
-
-    Parameters
-    ----------
-    current_user : User
-        Current user
-
-    Returns
-    -------
-    list[User]
-        Incoming friend requests
-    """
-    return [link.sender for link in current_user.receiver_links if link.status == status]
-
-
-def get_friend_links(current_user: User, status: str = "confirmed") -> list[Friend]:
-    """
-    Get friends links.
-
-    Parameters
-    ----------
-    current_user : User
-        Current user
-
-    Returns
-    -------
-    list[Friend]
-        Friend links
-    """
-    return [link for link in current_user.friend_1_links if link.status == status] + [
-        link for link in current_user.friend_2_links if link.status == status
-    ]
-
-
-def get_friends(current_user: User, status: str = "confirmed") -> list[User]:
-    """
-    Get friends.
-
-    Parameters
-    ----------
-    current_user : User
-        Current user
-
-    Returns
-    -------
-    list[User]
-        Friend
-    """
-    return [link.friend_1 for link in current_user.friend_1_links if link.status == status] + [
-        link.friend_2 for link in current_user.friend_2_links if link.status == status
-    ]
