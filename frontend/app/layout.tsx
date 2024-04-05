@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { ConstProvider } from "./providers";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import Support from "./home/Support";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
     template: "%s | Dilemma",
     default: "Dilemma",
   },
-  description: "Gamified Learning",
+  description: "Manage real estate easily.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || ""),
 };
 
@@ -27,6 +28,7 @@ export default function RootLayout({
         className={`${inter.className} antialiased bg-zinc-50 text-zinc-500 flex flex-col min-h-screen`}
       >
         <ConstProvider>{children}</ConstProvider>
+        <Support />
         <Analytics />
         <SpeedInsights />
       </body>

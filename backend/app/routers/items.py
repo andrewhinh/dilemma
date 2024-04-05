@@ -30,7 +30,7 @@ router = APIRouter(
 )
 
 
-@router.post("/property-data", response_model=SearchResultRead)
+@router.post("/search/properties", response_model=SearchResultRead)
 async def property_data(*, session: Session = Depends(get_session), request: Request):
     """Get property data from query."""
     pred = find_properties(request.query)

@@ -1,7 +1,6 @@
 """Dependencies for user endpoints."""
 
 import smtplib
-import uuid
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -53,7 +52,10 @@ CREDENTIALS_EXCEPTION = HTTPException(
 
 
 def get_user(
-    session: Session, disabled: bool = None, provider: str = None, email: str = None, username: str = None
+    email: str,
+    session: Session,
+    disabled: bool = None,
+    provider: str = None,
 ) -> User | None:
     """
     Get user.
@@ -66,8 +68,6 @@ def get_user(
         Provider
     email : str
         Email
-    username : str
-        Username
 
     Returns
     -------
@@ -84,8 +84,6 @@ def get_user(
 
     if email:
         return session.exec(statement.where(User.email == email)).first()
-    elif username:
-        return session.exec(statement.where(User.username == username)).first()
     else:
         return None
 
@@ -238,30 +236,6 @@ def create_token(data: dict, expires_delta: timedelta) -> str:
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return encoded_jwt
-
-
-def generate_username_from_email(session: Session, email: str) -> str:
-    """
-    Generate username from email.
-
-    Parameters
-    ----------
-    session : Session
-        Session
-    email : str
-        Email
-
-    Returns
-    -------
-    str
-        Username
-    """
-    base = email.split("@")[0]
-    username = base
-    while get_user(session, username=username):
-        unique_suffix = uuid.uuid4().hex[:4]
-        username = f"{base}_{unique_suffix}"
-    return username
 
 
 def get_password_hash(password: str) -> str:
@@ -479,8 +453,8 @@ def google_get_user_from_user_info(
     provider = "google"
     email = user_info.get("email")
     if disabled is not None:
-        return get_user(session, disabled=disabled, provider=provider, email=email)
-    return get_user(session, provider=provider, email=email)
+        return get_user(email, session, disabled=disabled, provider=provider)
+    return get_user(email, session, provider=provider)
 
 
 def set_redirect_fe(response: RedirectResponse, route: str) -> RedirectResponse:
@@ -594,7 +568,7 @@ def get_user_from_token(session: Session, provider: str, token: str) -> User:
     else:
         raise CREDENTIALS_EXCEPTION
 
-    db_user = get_user(session, disabled=False, provider=provider, email=email)
+    db_user = get_user(email, session, disabled=False, provider=provider)
     if db_user is None:
         raise CREDENTIALS_EXCEPTION
     return db_user
@@ -667,42 +641,20 @@ async def get_current_active_user(
     return current_user
 
 
-def verify_user_update(session: Session, current_user: User, user_data: dict):
+def verify_user_update(user_data: dict):
     """
     Verify user update data.
 
     Parameters
     ----------
-    session : Session
-        Session
-    current_user : User
-        Current user
     user_data : dict
         User data
-
-    Returns
-    -------
-    bool
-        True if username changed, else False
     """
     if "email" in user_data.keys():
         raise HTTPException(
             status_code=400,
             detail="Email cannot be updated",
         )
-
-    if "username" in user_data.keys():
-        if not user_data["username"]:
-            raise HTTPException(
-                status_code=400,
-                detail="Username is empty",
-            )
-        if current_user.username != user_data["username"]:
-            if get_user(session, username=user_data["username"]):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Username is invalid",
-                )
 
     if "password" in user_data.keys() and "confirm_password" in user_data.keys():
         if not user_data["password"]:

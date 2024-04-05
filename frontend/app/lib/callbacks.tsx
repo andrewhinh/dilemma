@@ -4,18 +4,12 @@ import { useConst } from "../providers";
 import { sendRequest } from "./api";
 import {
   useSetUser,
-  useGetSentFriendRequests,
-  useGetIncomingFriendRequests,
-  useGetFriends,
 } from "../utils";
 
 const useToHome = () => {
   const router = useRouter();
   const setUser = useSetUser();
   const { dispatch } = useConst();
-  const getSentFriendRequests = useGetSentFriendRequests();
-  const getIncomingFriendRequests = useGetIncomingFriendRequests();
-  const getFriends = useGetFriends();
 
   return (
     route: string,
@@ -36,9 +30,6 @@ const useToHome = () => {
           payload: true,
         });
         setUser(data);
-        getSentFriendRequests();
-        getIncomingFriendRequests();
-        getFriends();
         router.push("/home");
       }
     });
@@ -51,7 +42,7 @@ const useLogOut = () => {
   const setUser = useSetUser();
 
   return (navigateTo = "/") => {
-    sendRequest("/token/logout", "POST").then((data) => {
+    sendRequest("/auth/logout", "POST").then((data) => {
       if (data.message) {
         dispatch({
           type: "SET_VERIFIED_LOGGED_OUT",
@@ -63,25 +54,16 @@ const useLogOut = () => {
         });
         setUser({
           join_date: "",
+          provider: "",
           profile_picture: "",
           email: "",
-          username: "",
-          fullname: "",
+          first_name: "",
+          last_name: "",
           account_view: "",
           is_sidebar_open: false,
           uuid: "",
-        });
-        dispatch({
-          type: "SET_SENT_FRIEND_REQUESTS",
-          payload: [],
-        });
-        dispatch({
-          type: "SET_INCOMING_FRIEND_REQUESTS",
-          payload: [],
-        });
-        dispatch({
-          type: "SET_FRIENDS",
-          payload: [],
+          requester_links: [],
+          receiver_links: [],
         });
         router.push(navigateTo);
       }
@@ -92,13 +74,10 @@ const useLogOut = () => {
 const useRefreshToken = () => {
   const { dispatch } = useConst();
   const setUser = useSetUser();
-  const getSentFriendRequests = useGetSentFriendRequests();
-  const getIncomingFriendRequests = useGetIncomingFriendRequests();
-  const getFriends = useGetFriends();
 
   return () => {
     return new Promise((resolve, reject) => {
-      sendRequest("/token/refresh", "POST").then((data) => {
+      sendRequest("/auth/token/refresh", "POST").then((data) => {
         if (data.detail) {
           dispatch({
             type: "SET_VERIFIED_LOGGED_OUT",
@@ -119,9 +98,6 @@ const useRefreshToken = () => {
             payload: true,
           });
           setUser(data);
-          getSentFriendRequests();
-          getIncomingFriendRequests();
-          getFriends();
           resolve(data);
         }
       });

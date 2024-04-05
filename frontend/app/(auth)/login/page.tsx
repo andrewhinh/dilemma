@@ -43,18 +43,17 @@ function Base() {
       ])
     );
 
-    if (formDataObj.id === "") {
-      setErrorMsg("Username or email cannot be empty");
+    if (formDataObj.email === "") {
+      setErrorMsg("Email cannot be empty");
       setLoading(false);
       return;
     }
 
-    if (validator.isEmail(formDataObj.id)) {
-      formDataObj.email = formDataObj.id;
-    } else {
-      formDataObj.username = formDataObj.id;
+    if (!validator.isEmail(formDataObj.email)) {
+      setErrorMsg("Invalid email");
+      setLoading(false);
+      return;
     }
-    delete formDataObj.id;
 
     if (formDataObj.password === "") {
       setErrorMsg("Password cannot be empty");
@@ -63,7 +62,7 @@ function Base() {
     }
 
     toHome(
-      "/token/login",
+      "/auth/login",
       formDataObj,
       () => setLoading(false),
       (error) => {
@@ -85,7 +84,7 @@ function Base() {
               <Input
                 type="id"
                 name="id"
-                placeholder="Username or email"
+                placeholder="Email"
                 autoFocus
               />
               <Input type="password" name="password" placeholder="Password" />

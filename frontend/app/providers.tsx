@@ -7,11 +7,13 @@ interface User {
   provider: string;
   profilePicture: string;
   email: string;
-  username: string;
-  fullname: string;
+  firstName: string;
+  lastName: string;
   accountView: string;
   isSideBarOpen: boolean;
   uuid: string;
+  sentChatRequests: Array<any>;
+  receivedChatRequests: Array<any>;
 }
 
 // Type for the user object that is returned from the backend
@@ -20,38 +22,18 @@ interface UserBackend {
   provider?: string;
   profile_picture?: string;
   email?: string;
-  username?: string;
-  fullname?: string;
+  first_name?: string;
+  last_name?: string;
   account_view?: string;
   is_sidebar_open?: boolean;
   uuid?: string;
+  requester_links?: Array<any>;
+  receiver_links?: Array<any>;
 }
 
-interface FriendBase {
-  uuid: string;
-  join_date: Date;
-  profile_picture?: string;
-  username: string;
-}
+export type { UserBackend };
 
-interface FriendRequest extends FriendBase {
-  request_date: string;
-}
-
-interface Friend extends FriendBase {
-  friendship_date: string;
-}
-
-interface CompleteUser extends User {
-  sentFriendRequests: FriendRequest[];
-  incomingFriendRequests: FriendRequest[];
-  friends: Friend[];
-  provider: string;
-}
-
-export type { UserBackend, FriendRequest, Friend };
-
-interface State extends CompleteUser {
+interface State extends User {
   verifiedLoggedOut: boolean;
   isLoggedIn: boolean;
   getUserInfo: boolean;
@@ -65,14 +47,13 @@ const initialState: State = {
   provider: "",
   profilePicture: "",
   email: "",
-  username: "",
-  fullname: "",
+  firstName: "",
+  lastName: "",
   accountView: "",
   isSideBarOpen: false,
   uuid: "",
-  sentFriendRequests: [],
-  incomingFriendRequests: [],
-  friends: [],
+  sentChatRequests: [],
+  receivedChatRequests: [],
 };
 
 interface Action {
@@ -107,22 +88,20 @@ const reducer = (state: State, action: Action): State => {
       return { ...state, profilePicture: action.payload };
     case "SET_EMAIL":
       return { ...state, email: action.payload };
-    case "SET_USERNAME":
-      return { ...state, username: action.payload };
-    case "SET_FULLNAME":
-      return { ...state, fullname: action.payload };
+    case "SET_FIRST_NAME":
+      return { ...state, firstName: action.payload };
+    case "SET_LAST_NAME":
+      return { ...state, lastName: action.payload };
     case "SET_ACCOUNT_VIEW":
       return { ...state, accountView: action.payload };
     case "SET_IS_SIDEBAR_OPEN":
       return { ...state, isSideBarOpen: action.payload };
-    case "SET_UID":
+    case "SET_UUID":
       return { ...state, uuid: action.payload };
-    case "SET_SENT_FRIEND_REQUESTS":
-      return { ...state, sentFriendRequests: action.payload };
-    case "SET_INCOMING_FRIEND_REQUESTS":
-      return { ...state, incomingFriendRequests: action.payload };
-    case "SET_FRIENDS":
-      return { ...state, friends: action.payload };
+    case "SET_SENT_CHAT_REQUESTS":
+      return { ...state, sentChatRequests: action.payload };
+    case "SET_RECEIVED_CHAT_REQUESTS":
+      return { ...state, receivedChatRequests: action.payload };
     default:
       return state;
   }

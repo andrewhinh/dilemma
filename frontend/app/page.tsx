@@ -11,7 +11,6 @@ import Main from "./ui/Main";
 import Header from "./ui/Header";
 import Search from "./home/Search";
 import { Button } from "./ui/Button";
-import Support from "./home/Support";
 import pageLoading from "@/public/page-loading.svg";
 
 function App() {
@@ -28,9 +27,7 @@ function App() {
   return (
     <>
       <div
-        className={`flex flex-col min-h-screen ${
-          verifiedLoggedOut ? "block" : "hidden"
-        }`}
+        className={`flex flex-col ${verifiedLoggedOut ? "block" : "hidden"}`}
       >
         <LoggedOutNav showSignUp={false} />
         <Main className="gap-12 md:gap-24">
@@ -63,7 +60,6 @@ function App() {
             </Button>
           </div>
         </Main>
-        <Support />
       </div>
       <Main className={verifiedLoggedOut ? "hidden" : "block"}>
         <Image

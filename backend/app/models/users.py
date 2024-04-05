@@ -98,14 +98,14 @@ class UserBase(SQLModel):
     provider: str = Field(default="dilemma", index=True)
 
     profile_picture: str | None = None
-    email: str | None = Field(default=None, max_length=MAX_EMAIL_LENGTH, index=True)
-    first_name: str | None = Field(default=None, max_length=MAX_FIRST_NAME_LENGTH, index=True)
-    last_name: str | None = Field(default=None, max_length=MAX_LAST_NAME_LENGTH, index=True)
+    email: str = Field(default=None, max_length=MAX_EMAIL_LENGTH, index=True)
+    first_name: str = Field(default=None, max_length=MAX_FIRST_NAME_LENGTH, index=True)
+    last_name: str = Field(default=None, max_length=MAX_LAST_NAME_LENGTH, index=True)
 
-    account_view: str | None = Field(default="profile")
-    is_sidebar_open: bool | None = Field(default=True)
+    account_view: str = Field(default="profile")
+    is_sidebar_open: bool = Field(default=True)
 
-    disabled: bool | None = Field(default=False)
+    disabled: bool = Field(default=False)
 
 
 class User(UserBase, table=True):
@@ -149,6 +149,8 @@ class UserRead(UserBase):
     """User read model."""
 
     uuid: UUID
+    requester_links: list[ChatRequestRead] = []
+    receiver_links: list[ChatRequestRead] = []
 
 
 class UserUpdate(SQLModel):
@@ -158,8 +160,8 @@ class UserUpdate(SQLModel):
 
     profile_picture: str | None = None
     email: str | None = None
-    username: str | None = None
-    fullname: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
     password: str | None = None
     confirm_password: str | None = None
 

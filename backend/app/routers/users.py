@@ -17,7 +17,6 @@ from app.dependencies.users import (
     VERIFY_CODE_EXPIRES,
     create_token,
     delete_auth_cookies,
-    generate_username_from_email,
     get_current_active_user,
     get_google_auth_url,
     get_password_hash,
@@ -150,8 +149,8 @@ async def signup(
     created_user = User(
         profile_picture=db_user.profile_picture,
         email=db_user.email,
-        username=generate_username_from_email(session, db_user.email),
-        fullname=db_user.fullname,
+        first_name=db_user.first_name,
+        last_name=db_user.last_name,
         hashed_password=get_password_hash(db_user.password),
         refresh_token=refresh_token,
     )
@@ -185,15 +184,13 @@ async def login(
     provider = "dilemma"
     db_user = UserCreate.model_validate(user)
 
-    if db_user.email:
-        verified_user = get_user(session, disabled=False, provider=provider, email=db_user.email)
-    elif db_user.username:
-        verified_user = get_user(session, disabled=False, provider=provider, username=db_user.username)
-    else:
+    if not db_user.email:
         raise HTTPException(
             status_code=400,
-            detail="Username or email is empty",
+            detail="Email is empty",
         )
+    verified_user = get_user(db_user.email, session, disabled=False, provider=provider)
+
     if not db_user.password:
         raise HTTPException(
             status_code=400,
@@ -285,8 +282,8 @@ async def auth_google(
         db_user = User(
             profile_picture=user_info["picture"],
             email=user_info["email"],
-            username=generate_username_from_email(session, user_info["email"]),
-            fullname=user_info["name"],
+            first_name=user_info["given_name"],
+            last_name=user_info["family_name"],
             refresh_token=enc_refresh_token,
             provider=provider,
         )
@@ -447,16 +444,13 @@ async def forgot_password(
     provider = "dilemma"
     db_user = UserUpdate.model_validate(user)
 
-    if db_user.email:
-        verified_user = get_user(session, disabled=False, provider=provider, email=db_user.email)
-    elif db_user.username:
-        verified_user = get_user(session, disabled=False, provider=provider, username=db_user.username)
-    else:
+    if not db_user.email:
         raise HTTPException(
             status_code=400,
-            detail="Username or email is empty",
+            detail="Email is empty",
         )
 
+    verified_user = get_user(db_user.email, session, disabled=False, provider=provider)
     if verified_user:
         recovery_code = AuthCode(
             email=verified_user.email, request_type="recovery", expire_date=datetime.utcnow() + RECOVERY_CODE_EXPIRES
@@ -501,15 +495,13 @@ async def check_code(
     provider = "dilemma"
     db_user = UserUpdate.model_validate(user)
 
-    if db_user.email:
-        verified_user = get_user(session, disabled=False, provider=provider, email=db_user.email)
-    elif db_user.username:
-        verified_user = get_user(session, disabled=False, provider=provider, username=db_user.username)
-    else:
+    if not db_user.email:
         raise HTTPException(
             status_code=400,
-            detail="Username or email is empty",
+            detail="Email is empty",
         )
+
+    verified_user = get_user(db_user.email, session, disabled=False, provider=provider)
 
     verify_code(session, db_user.code, verified_user.email, "recovery")
 
@@ -540,15 +532,13 @@ async def reset_password(
     response = RedirectResponse("/")
     db_user = UserUpdate.model_validate(user)
 
-    if db_user.email:
-        verified_user = get_user(session, disabled=False, provider=provider, email=db_user.email)
-    elif db_user.username:
-        verified_user = get_user(session, disabled=False, provider=provider, username=db_user.username)
-    else:
+    if not db_user.email:
         raise HTTPException(
             status_code=400,
-            detail="Username or email is empty",
+            detail="Email is empty",
         )
+
+    verified_user = get_user(session, disabled=False, provider=provider, email=db_user.email)
 
     if not db_user.password:
         raise HTTPException(status_code=400, detail="Password is empty")
@@ -605,7 +595,7 @@ async def verify_email_update(
             detail="Email is the same",
         )
 
-    user_exists = get_user(session, email=db_user.email)
+    user_exists = get_user(db_user.email, session)
     if not user_exists:
         verify_code = AuthCode(
             email=db_user.email,
@@ -849,23 +839,3 @@ async def ignore_chat_request(
     session.refresh(chat_request)
 
     return ChatRequestRead.model_validate(chat_request)
-
-
-@router.get("/chat-requests/sent", response_model=list[ChatRequestRead])
-async def get_sent_chat_requests(current_user: User = Depends(get_current_active_user)):
-    """Get chat requests sent by the current user."""
-    return [
-        ChatRequestRead.model_validate(link.receiver)
-        for link in current_user.requester_links
-        if link.status == "pending"
-    ]
-
-
-@router.get("/chat-requests/received", response_model=list[ChatRequestRead])
-async def get_received_chat_requests(current_user: User = Depends(get_current_active_user)):
-    """Get chat requests received by the current user."""
-    return [
-        ChatRequestRead.model_validate(link.requester)
-        for link in current_user.receiver_links
-        if link.status == "pending"
-    ]

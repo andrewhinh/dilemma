@@ -43,12 +43,12 @@ function Search() {
       return;
     }
 
-    sendRequest("/property-data", "POST", formDataObj).then((data) => {
+    sendRequest("/search/properties", "POST", formDataObj).then((data) => {
       if (data.detail) {
         setErrorMsg(data.detail);
       }
       setLoading(false);
-      router.push("/search/" + data.uuid);
+      router.push("/search/" + encodeURIComponent(formDataObj.query));
     });
   };
 

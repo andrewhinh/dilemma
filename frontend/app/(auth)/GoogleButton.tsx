@@ -21,7 +21,7 @@ function GoogleButton({ action, setErrorMsg }: GoogleButtonProps) {
 
     setGoogleLoading(true);
 
-    sendRequest("/verify-email/google", "POST", { state: action }).then(
+    sendRequest("/auth/google/verify-email", "POST", { state: action }).then(
       (data) => {
         setGoogleLoading(false);
         if (data.detail) {

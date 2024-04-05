@@ -13,10 +13,9 @@ import Main from "../../ui/Main";
 import Form from "../../ui/Form";
 import { Button } from "../../ui/Button";
 import Tooltip from "../../ui/ToolTip";
-import ProfileView from "../(profile)/ProfileView";
-import ProfileEditView from "../(profile)/ProfileEditView";
-import FriendRequests from "../(friends)/FriendRequests";
-import FriendsView from "../(friends)/FriendsView";
+import ProfileView from "./ProfileView";
+import ProfileEditView from "./ProfileEditView";
+// import ChatRequests from "./ChatRequests";
 
 import pageLoading from "@/public/page-loading.svg";
 import profile from "@/public/profile.svg";
@@ -285,8 +284,8 @@ function Account() {
         </Main>
         <ProfileView show={accountView === "profile"} />
         <ProfileEditView show={accountView === "profile-edit"} />
-        <FriendsView show={accountView === "friends"} />
-        <FriendRequests show={accountView === "friend_requests"} />
+        {/* <FriendsView show={accountView === "friends"} />
+        <FriendRequests show={accountView === "friend_requests"} /> */}
       </div>
     </div>
   );

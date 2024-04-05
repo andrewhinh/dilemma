@@ -15,8 +15,7 @@ import buttonLoading from "@/public/button-loading.svg";
 function ResetPassword() {
   const router = useRouter();
 
-  const [id, setId] = useState("");
-  const [isEmail, setIsEmail] = useState(false);
+  const [email, setEmail] = useState("");
 
   const [verifiedUserMessage, setVerifiedUserMessage] = useState("");
   const [code, setCode] = useState("");
@@ -33,22 +32,21 @@ function ResetPassword() {
     setErrorMsg(null);
     setLoading(true);
 
-    if (id === "") {
-      setErrorMsg("Username or email cannot be empty");
+    if (email === "") {
+      setErrorMsg("Email cannot be empty");
       setLoading(false);
       return;
     }
 
-    if (validator.isEmail(id)) {
-      setIsEmail(true);
-    } else {
-      setIsEmail(false);
+    if (!validator.isEmail(email)) {
+      setErrorMsg("Invalid email");
+      setLoading(false);
+      return;
     }
 
-    let request = {
-      ...(isEmail ? { email: id } : { username: id }),
+    let request = { email: email
     };
-    sendRequest("/forgot-password", "POST", request).then((data) => {
+    sendRequest("/account/password/forgot", "POST", request).then((data) => {
       if (data.detail) setErrorMsg(data.detail);
       else setVerifiedUserMessage(data.message);
       setLoading(false);
@@ -66,11 +64,10 @@ function ResetPassword() {
       return;
     }
 
-    let request = {
-      ...(isEmail ? { email: id } : { username: id }),
+    let request = {email: email,
       code: code,
     };
-    sendRequest("/check-code", "POST", request).then((data) => {
+    sendRequest("/account/code/verify", "POST", request).then((data) => {
       if (data.detail) setErrorMsg(data.detail);
       else setVerifiedCode(true);
       setLoading(false);
@@ -100,13 +97,12 @@ function ResetPassword() {
       return;
     }
 
-    let request = {
-      ...(isEmail ? { email: id } : { username: id }),
+    let request = {email: email,
       password: password,
       confirm_password: confirmPassword,
       code: code,
     };
-    sendRequest("/reset-password", "POST", request).then((data) => {
+    sendRequest("/account/password/reset", "POST", request).then((data) => {
       if (data.detail) setErrorMsg(data.detail);
       else {
         setLoading(false);
@@ -128,9 +124,9 @@ function ResetPassword() {
           <Input
             type="id"
             name="id"
-            placeholder="Username or email"
+            placeholder="Email"
             autoFocus
-            onChange={(e) => setId(e.target.value)}
+            onChange={(e) => setEmail(e.target.value)}
           />
           <FormButton>
             <Image
