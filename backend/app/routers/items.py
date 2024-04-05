@@ -7,18 +7,18 @@ from fastapi import APIRouter, Depends, Security
 from sqlmodel import Session
 
 from app.database import get_session
-from app.dependencies.items import PropertiesFinder
+from app.dependencies.items import LocationReplacer, search_properties
 from app.dependencies.security import verify_api_key
-from app.models.items import Request, SearchResult, SearchResultRead
+from app.models.items import SearchRequest, SearchResult, SearchResultRead
 
 logger = logging.getLogger(__name__)
 
 
 # Program
-find_properties = PropertiesFinder()
+replace_location = LocationReplacer()
 try:
     model_path = max(glob.glob("models/*.json"))
-    find_properties.load(model_path)
+    replace_location.load(model_path)
 except Exception:
     logger.warning("Model loading failed.")
 
@@ -30,21 +30,18 @@ router = APIRouter(
 )
 
 
-@router.post("/search/properties", response_model=SearchResultRead)
-async def property_data(*, session: Session = Depends(get_session), request: Request):
+@router.post("/search/properties", response_model=SearchResultRead | list[str])
+async def property_data(*, session: Session = Depends(get_session), request: SearchRequest):
     """Get property data from query."""
-    pred = find_properties(request.query)
+    replacements = replace_location(request.location).replacements
+    if replacements:
+        return replacements
+
+    properties = search_properties(request)
     search_result = SearchResult(
-        location=pred.location,
-        listing_type=pred.listing_type,
-        radius=pred.radius,
-        mls_only=pred.mls_only,
-        past_days=pred.past_days,
-        date_from=pred.date_from,
-        date_to=pred.date_to,
-        foreclosure=pred.foreclosure,
-        properties=pred.properties,
+        properties=properties,
     )
+
     session.add(search_result)
     session.commit()
     session.refresh(search_result)

@@ -2,14 +2,20 @@
 
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel
 from sqlmodel import Field, Relationship, SQLModel
 
 
-class Request(BaseModel):
-    """Request model."""
+class SearchRequest(SQLModel):
+    """Search request model."""
 
-    query: str
+    location: str
+    listing_type: str = "for_sale"  # for_rent, for_sale, sold
+    radius: float | None = None  # miles
+    mls_only: bool | None = None  # only show properties with MLS
+    past_days: int | None = None
+    date_from: str | None = None  # "YYYY-MM-DD"
+    date_to: str | None = None
+    foreclosure: bool | None = None
 
 
 class AltPhoto(SQLModel, table=True):
@@ -67,20 +73,7 @@ class Property(SQLModel, table=True):
     search_result: "SearchResult" = Relationship(back_populates="properties")
 
 
-class SearchResultBase(SQLModel):
-    """Search result base model."""
-
-    location: str = Field(default=None)
-    listing_type: str = Field(default=None)
-    radius: float | None = Field(default=None)
-    mls_only: bool | None = Field(default=None)
-    past_days: int | None = Field(default=None)
-    date_from: str | None = Field(default=None)
-    date_to: str | None = Field(default=None)
-    foreclosure: bool | None = Field(default=None)
-
-
-class SearchResult(SearchResultBase, table=True):
+class SearchResult(SQLModel, table=True):
     """Search result model."""
 
     id: int = Field(primary_key=True, index=True)
@@ -89,7 +82,7 @@ class SearchResult(SearchResultBase, table=True):
     properties: list[Property | None] = Relationship(back_populates="search_result")
 
 
-class SearchResultRead(SearchResultBase):
+class SearchResultRead(SQLModel):
     """Search result read model."""
 
     uuid: UUID

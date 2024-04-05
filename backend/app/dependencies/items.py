@@ -1,6 +1,5 @@
 """Dependencies for items endpoints."""
 
-import json
 import logging
 import math
 import random
@@ -8,17 +7,14 @@ import signal
 import traceback
 from contextlib import contextmanager
 from datetime import datetime
-from functools import partial
-from uuid import UUID
 
 import dspy
 from dsp.utils import deduplicate
-from fastapi.encoders import jsonable_encoder
 from homeharvest import scrape_property
 from pydantic import BaseModel, Field
 
 from app.config import get_settings
-from app.models.items import AltPhoto, Property
+from app.models.items import AltPhoto, Property, SearchRequest
 
 logger = logging.getLogger(__name__)
 
@@ -29,15 +25,8 @@ DEFAULT_MODEL = "gpt-3.5-turbo"
 DEFAULT_MAX_HOPS = 3
 DEFAULT_TEMPERATURE = 0.7
 DEFAULT_DELTA = 0.0001
-DEFAULT_MAX_RESULTS = 5
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_TIMEOUT = 10  # seconds
-
-
-# Convert UUID to float between 0 and 1
-def uuid_to_float(uuid: UUID) -> float:
-    """Convert UUID to float between 0 and 1."""
-    return int(uuid) / 2**128
 
 
 # Timeout handling
@@ -61,27 +50,17 @@ def time_limit(seconds):
 
 
 # Search properties
-def search_properties(
-    location: str,
-    listing_type: str,  # for_rent, for_sale, sold
-    radius: float | None = None,  # miles
-    mls_only: bool | None = None,  # only show properties with MLS
-    past_days: int | None = None,
-    date_from: str | None = None,  # "YYYY-MM-DD"
-    date_to: str | None = None,
-    foreclosure: bool | None = None,
-    max_results: int = DEFAULT_MAX_RESULTS,
-) -> list[Property]:
+def search_properties(request: SearchRequest) -> list[Property]:
     """Search properties."""
     properties = scrape_property(
-        location=location,
-        listing_type=listing_type,
-        radius=radius,
-        mls_only=mls_only,
-        past_days=past_days,
-        date_from=date_from,
-        date_to=date_to,
-        foreclosure=foreclosure,
+        location=request.location,
+        listing_type=request.listing_type,
+        radius=request.radius,
+        mls_only=request.mls_only,
+        past_days=request.past_days,
+        date_from=request.date_from,
+        date_to=request.date_to,
+        foreclosure=request.foreclosure,
     )
 
     list_properties = []
@@ -155,52 +134,38 @@ def search_properties(
             )
         )
 
-    return list_properties[:max_results]
+    return list_properties
 
 
-# Param generation problem
+# Location checker
 class Input(BaseModel):
     """Input model."""
 
     context: list[str] = Field(description="may contain relevant context")
-    query: str = Field()
+    location: str = Field(description="zip code, a full address, city/state, etc. or invalid location")
     current_date: datetime = Field(default_factory=datetime.utcnow)
 
 
 class Output(BaseModel):
     """Output model."""
 
-    location: str = Field(description="zip code, a full address, or city/state, etc.")
-    listing_type: str = Field(description="for_rent, for_sale, sold")
-    radius: float | None = Field(description="miles")
-    mls_only: bool | None = Field(description="if true, only show properties with MLS")
-    past_days: int | None = Field(description="number of days in the past")
-    date_from: str | None = Field(description="YYYY-MM-DD")
-    date_to: str | None = Field(description="YYYY-MM-DD")
-    foreclosure: bool | None = Field(description="if true, only show foreclosure properties")
+    replacements: list[str] = Field(description="list of possible locations in place of an invalid location")
 
 
-class GenerateParams(dspy.Signature):
+class ReplaceLocation(dspy.Signature):
     """
-    Given query, generate parameters for searching properties from Realtor.com.
-
-    Required:
-    :param location: Location to search (e.g. "Dallas, TX", "85281", "2530 Al Lipscomb Way")
-
-    Optional:
-    :param radius: Get properties within _ (e.g. 1.0) miles. Only applicable for individual addresses.
-    :param mls_only: If set, fetches only listings with MLS IDs.
-    :param date_from, date_to: Get properties sold or listed (dependent on your listing_type) between these dates. format: 2021-01-28
-    :param foreclosure: If set, fetches only foreclosure listings.
+    Given a location, check if it is valid and return possible replacements.
+    If the location is invalid and is most like a zip code, full address, city/state, etc.,
+    return replacements that are similar to the location but are valid.
+    e.g. 12345 -> 12346, 12347, etc.
     """
 
     input: Input = dspy.InputField()
     output: Output = dspy.OutputField()
 
 
-# Query -> Properties
-class PropertiesFinder(dspy.Module):
-    """Find properties from query."""
+class LocationReplacer(dspy.Module):
+    """Location replacer."""
 
     def __init__(
         self,
@@ -208,10 +173,8 @@ class PropertiesFinder(dspy.Module):
         max_hops: int = DEFAULT_MAX_HOPS,
         temperature: float = DEFAULT_TEMPERATURE,
         delta: float = DEFAULT_DELTA,
-        max_results: int = DEFAULT_MAX_RESULTS,
         max_retries: int = DEFAULT_MAX_RETRIES,
         gen_timeout: int = DEFAULT_TIMEOUT,
-        retrieve_timeout: int = DEFAULT_TIMEOUT,
     ):
         super().__init__()
 
@@ -220,49 +183,27 @@ class PropertiesFinder(dspy.Module):
         self.temperature = temperature
         self.delta = delta
         self.gen_timeout = gen_timeout
-        self.retrieve_timeout = retrieve_timeout
 
-        self.retrieve = partial(search_properties, max_results=max_results)
-        self.generate_params = [
-            dspy.TypedChainOfThought(signature=GenerateParams, max_retries=max_retries) for _ in range(max_hops)
+        self.generate_replace = [
+            dspy.TypedChainOfThought(signature=ReplaceLocation, max_retries=max_retries) for _ in range(max_hops)
         ]
 
-    def forward(self, query):
-        context, properties = [], []
-        location, listing_type, radius, mls_only, past_days, date_from, date_to, foreclosure = (
-            "",
-            "",
-            None,
-            None,
-            None,
-            None,
-            None,
-            None,
-        )
+    def forward(self, location):
+        context, replacements = [], []
 
         for hop in range(self.max_hops):
             try:
                 with time_limit(self.gen_timeout):
                     with dspy.context(lm=self.lm):
-                        pred = self.generate_params[hop](
+                        replacements = self.generate_replace[hop](
                             input=Input(
                                 context=context,
-                                query=query,
+                                location=location,
                             ),
                             config={"temperature": self.temperature + self.delta * random.randint(-1, 1)},
-                        ).output
-                    location, listing_type, radius, mls_only, past_days, date_from, date_to, foreclosure = (
-                        pred.location,
-                        pred.listing_type,
-                        pred.radius,
-                        pred.mls_only,
-                        pred.past_days,
-                        pred.date_from,
-                        pred.date_to,
-                        pred.foreclosure,
-                    )
+                        ).output.replacements
             except TimeoutException:
-                message = "Params generation timeout"
+                message = "Location: Generation timeout"
                 logger.error(message)
                 properties = [message]
                 context = deduplicate(context + properties)
@@ -274,45 +215,4 @@ class PropertiesFinder(dspy.Module):
                 context = deduplicate(context + properties)
                 continue
 
-            try:
-                with time_limit(self.retrieve_timeout):
-                    properties = self.retrieve(
-                        location=location,
-                        listing_type=listing_type,
-                        radius=radius,
-                        mls_only=mls_only,
-                        past_days=past_days,
-                        date_from=date_from,
-                        date_to=date_to,
-                        foreclosure=foreclosure,
-                    )
-                    context = deduplicate(context + [json.dumps(jsonable_encoder(property)) for property in properties])
-            except TimeoutException:
-                message = f"Properties retrieval timeout for location: {location}, listing_type: {listing_type}, radius: {radius}, mls_only: {mls_only}, past_days: {past_days}, date_from: {date_from}, date_to: {date_to}, foreclosure: {foreclosure}"
-                logger.error(message)
-                properties = [message]
-                context = deduplicate(context + properties)
-                continue
-            except Exception:
-                message = (
-                    f"Properties retrieval error for location: {location}, listing_type: {listing_type}, radius: {radius}, mls_only: {mls_only}, past_days: {past_days}, date_from: {date_from}, date_to: {date_to}, foreclosure: {foreclosure}\n"
-                    + traceback.format_exc()
-                )
-                logger.error(message)
-                properties = [message]
-                context = deduplicate(context + properties)
-                continue
-
-        if len(properties) > 0 and isinstance(properties[0], str):  # if error
-            properties = []
-        return dspy.Prediction(
-            location=location,
-            listing_type=listing_type,
-            radius=radius,
-            mls_only=mls_only,
-            past_days=past_days,
-            date_from=date_from,
-            date_to=date_to,
-            foreclosure=foreclosure,
-            properties=properties,
-        )
+        return dspy.Prediction(replacements=replacements)
