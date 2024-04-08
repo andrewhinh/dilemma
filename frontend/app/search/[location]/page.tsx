@@ -1,9 +1,8 @@
 "use client";
 
-import React, { memo, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import L from "leaflet";
-import { MapContainer, TileLayer, Marker, Tooltip } from "react-leaflet";
+import { MapContainer, TileLayer } from "react-leaflet";
 import Image from "next/image";
 
 import { useConst } from "../../providers";
@@ -11,44 +10,9 @@ import { sendRequest } from "@/app/lib/api";
 import { Property } from "@/app/providers";
 
 import Main from "../../ui/Main";
-import mapMarker from "@/public/cyan-map-marker.svg";
+import PropertyMarker from "./PropertyMarker";
 import pageLoading from "@/public/page-loading.svg";
-import "leaflet/dist/leaflet.css"; // Ensuring Leaflet's CSS is loaded
-
-const PropertyMarker = memo(
-  ({
-    listingType,
-    property,
-    isActive,
-    onClick,
-  }: {
-    listingType: string;
-    property: Property;
-    isActive: boolean;
-    onClick: () => void;
-  }) => {
-    return (
-      <Marker
-        position={[property.latitude ?? 0, property.longitude ?? 0]}
-        icon={
-          new L.Icon({
-            iconUrl: mapMarker.src,
-            iconSize: [25, 25],
-          })
-        }
-        eventHandlers={{
-          click: onClick,
-        }}
-      >
-        <Tooltip permanent={isActive} direction="top">
-          {listingType === "sold" ? property.sold_price : property.list_price}
-        </Tooltip>
-      </Marker>
-    );
-  }
-);
-
-PropertyMarker.displayName = "PropertyMarker"; // Add display name to the component
+import "leaflet/dist/leaflet.css";
 
 function Search() {
   const router = useRouter();
@@ -129,13 +93,15 @@ function Search() {
               />
               {properties.map((property, index) => (
                 <PropertyMarker
-                  key={property.uuid}
+                  key={`${property.uuid}-${index === focus}`}
                   listingType={listingType}
                   property={property}
                   isActive={index === focus}
-                  onClick={() => setFocus(index)}
-                >
-                </PropertyMarker>
+                  onClick={() => {
+                    console.log(focus);
+                    setFocus(index);
+                  }}
+                />
               ))}
             </MapContainer>
             <div className="flex flex-1">
