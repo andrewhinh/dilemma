@@ -9,8 +9,9 @@ import { useAuthEffect } from "./lib/callbacks";
 import { LoggedOutNav } from "./ui/Nav";
 import Main from "./ui/Main";
 import Header from "./ui/Header";
-import Search from "./home/Search";
+import Search from "./search/Search";
 import { Button } from "./ui/Button";
+import Support from "./home/Support";
 import pageLoading from "@/public/page-loading.svg";
 
 function App() {
@@ -27,7 +28,7 @@ function App() {
   return (
     <>
       <div
-        className={`flex flex-col ${verifiedLoggedOut ? "block" : "hidden"}`}
+        className={`flex flex-col flex-1 ${verifiedLoggedOut ? "block" : "hidden"}`}
       >
         <LoggedOutNav showSignUp={false} />
         <Main className="gap-12 md:gap-24">
@@ -41,9 +42,6 @@ function App() {
             </h2>
           </Header>
           <div className="gap-4 flex flex-col items-center justify-center w-60 md:w-72">
-            <p className="text-base md:text-lg">
-              Search properties to buy or rent:
-            </p>
             <Search />
           </div>
           <div className="gap-4 flex flex-col items-center justify-center w-60 md:w-72">
@@ -60,6 +58,7 @@ function App() {
             </Button>
           </div>
         </Main>
+        <Support />
       </div>
       <Main className={verifiedLoggedOut ? "hidden" : "block"}>
         <Image

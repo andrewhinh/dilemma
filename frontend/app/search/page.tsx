@@ -9,7 +9,7 @@ import { useAuthEffect } from "../lib/callbacks";
 import { MainNav } from "../ui/Nav";
 import Main from "../ui/Main";
 import Header from "../ui/Header";
-import Search from "../home/Search";
+import Search from "./Search";
 import pageLoading from "@/public/page-loading.svg";
 
 function App() {

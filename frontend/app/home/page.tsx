@@ -13,7 +13,8 @@ import { useConst } from "../providers";
 
 import { LoggedInNav } from "../ui/Nav";
 import Main from "../ui/Main";
-import Search from "./Search";
+import Search from "../search/Search";
+import Support from "./Support";
 import pageLoading from "@/public/page-loading.svg";
 
 function Base() {
@@ -70,6 +71,7 @@ function Base() {
         <Main className="gap-20">
           <Search />
         </Main>
+        <Support />
       </div>
       <Main className={isLoggedIn ? "hidden" : "block"}>
         <Image

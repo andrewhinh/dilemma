@@ -33,9 +33,9 @@ router = APIRouter(
 @router.post("/search/properties", response_model=SearchResultRead | list[str])
 async def property_data(*, session: Session = Depends(get_session), request: SearchRequest):
     """Get property data from query."""
-    replacements = replace_location(request.location).replacements
-    if replacements:
-        return replacements
+    # replacements = replace_location(request.location).replacements
+    # if replacements:
+    #     return replacements
 
     properties = search_properties(request)
     search_result = SearchResult(

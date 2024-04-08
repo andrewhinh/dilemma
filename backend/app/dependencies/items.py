@@ -68,6 +68,7 @@ def search_properties(request: SearchRequest) -> list[Property]:
         alt_photos = []
         if "alt_photos" in row:
             alt_photos = [AltPhoto(url=url) for url in row["alt_photos"].split(",")]
+
         list_properties.append(
             Property(
                 property_url=row["property_url"] if "property_url" in row else None,
@@ -142,20 +143,26 @@ class Input(BaseModel):
     """Input model."""
 
     context: list[str] = Field(description="may contain relevant context")
-    location: str = Field(description="zip code, a full address, city/state, etc. or invalid location")
+    location: str = Field(
+        description="string that is either a) a zip code, full address, city/state, etc. or b) an invalid location"
+    )
     current_date: datetime = Field(default_factory=datetime.utcnow)
 
 
 class Output(BaseModel):
     """Output model."""
 
-    replacements: list[str] = Field(description="list of possible locations in place of an invalid location")
+    replacements: list[str] = Field(
+        description="empty list for a valid location, or list of possible locations for an invalid location"
+    )
 
 
 class ReplaceLocation(dspy.Signature):
     """
-    Given a location, check if it is valid and return possible replacements.
-    If the location is invalid and is most like a zip code, full address, city/state, etc.,
+    Given a location, check if it is valid.
+    If so, return an empty list.
+
+    If not, and it is most like a zip code, full address, city/state, etc.,
     return replacements that are similar to the location but are valid.
     e.g. 12345 -> 12346, 12347, etc.
     """

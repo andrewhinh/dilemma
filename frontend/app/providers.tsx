@@ -2,23 +2,45 @@
 
 import React, { createContext, useReducer, useContext } from "react";
 
-interface User {
-  joinDate: Date;
-  provider: string;
-  profilePicture: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  accountView: string;
-  isSideBarOpen: boolean;
-  uuid: string;
-  sentChatRequests: Array<any>;
-  receivedChatRequests: Array<any>;
+// Classes for objects returned by the backend
+interface Property {
+  property_url?: string;
+  mls?: string;
+  mls_id?: string;
+  status?: string;
+  street?: string;
+  unit?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
+  style?: string;
+  beds?: number;
+  full_baths?: number;
+  half_baths?: number;
+  sqft?: number;
+  year_built?: number;
+  stories?: number;
+  lot_sqft?: number;
+  days_on_mls?: number;
+  list_price?: number;
+  list_date?: string;
+  pending_date?: string;
+  sold_price?: number;
+  last_sold_date?: string;
+  price_per_sqft?: number;
+  hoa_fee?: number;
+  latitude?: number;
+  longitude?: number;
+  parking_garage?: number;
+  primary_photo?: string;
+  neighborhoods?: string;
+
+  uuid?: string;
+  alt_photos?: Array<any>;
 }
 
-// Type for the user object that is returned from the backend
-interface UserBackend {
-  join_date?: string;
+interface User {
+  join_date?: Date;
   provider?: string;
   profile_picture?: string;
   email?: string;
@@ -31,29 +53,36 @@ interface UserBackend {
   receiver_links?: Array<any>;
 }
 
-export type { UserBackend };
+export type { Property, User };
 
+// State for the context
 interface State extends User {
   verifiedLoggedOut: boolean;
   isLoggedIn: boolean;
   getUserInfo: boolean;
+  location: string;
+  replacements: Array<string>;
+  properties: Array<Property>;
 }
 
 const initialState: State = {
   verifiedLoggedOut: false,
   isLoggedIn: false,
   getUserInfo: true,
-  joinDate: new Date(),
+  location: "",
+  replacements: [],
+  properties: [],
+  join_date: new Date(),
   provider: "",
-  profilePicture: "",
+  profile_picture: "",
   email: "",
-  firstName: "",
-  lastName: "",
-  accountView: "",
-  isSideBarOpen: false,
+  first_name: "",
+  last_name: "",
+  account_view: "",
+  is_sidebar_open: false,
   uuid: "",
-  sentChatRequests: [],
-  receivedChatRequests: [],
+  requester_links: [],
+  receiver_links: [],
 };
 
 interface Action {
@@ -80,28 +109,34 @@ const reducer = (state: State, action: Action): State => {
       return { ...state, isLoggedIn: action.payload };
     case "SET_GET_USER_INFO":
       return { ...state, getUserInfo: action.payload };
+    case "SET_LOCATION":
+      return { ...state, location: action.payload };
+    case "SET_REPLACEMENTS":
+      return { ...state, replacements: action.payload };
+    case "SET_PROPERTIES":
+      return { ...state, properties: action.payload };
     case "SET_JOIN_DATE":
-      return { ...state, joinDate: action.payload };
+      return { ...state, join_date: action.payload };
     case "SET_PROVIDER":
       return { ...state, provider: action.payload };
     case "SET_PROFILE_PICTURE":
-      return { ...state, profilePicture: action.payload };
+      return { ...state, profile_picture: action.payload };
     case "SET_EMAIL":
       return { ...state, email: action.payload };
     case "SET_FIRST_NAME":
-      return { ...state, firstName: action.payload };
+      return { ...state, first_name: action.payload };
     case "SET_LAST_NAME":
-      return { ...state, lastName: action.payload };
+      return { ...state, last_name: action.payload };
     case "SET_ACCOUNT_VIEW":
-      return { ...state, accountView: action.payload };
+      return { ...state, account_view: action.payload };
     case "SET_IS_SIDEBAR_OPEN":
-      return { ...state, isSideBarOpen: action.payload };
+      return { ...state, is_sidebar_open: action.payload };
     case "SET_UUID":
       return { ...state, uuid: action.payload };
-    case "SET_SENT_CHAT_REQUESTS":
-      return { ...state, sentChatRequests: action.payload };
-    case "SET_RECEIVED_CHAT_REQUESTS":
-      return { ...state, receivedChatRequests: action.payload };
+    case "SET_REQUESTER_LINKS":
+      return { ...state, requester_links: action.payload };
+    case "SET_RECEIVER_LINKS":
+      return { ...state, receiver_links: action.payload };
     default:
       return state;
   }

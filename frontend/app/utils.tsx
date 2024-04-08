@@ -1,4 +1,4 @@
-import { UserBackend, useConst } from "./providers";
+import { User, useConst } from "./providers";
 import { sendRequest } from "./lib/api";
 import { useAccount } from "./account/providers";
 
@@ -25,7 +25,7 @@ const useUpdateUser = () => {
 
   return (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
-    request: UserBackend
+    request: User
   ) => {
     e.preventDefault();
 
@@ -67,7 +67,7 @@ const useUpdateUser = () => {
 const useSetUser = () => {
   const { dispatch: constDispatch } = useConst();
 
-  return (data: UserBackend) => {
+  return (data: User) => {
     constDispatch({ type: "SET_JOIN_DATE", payload: data.join_date });
     constDispatch({
       type: "SET_PROVIDER",
@@ -99,18 +99,14 @@ const useSetUser = () => {
       payload: data.uuid,
     });
     constDispatch({
-      type: "SET_SENT_CHAT_REQUESTS",
+      type: "SET_REQUESTER_LINKS",
       payload: data.requester_links,
     });
     constDispatch({
-      type: "SET_RECEIVED_CHAT_REQUESTS",
+      type: "SET_RECEIVER_LINKS",
       payload: data.receiver_links,
     });
   };
 };
 
-export {
-  useGetUser,
-  useUpdateUser,
-  useSetUser,
-};
+export { useGetUser, useUpdateUser, useSetUser };

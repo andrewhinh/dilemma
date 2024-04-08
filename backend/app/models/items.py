@@ -29,48 +29,68 @@ class AltPhoto(SQLModel, table=True):
     property: "Property" = Relationship(back_populates="alt_photos")
 
 
-class Property(SQLModel, table=True):
+class AltPhotoRead(SQLModel):
+    """Alternate photo read model."""
+
+    uuid: UUID
+    url: str | None
+
+
+class PropertyBase(SQLModel):
+    """Property base model."""
+
+    property_url: str | None = None
+    mls: str | None = None
+    mls_id: str | None = None
+    status: str | None = None
+    street: str | None = None
+    unit: str | None = None
+    city: str | None = None
+    state: str | None = None
+    zip_code: str | None = None
+    style: str | None = None
+    beds: int | None = None
+    full_baths: int | None = None
+    half_baths: int | None = None
+    sqft: int | None = None
+    year_built: int | None = None
+    stories: int | None = None
+    lot_sqft: int | None = None
+    days_on_mls: int | None = None
+    list_price: float | None = None
+    list_date: str | None = None
+    pending_date: str | None = None
+    sold_price: float | None = None
+    last_sold_date: str | None = None
+    price_per_sqft: float | None = None
+    hoa_fee: float | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    parking_garage: int | None = None
+    primary_photo: str | None = None
+    neighborhoods: str | None = None
+
+
+class Property(PropertyBase, table=True):
     """Property model."""
 
     id: int = Field(primary_key=True, index=True)
     uuid: UUID = Field(default_factory=lambda: uuid4(), unique=True)
-    property_url: str | None = Field(default=None)
-    mls: str | None = Field(default=None)
-    mls_id: str | None = Field(default=None)
-    status: str | None = Field(default=None)
-    street: str | None = Field(default=None)
-    unit: str | None = Field(default=None)
-    city: str | None = Field(default=None)
-    state: str | None = Field(default=None)
-    zip_code: str | None = Field(default=None)
-    style: str | None = Field(default=None)
-    beds: int | None = Field(default=None)
-    full_baths: int | None = Field(default=None)
-    half_baths: int | None = Field(default=None)
-    sqft: int | None = Field(default=None)
-    year_built: int | None = Field(default=None)
-    stories: int | None = Field(default=None)
-    lot_sqft: int | None = Field(default=None)
-    days_on_mls: int | None = Field(default=None)
-    list_price: float | None = Field(default=None)
-    list_date: str | None = Field(default=None)
-    pending_date: str | None = Field(default=None)
-    sold_price: float | None = Field(default=None)
-    last_sold_date: str | None = Field(default=None)
-    price_per_sqft: float | None = Field(default=None)
-    hoa_fee: float | None = Field(default=None)
-    latitude: float | None = Field(default=None)
-    longitude: float | None = Field(default=None)
-    parking_garage: int | None = Field(default=None)
-    primary_photo: str | None = Field(default=None)
+
     alt_photos: list[AltPhoto | None] = Relationship(back_populates="property")
-    neighborhoods: str | None = Field(default=None)
 
     search_result_uuid: UUID = Field(
         default=None,
         foreign_key="searchresult.uuid",
     )
     search_result: "SearchResult" = Relationship(back_populates="properties")
+
+
+class PropertyRead(PropertyBase):
+    """Property read model."""
+
+    uuid: UUID
+    alt_photos: list[AltPhotoRead | None]
 
 
 class SearchResult(SQLModel, table=True):
@@ -86,4 +106,4 @@ class SearchResultRead(SQLModel):
     """Search result read model."""
 
     uuid: UUID
-    properties: list[Property | None]
+    properties: list[PropertyRead | None]
