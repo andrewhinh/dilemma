@@ -51,7 +51,7 @@ function EditView({ show }: { show: boolean }) {
       return;
     }
 
-    if (!validator.isEmail(tempEmail)) {
+    if (tempEmail && !validator.isEmail(tempEmail)) {
       setUpdateEmailErrorMsg("Invalid email");
       setUpdateEmailLoading(false);
       return;

@@ -45,7 +45,7 @@ function Search() {
             type: "SET_PROPERTIES",
             payload: data.properties as Property[],
           });
-          router.push("/search/" + encodeURIComponent(location));
+          router.push("/search/" + location.replace(/\s+/g, '-'));
         }
         setLoading(false);
       }
