@@ -3,24 +3,53 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Image from "next/image";
-import { sendRequest } from "../lib/api";
-import { Property } from "../providers";
 import { useConst } from "../providers";
+import useSearch from "./utils";
 
 import Form from "../ui/Form";
 import Input from "../ui/Input";
 import { Button } from "../ui/Button";
 import x from "@/public/x.svg";
-import search from "@/public/search.svg";
+import searchIcon from "@/public/search.svg";
 import buttonLoading from "@/public/button-loading.svg";
 
 function Search() {
   const router = useRouter();
-  const [errorMsg, setErrorMsg] = useState("");
-  const [loading, setLoading] = useState(false);
+  const search = useSearch();
 
   const { state, dispatch } = useConst();
-  const { location, replacements } = state;
+  const {
+    location,
+    listing_type,
+    radius,
+    mls_only,
+    past_days,
+    date_from,
+    date_to,
+    foreclosure,
+    min_price,
+    max_price,
+    min_beds,
+    max_beds,
+    min_baths,
+    max_baths,
+    style,
+    min_sqft,
+    max_sqft,
+    min_lot_sqft,
+    max_lot_sqft,
+    min_stories,
+    max_stories,
+    min_year_built,
+    max_year_built,
+    min_price_per_sqft,
+    max_price_per_sqft,
+    hoa_fee,
+    parking_garage,
+    replacements,
+  } = state;
+  const [errorMsg, setErrorMsg] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -33,23 +62,47 @@ function Search() {
       return;
     }
 
-    sendRequest("/search/properties", "POST", { location: location }).then(
-      (data) => {
-        if (data.detail) {
-          setErrorMsg(data.detail);
+    search({
+      location: location,
+      listing_type: listing_type,
+      radius: radius,
+      mls_only: mls_only,
+      past_days: past_days,
+      date_from: date_from,
+      date_to: date_to,
+      foreclosure: foreclosure,
+      min_price: min_price,
+      max_price: max_price,
+      min_beds: min_beds,
+      max_beds: max_beds,
+      min_baths: min_baths,
+      max_baths: max_baths,
+      style: style,
+      min_sqft: min_sqft,
+      max_sqft: max_sqft,
+      min_lot_sqft: min_lot_sqft,
+      max_lot_sqft: max_lot_sqft,
+      min_stories: min_stories,
+      max_stories: max_stories,
+      min_year_built: min_year_built,
+      max_year_built: max_year_built,
+      min_price_per_sqft: min_price_per_sqft,
+      max_price_per_sqft: max_price_per_sqft,
+      hoa_fee: hoa_fee,
+      parking_garage: parking_garage,
+    })
+      .then(() => {
+        if (replacements.length > 0) {
+          return;
         }
-        if (Array.isArray(data)) {
-          dispatch({ type: "SET_REPLACEMENTS", payload: data as string[] });
-        } else {
-          dispatch({
-            type: "SET_PROPERTIES",
-            payload: data.properties as Property[],
-          });
-          router.push("/search/" + location.replace(/\s+/g, '-'));
-        }
+        router.push("/search/" + encodeURIComponent(location));
+      })
+      .catch((reason) => {
+        setErrorMsg(reason);
+      })
+      .finally(() => {
         setLoading(false);
-      }
-    );
+      });
   };
 
   return (
@@ -97,7 +150,7 @@ function Search() {
                 alt="Search"
               />
               <Image
-                src={search}
+                src={searchIcon}
                 className={`w-6 h-6 ${loading ? "hidden" : "block"}`}
                 alt="Search"
               />

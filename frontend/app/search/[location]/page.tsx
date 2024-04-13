@@ -6,8 +6,7 @@ import { MapContainer, TileLayer } from "react-leaflet";
 import Image from "next/image";
 
 import { useConst } from "../../providers";
-import { sendRequest } from "@/app/lib/api";
-import { Property } from "@/app/providers";
+import useSearch from "../utils";
 
 import { MainNav } from "@/app/ui/Nav";
 import Main from "../../ui/Main";
@@ -23,56 +22,87 @@ function Search() {
   const router = useRouter();
   const pathname = usePathname();
   const { state, dispatch } = useConst();
-  const { location, replacements, properties } = state;
+  const search = useSearch();
+  const {
+    location,
+    listing_type,
+    radius,
+    mls_only,
+    past_days,
+    date_from,
+    date_to,
+    foreclosure,
+    min_price,
+    max_price,
+    min_beds,
+    max_beds,
+    min_baths,
+    max_baths,
+    style,
+    min_sqft,
+    max_sqft,
+    min_lot_sqft,
+    max_lot_sqft,
+    min_stories,
+    max_stories,
+    min_year_built,
+    max_year_built,
+    min_price_per_sqft,
+    max_price_per_sqft,
+    hoa_fee,
+    parking_garage,
+    replacements,
+    popups,
+    center_lat,
+    center_long,
+    properties,
+  } = state;
 
   const [focus, setFocus] = useState(0); // index of property in properties
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
-
-  const [listingType, setListingType] = useState("for_sale"); // for_rent, for_sale, sold
-  const [radius, setRadius] = useState(null); // miles
-  const [mlsOnly, setMlsOnly] = useState(null); // only show properties with MLS
-  const [pastDays, setPastDays] = useState(null);
-  const [dateFrom, setDateFrom] = useState(null); // "YYYY-MM-DD"
-  const [dateTo, setDateTo] = useState(null);
-  const [foreclosure, setForeclosure] = useState(null);
-
-  const [beds, setBeds] = useState(null);
-  const [listPrice, setListPrice] = useState(null);
-  const [fullBaths, setFullBaths] = useState(null);
-  const [listDate, setListDate] = useState(null);
-  const [parkingGarage, setParkingGarage] = useState(null);
-  const [halfBaths, setHalfBaths] = useState(null);
-  const [sqft, setSqft] = useState(null);
-  const [soldPrice, setSoldPrice] = useState(null);
-  const [yearBuilt, setYearBuilt] = useState(null);
-  const [lastSoldDate, setLastSoldDate] = useState(null);
-  const [stories, setStories] = useState(null);
-  const [pricePerSqft, setPricePerSqft] = useState(null);
-  const [mls, setMls] = useState(null);
-  const [lotSqft, setLotSqft] = useState(null);
-  const [hoaFee, setHoaFee] = useState(null);
-  const [style, setStyle] = useState(null);
-  const [daysOnMls, setDaysOnMls] = useState(null);
 
   useEffect(() => {
     const path_loc = pathname.split("/")[2];
     if (path_loc === "") {
       router.push("/search");
     }
-    dispatch({ type: "SET_LOCATION", payload: path_loc });
+    dispatch({ type: "SET_LOCATION", payload: decodeURIComponent(path_loc) });
     if (properties.length === 0) {
-      sendRequest("/search/properties", "POST", { location: path_loc }).then(
-        (data) => {
-          if (Array.isArray(data)) {
-            router.push("/search");
-          } else {
-            dispatch({
-              type: "SET_PROPERTIES",
-              payload: data.properties as Property[],
-            });
-          }
-        }
-      );
+      search({
+        location: decodeURIComponent(path_loc),
+        listing_type: listing_type,
+        radius: radius,
+        mls_only: mls_only,
+        past_days: past_days,
+        date_from: date_from,
+        date_to: date_to,
+        foreclosure: foreclosure,
+        min_price: min_price,
+        max_price: max_price,
+        min_beds: min_beds,
+        max_beds: max_beds,
+        min_baths: min_baths,
+        max_baths: max_baths,
+        style: style,
+        min_sqft: min_sqft,
+        max_sqft: max_sqft,
+        min_lot_sqft: min_lot_sqft,
+        max_lot_sqft: max_lot_sqft,
+        min_stories: min_stories,
+        max_stories: max_stories,
+        min_year_built: min_year_built,
+        max_year_built: max_year_built,
+        min_price_per_sqft: min_price_per_sqft,
+        max_price_per_sqft: max_price_per_sqft,
+        hoa_fee: hoa_fee,
+        parking_garage: parking_garage,
+      })
+        .then(() => {
+          if (replacements.length > 0) router.push("/search");
+        })
+        .catch(() => {
+          router.push("/search");
+        });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -99,16 +129,13 @@ function Search() {
         {properties.length > 0 && (
           <div className="flex flex-row flex-1">
             <MapContainer
-              center={[
-                properties[0]?.latitude || 0,
-                properties[0]?.longitude || 0,
-              ]}
+              center={[center_lat || 0, center_long || 0]}
               zoom={
                 properties.length > 10000
-                  ? 12
+                  ? 11
                   : properties.length > 1000
-                  ? 13
-                  : 14
+                  ? 12
+                  : 13
               }
               scrollWheelZoom={true}
               className="flex-1 hidden md:block"
@@ -120,9 +147,10 @@ function Search() {
               {properties.map((property, index) => (
                 <PropertyMarker
                   key={`${property.uuid}-marker-${index === focus}`}
-                  listingType={listingType}
+                  listingType={listing_type}
                   property={property}
                   isActive={index === focus}
+                  showPopup={popups.includes(index)}
                   onClick={() => {
                     setFocus(index);
                   }}
@@ -139,7 +167,7 @@ function Search() {
                     ref={(el) => {
                       cardRefs.current[index] = el;
                     }}
-                    listingType={listingType}
+                    listingType={listing_type}
                     property={property}
                     isActive={index === focus}
                     onClick={() => {

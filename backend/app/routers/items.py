@@ -9,7 +9,7 @@ from sqlmodel import Session
 from app.database import get_session
 from app.dependencies.items import LocationReplacer, search_properties
 from app.dependencies.security import verify_api_key
-from app.models.items import SearchRequest, SearchResult, SearchResultRead
+from app.models.items import SearchRequest, SearchResultRead
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +37,5 @@ async def property_data(*, session: Session = Depends(get_session), request: Sea
     # if replacements:
     #     return replacements
 
-    properties = search_properties(request)
-    search_result = SearchResult(
-        properties=properties,
-    )
-
-    session.add(search_result)
-    session.commit()
-    session.refresh(search_result)
+    search_result = search_properties(session, request)
     return SearchResultRead.model_validate(search_result)

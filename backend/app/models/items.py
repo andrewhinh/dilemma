@@ -2,11 +2,12 @@
 
 from uuid import UUID, uuid4
 
-from sqlmodel import Field, Relationship, SQLModel
+from sqlalchemy import ARRAY, INTEGER, String
+from sqlmodel import Column, Field, Relationship, SQLModel
 
 
-class SearchRequest(SQLModel):
-    """Search request model."""
+class SearchRequestBase(SQLModel):
+    """Search request base model."""
 
     location: str
     listing_type: str = "for_sale"  # for_rent, for_sale, sold
@@ -17,23 +18,40 @@ class SearchRequest(SQLModel):
     date_to: str | None = None
     foreclosure: bool | None = None
 
+    min_price: float | None = None
+    max_price: float | None = None
+    min_beds: int | None = None
+    max_beds: int | None = None
+    min_baths: int | None = None
+    max_baths: int | None = None
+    style: str | None = None
+    min_sqft: int | None = None
+    max_sqft: int | None = None
+    min_lot_sqft: int | None = None
+    max_lot_sqft: int | None = None
+    min_stories: int | None = None
+    max_stories: int | None = None
+    min_year_built: int | None = None
+    max_year_built: int | None = None
+    min_price_per_sqft: float | None = None
+    max_price_per_sqft: float | None = None
+    hoa_fee: float | None = None
+    parking_garage: int | None = None
 
-class AltPhoto(SQLModel, table=True):
-    """Alternate photo model."""
+
+class SearchRequest(SearchRequestBase, table=True):
+    """Search request model."""
 
     id: int = Field(primary_key=True, index=True)
     uuid: UUID = Field(default_factory=lambda: uuid4(), unique=True)
-    url: str | None = Field(default=None)
 
-    property_uuid: UUID = Field(default=None, foreign_key="property.uuid")
-    property: "Property" = Relationship(back_populates="alt_photos")
+    search_results: list["SearchResult"] = Relationship(back_populates="search_request")
 
 
-class AltPhotoRead(SQLModel):
-    """Alternate photo read model."""
+class SearchRequestRead(SearchRequestBase):
+    """Search request read model."""
 
     uuid: UUID
-    url: str | None
 
 
 class PropertyBase(SQLModel):
@@ -68,7 +86,15 @@ class PropertyBase(SQLModel):
     longitude: float | None = None
     parking_garage: int | None = None
     primary_photo: str | None = None
+    alt_photos: list[str | None] = Field(sa_column=Column(ARRAY(String)))
     neighborhoods: str | None = None
+
+
+class SearchResultPropertyLink(SQLModel, table=True):
+    """Search result property link model."""
+
+    search_result_id: int = Field(foreign_key="searchresult.id", primary_key=True)
+    property_id: int = Field(foreign_key="property.id", primary_key=True)
 
 
 class Property(PropertyBase, table=True):
@@ -77,33 +103,40 @@ class Property(PropertyBase, table=True):
     id: int = Field(primary_key=True, index=True)
     uuid: UUID = Field(default_factory=lambda: uuid4(), unique=True)
 
-    alt_photos: list[AltPhoto | None] = Relationship(back_populates="property")
-
-    search_result_uuid: UUID = Field(
-        default=None,
-        foreign_key="searchresult.uuid",
+    search_results: list["SearchResult"] = Relationship(
+        back_populates="properties", link_model=SearchResultPropertyLink
     )
-    search_result: "SearchResult" = Relationship(back_populates="properties")
 
 
 class PropertyRead(PropertyBase):
     """Property read model."""
 
     uuid: UUID
-    alt_photos: list[AltPhotoRead | None]
 
 
-class SearchResult(SQLModel, table=True):
+class SearchResultsBase(SQLModel):
+    """Search results base model."""
+
+    popups: list[int | None] = Field(sa_column=Column(ARRAY(INTEGER)))
+    center_lat: float | None = None
+    center_long: float | None = None
+
+
+class SearchResult(SearchResultsBase, table=True):
     """Search result model."""
 
     id: int = Field(primary_key=True, index=True)
     uuid: UUID = Field(default_factory=lambda: uuid4(), unique=True)
 
-    properties: list[Property | None] = Relationship(back_populates="search_result")
+    search_request_uuid: UUID = Field(foreign_key="searchrequest.uuid")
+    search_request: SearchRequest = Relationship(back_populates="search_results")
+    properties: list[Property] = Relationship(back_populates="search_results", link_model=SearchResultPropertyLink)
 
 
-class SearchResultRead(SQLModel):
+class SearchResultRead(SearchResultsBase):
     """Search result read model."""
 
     uuid: UUID
-    properties: list[PropertyRead | None]
+    search_request_uuid: UUID
+    search_request: SearchRequestRead
+    properties: list[PropertyRead]

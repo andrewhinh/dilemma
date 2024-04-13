@@ -27,6 +27,18 @@ const nextConfig = {
                 port: '',
                 pathname: '/**',
             },
+            {
+                protocol: 'http',
+                hostname: 'nh.rdcpix.com',
+                port: '',
+                pathname: '/**',
+            },
+            {
+                protocol: 'https',
+                hostname: 'nh.rdcpix.com',
+                port: '',
+                pathname: '/**',
+            },
         ],
     },
 }

@@ -41,7 +41,7 @@ function App() {
               Manage real estate easily.
             </h2>
           </Header>
-          <div className="gap-4 flex flex-col items-center justify-center w-60 md:w-72">
+          <div className="gap-4 flex flex-col w-60 md:w-72">
             <Search />
           </div>
           <div className="gap-4 flex flex-col items-center justify-center w-60 md:w-72">

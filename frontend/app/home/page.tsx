@@ -68,7 +68,7 @@ function Base() {
     <>
       <div className={`flex flex-col flex-1 ${isLoggedIn ? "block" : "hidden"}`}>
         <LoggedInNav />
-        <Main className="gap-20">
+        <Main className="gap-4">
           <Search />
         </Main>
         <Support />
