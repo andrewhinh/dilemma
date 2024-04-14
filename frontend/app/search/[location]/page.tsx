@@ -58,7 +58,9 @@ function Search() {
     properties,
   } = state;
 
+  // marker focus + hover
   const [focus, setFocus] = useState(0); // index of property in properties
+  const [hover, setHover] = useState<number | null>(null);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
@@ -146,11 +148,20 @@ function Search() {
               />
               {properties.map((property, index) => (
                 <PropertyMarker
-                  key={`${property.uuid}-marker-${index === focus}`}
+                  key={`${property.uuid}-marker-${index === focus}-${
+                    index === hover
+                  }`}
                   listingType={listing_type}
                   property={property}
                   isActive={index === focus}
+                  isHovered={index === hover}
                   showPopup={popups.includes(index)}
+                  onMouseEnter={() => {
+                    setHover(index);
+                  }}
+                  onMouseLeave={() => {
+                    setHover(null);
+                  }}
                   onClick={() => {
                     setFocus(index);
                   }}

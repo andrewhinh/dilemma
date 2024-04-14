@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useState } from "react";
+import React, { memo, useMemo } from "react";
 import L from "leaflet";
 import { Marker, Tooltip, CircleMarker } from "react-leaflet";
 import mapMarker from "@/public/cyan-map-marker.svg";
@@ -9,7 +9,10 @@ interface PropertyMarkerProps {
   listingType: string;
   property: Property;
   isActive: boolean;
+  isHovered: boolean;
   showPopup: boolean;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
   onClick: () => void;
 }
 
@@ -19,11 +22,12 @@ const PropertyMarker = memo(
     listingType,
     property,
     isActive,
+    isHovered,
     showPopup,
+    onMouseEnter,
+    onMouseLeave,
     onClick,
   }: PropertyMarkerProps) => {
-    const [hover, setHover] = useState(false);
-
     const markerIcon = useMemo(
       () =>
         new L.Icon({
@@ -67,21 +71,17 @@ const PropertyMarker = memo(
     } else {
       return (
         <CircleMarker
-          key={`${key}-${hover}`}
-          className={`${isActive ? "z-10" : ""}`}
           center={[property.latitude ?? 0, property.longitude ?? 0]}
           radius={5}
-          color={hover || isActive ? "#06b6d4" : "#71717a"} // cyan-500, zinc-500
+          color={isHovered || isActive ? "#06b6d4" : "#FAFAFA"} // cyan-500, zinc-50
+          weight={1}
+          fillColor={isHovered || isActive ? "#06b6d4" : "#71717a"} // cyan-500, zinc-500
           fillOpacity={1}
-          fillColor={hover || isActive ? "#06b6d4" : "#71717a"} // cyan-500, zinc-500
+          className={`${isActive ? "z-10" : ""}`}
           eventHandlers={{
             click: onClick,
-            mouseover: () => {
-              setHover(true);
-            },
-            mouseout: () => {
-              setHover(false);
-            },
+            mouseover: onMouseEnter,
+            mouseout: onMouseLeave,
           }}
         />
       );
