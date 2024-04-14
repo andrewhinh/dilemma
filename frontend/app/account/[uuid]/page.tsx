@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -22,10 +22,10 @@ import profile from "@/public/profile.svg";
 import profileEdit from "@/public/profile-edit.svg";
 import friends from "@/public/friends.svg";
 import friendRequests from "@/public/friend-requests.svg";
-import xCloseSidebar from "@/public/x-close-sidebar.svg";
-import xOpenSidebar from "@/public/x-open-sidebar.svg";
-import yCloseSidebar from "@/public/y-close-sidebar.svg";
-import yOpenSidebar from "@/public/y-open-sidebar.svg";
+import leftArrow from "@/public/left-arrow.svg";
+import rightArrow from "@/public/right-arrow.svg";
+import upArrow from "@/public/up-arrow.svg";
+import downArrow from "@/public/down-arrow.svg";
 
 function Account() {
   const { state: constState, dispatch: constDispatch } = useConst();
@@ -245,24 +245,24 @@ function Account() {
               <div className={isSideBarOpen ? "block" : "hidden"}>
                 <Image
                   className="hidden md:block w-6 h-6"
-                  src={xCloseSidebar}
+                  src={leftArrow}
                   alt="Close Sidebar"
                 />
                 <Image
                   className="block md:hidden w-6 h-6"
-                  src={yCloseSidebar}
+                  src={upArrow}
                   alt="Close Sidebar"
                 />
               </div>
               <div className={isSideBarOpen ? "hidden" : "block"}>
                 <Image
                   className="hidden md:block w-6 h-6"
-                  src={xOpenSidebar}
+                  src={rightArrow}
                   alt="Open Sidebar"
                 />
                 <Image
                   className="block md:hidden w-6 h-6"
-                  src={yOpenSidebar}
+                  src={downArrow}
                   alt="Open Sidebar"
                 />
               </div>
