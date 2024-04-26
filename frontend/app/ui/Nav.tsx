@@ -9,6 +9,7 @@ import { useGetUser } from "../utils";
 import { useConst } from "../providers";
 import { useLogOut, useAuthEffect } from "../lib/callbacks";
 
+import Dropdown from "./Dropdown";
 import { Button } from "./Button";
 import homeURL from "@/public/opengraph-image.jpg";
 import profileOutline from "@/public/profile-outline.svg";
@@ -40,6 +41,7 @@ function Nav({ children }: { children: ReactNode }) {
 
 function LoggedOutNav({ showLogin = true, showSignUp = true }) {
   const router = useRouter();
+  const both = showLogin && showSignUp;
 
   return (
     <Nav>
@@ -49,7 +51,7 @@ function LoggedOutNav({ showLogin = true, showSignUp = true }) {
             onClick={() => {
               router.push("/login");
             }}
-            className="w-28 p-2"
+            className={`p-2 ${both ? "max-w-28" : "max-w-20"}`}
           >
             <p>Login</p>
           </Button>
@@ -59,7 +61,9 @@ function LoggedOutNav({ showLogin = true, showSignUp = true }) {
             onClick={() => {
               router.push("/signup");
             }}
-            className="w-28 p-2 whitespace-nowrap"
+            className={`p-2 whitespace-nowrap ${
+              both ? "max-w-28" : "max-w-20"
+            }`}
           >
             <p>Sign Up</p>
           </Button>
@@ -73,7 +77,7 @@ function LoggedInNav() {
   const router = useRouter();
   const getUser = useGetUser();
   const { state, dispatch } = useConst();
-  const { getUserInfo, profilePicture, uuid } = state;
+  const { getUserInfo, profile_picture, uuid } = state;
   const logOut = useLogOut();
 
   const [showDropdown, setShowDropdown] = useState(false);
@@ -99,7 +103,7 @@ function LoggedInNav() {
           }}
         >
           <Image
-            src={profilePicture || profileOutline}
+            src={profile_picture || profileOutline}
             alt="Account Link"
             width={40}
             height={40}
@@ -107,7 +111,7 @@ function LoggedInNav() {
           />
         </div>
         {showDropdown && (
-          <div className="absolute z-20 top-10 right-0 bg-slate-300 rounded-lg shadow-xl gap-1 p-2 flex flex-col">
+          <Dropdown className="z-20 top-10 right-0">
             <Button
               className="p-3 whitespace-nowrap"
               onClick={() => {
@@ -130,7 +134,7 @@ function LoggedInNav() {
               />
               <p className={logOutLoading ? "hidden" : "block"}>Log Out</p>
             </Button>
-          </div>
+          </Dropdown>
         )}
       </div>
     </Nav>
@@ -163,7 +167,7 @@ function MainNav() {
 
   useAuthEffect({});
 
-  return isLoggedIn ? <LoggedInNav /> : <LoggedOutNav showLogin={false} />;
+  return isLoggedIn ? <LoggedInNav /> : <LoggedOutNav />;
 }
 
 export { LoggedOutNav, LoggedInNav, AuthNav, MainNav };

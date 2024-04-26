@@ -51,7 +51,7 @@ const PropertyCard = memo(
           {currentPhoto && (
             <div className="relative">
               <Image
-                className="w-60 max-h-32 md:w-80 md:max-h-52 object-fill rounded-t-md"
+                className="w-60 max-h-32 md:w-80 md:max-h-52 object-fill rounded-t-md text-sm"
                 width={240} // w-60
                 height={160} // max-h-40
                 src={currentPhoto}
@@ -64,14 +64,14 @@ const PropertyCard = memo(
               )}
               <Button className="absolute left-2 top-1/2" onClick={prevPhoto}>
                 <Image
-                  className="invert w-8 h-8"
+                  className="invert w-8 h-8 text-xs"
                   src={leftArrow}
                   alt="Previous Photo"
                 />
               </Button>
               <Button className="absolute right-2 top-1/2" onClick={nextPhoto}>
                 <Image
-                  className="invert w-8 h-8"
+                  className="invert w-8 h-8 text-xs"
                   src={rightArrow}
                   alt="Next Photo"
                 />
@@ -96,6 +96,9 @@ const PropertyCard = memo(
                 baths
               </h2>
               <h2>{property.sqft || "-"} sqft</h2>
+              <h2 className="hidden md:block">
+                {property.lot_sqft || "-"} sqft
+              </h2>
             </div>
             <h3 className="text-xs">
               {`${property.street || ""}${

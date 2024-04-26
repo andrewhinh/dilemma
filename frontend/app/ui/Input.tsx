@@ -24,7 +24,7 @@ function Input({
   className,
   readonly,
 }: InputProps) {
-  const defaultClassName = "h-10 text-zinc-500 bg-slate-300 p-2";
+  const defaultClassName = "h-10 p-2 text-zinc-500 bg-slate-300";
 
   return (
     <input

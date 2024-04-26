@@ -98,7 +98,10 @@ function Account() {
             </Button>
           </Form>
           {profileHover && (
-            <Tooltip message="Your Profile" className="left-16 top-1/4" />
+            <Tooltip
+              message="Your Profile"
+              className="hidden md:block left-16 top-1/4"
+            />
           )}
         </div>
         <div
@@ -134,7 +137,10 @@ function Account() {
             </Button>
           </Form>
           {profileEditHover && (
-            <Tooltip message="Edit Profile" className="left-16 top-1/4" />
+            <Tooltip
+              message="Edit Profile"
+              className="hidden md:block left-16 top-1/4"
+            />
           )}
         </div>
         <div
@@ -170,7 +176,10 @@ function Account() {
             </Button>
           </Form>
           {friendHover && (
-            <Tooltip message="Your Friends" className="left-16 top-1/4" />
+            <Tooltip
+              message="Your Friends"
+              className="hidden md:block left-16 top-1/4"
+            />
           )}
         </div>
         <div
@@ -210,7 +219,10 @@ function Account() {
             </Button>
           </Form>
           {friendRequestHover && (
-            <Tooltip message="Add Friends" className="left-16 top-1/4" />
+            <Tooltip
+              message="Add Friends"
+              className="hidden md:block left-16 top-1/4"
+            />
           )}
         </div>
       </div>
@@ -271,7 +283,7 @@ function Account() {
           {sidebarHover && (
             <Tooltip
               message={isSideBarOpen ? "Close Sidebar" : "Open Sidebar"}
-              className="top-2 md:top-1/2 md:left-14 absolute z-10"
+              className="hidden md:block top-2 md:top-1/2 md:left-14 absolute z-10"
             />
           )}
         </div>
