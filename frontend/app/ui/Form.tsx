@@ -1,7 +1,6 @@
 import React, { ReactNode } from "react";
 
 interface FormProps {
-  form?: string;
   onSubmit: (e: any) => void;
   children: ReactNode;
   className?: string;

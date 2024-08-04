@@ -1,0 +1,2 @@
+examples_path,num_threads,num_candidates,init_temperature,num_trials,max_bootstrapped_demos,max_labeled_demos,prompt_model,metric_model,model_path,train_test_split,baseline_score,compiled_score,timestamp
+data/2024-03-27_12-00-00.csv,16,10,1.0,20,1,2,gpt-4-turbo-preview,gpt-3.5-turbo,models/2024-03-27_18-30-14.json,0.9,87.78,90.56,2024-03-27_19-15-18

@@ -8,7 +8,8 @@ import { useAuthEffect } from "./lib/callbacks";
 
 import { LoggedOutNav } from "./ui/Nav";
 import Main from "./ui/Main";
-import Spec from "./home/Spec";
+import Header from "./ui/Header";
+import Search from "./search/Search";
 import { Button } from "./ui/Button";
 import Support from "./home/Support";
 import pageLoading from "@/public/page-loading.svg";
@@ -27,21 +28,35 @@ function App() {
   return (
     <>
       <div
-        className={`flex flex-col min-h-screen ${
-          verifiedLoggedOut ? "block" : "hidden"
-        }`}
+        className={`flex flex-col flex-1 ${verifiedLoggedOut ? "block" : "hidden"}`}
       >
         <LoggedOutNav showSignUp={false} />
         <Main className="gap-12 md:gap-24">
-          <Spec />
-          <Button
-            onClick={() => {
-              router.push("/signup");
-            }}
-            className="p-3 text-lg md:text-xl w-40 md:w-60 whitespace-nowrap"
-          >
-            <p>Get Started</p>
-          </Button>
+          <Header>
+            <h1 className="text-4xl md:text-6xl">Dilemma</h1>
+            {
+              // Change steps of typewriter effect if text is changed
+            }
+            <h2 className="text-xl md:text-3xl subtitle">
+              Manage real estate easily.
+            </h2>
+          </Header>
+          <div className="gap-4 flex flex-col w-60 md:w-72">
+            <Search />
+          </div>
+          <div className="gap-4 flex flex-col items-center justify-center w-60 md:w-72">
+            <p className="text-base md:text-lg">
+              Create an account to contact sellers and create listings:
+            </p>
+            <Button
+              onClick={() => {
+                router.push("/signup");
+              }}
+              className="p-3 text-lg md:text-xl w-60 whitespace-nowrap"
+            >
+              <p>Sign Up</p>
+            </Button>
+          </div>
         </Main>
         <Support />
       </div>

@@ -10,10 +10,11 @@ Install dependencies:
    npm install
    ```
 
-Create a `.env` file:
+Create a `.env.local` (+ `.env.development + .env.production`):
 
    ```bash
    NEXT_PUBLIC_APP_URL=<frontend URL here>
+   NEXT_PUBLIC_SUPPORT_EMAIL=<email here>
    API_URL=<backend URL here>
    API_PORT=8000
    API_KEY=<backend API key here>

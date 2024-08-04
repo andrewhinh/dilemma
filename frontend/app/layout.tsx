@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: "%s | Dilemma",
     default: "Dilemma",
   },
-  description: "Gamified Learning",
+  description: "Manage real estate easily.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || ""),
 };
 

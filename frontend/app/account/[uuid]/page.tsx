@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -13,20 +13,19 @@ import Main from "../../ui/Main";
 import Form from "../../ui/Form";
 import { Button } from "../../ui/Button";
 import Tooltip from "../../ui/ToolTip";
-import ProfileView from "../(profile)/ProfileView";
-import ProfileEditView from "../(profile)/ProfileEditView";
-import FriendRequests from "../(friends)/FriendRequests";
-import FriendsView from "../(friends)/FriendsView";
+import ProfileView from "./ProfileView";
+import ProfileEditView from "./ProfileEditView";
+// import ChatRequests from "./ChatRequests";
 
 import pageLoading from "@/public/page-loading.svg";
 import profile from "@/public/profile.svg";
 import profileEdit from "@/public/profile-edit.svg";
 import friends from "@/public/friends.svg";
 import friendRequests from "@/public/friend-requests.svg";
-import xCloseSidebar from "@/public/x-close-sidebar.svg";
-import xOpenSidebar from "@/public/x-open-sidebar.svg";
-import yCloseSidebar from "@/public/y-close-sidebar.svg";
-import yOpenSidebar from "@/public/y-open-sidebar.svg";
+import leftArrow from "@/public/left-arrow.svg";
+import rightArrow from "@/public/right-arrow.svg";
+import upArrow from "@/public/up-arrow.svg";
+import downArrow from "@/public/down-arrow.svg";
 
 function Account() {
   const { state: constState, dispatch: constDispatch } = useConst();
@@ -38,7 +37,7 @@ function Account() {
   const getUser = useGetUser();
   const updateUser = useUpdateUser();
 
-  const { getUserInfo, accountView, isSideBarOpen, uid } = constState;
+  const { getUserInfo, accountView, isSideBarOpen, uuid } = constState;
   const [profileHover, setProfileHover] = useState(false);
   const [profileEditHover, setProfileEditHover] = useState(false);
   const [friendHover, setFriendHover] = useState(false);
@@ -50,7 +49,7 @@ function Account() {
       logOut("/login");
     },
     onSuccess: () => {
-      if (pathname.split("/")[2] !== uid) router.push(`/account/${uid}`);
+      if (pathname.split("/")[2] !== uuid) router.push(`/account/${uuid}`);
       if (getUserInfo) {
         getUser();
         constDispatch({ type: "SET_GET_USER_INFO", payload: false });
@@ -99,7 +98,10 @@ function Account() {
             </Button>
           </Form>
           {profileHover && (
-            <Tooltip message="Your Profile" className="left-16 top-1/4" />
+            <Tooltip
+              message="Your Profile"
+              className="hidden md:block left-16 top-1/4"
+            />
           )}
         </div>
         <div
@@ -135,7 +137,10 @@ function Account() {
             </Button>
           </Form>
           {profileEditHover && (
-            <Tooltip message="Edit Profile" className="left-16 top-1/4" />
+            <Tooltip
+              message="Edit Profile"
+              className="hidden md:block left-16 top-1/4"
+            />
           )}
         </div>
         <div
@@ -171,7 +176,10 @@ function Account() {
             </Button>
           </Form>
           {friendHover && (
-            <Tooltip message="Your Friends" className="left-16 top-1/4" />
+            <Tooltip
+              message="Your Friends"
+              className="hidden md:block left-16 top-1/4"
+            />
           )}
         </div>
         <div
@@ -211,7 +219,10 @@ function Account() {
             </Button>
           </Form>
           {friendRequestHover && (
-            <Tooltip message="Add Friends" className="left-16 top-1/4" />
+            <Tooltip
+              message="Add Friends"
+              className="hidden md:block left-16 top-1/4"
+            />
           )}
         </div>
       </div>
@@ -246,24 +257,24 @@ function Account() {
               <div className={isSideBarOpen ? "block" : "hidden"}>
                 <Image
                   className="hidden md:block w-6 h-6"
-                  src={xCloseSidebar}
+                  src={leftArrow}
                   alt="Close Sidebar"
                 />
                 <Image
                   className="block md:hidden w-6 h-6"
-                  src={yCloseSidebar}
+                  src={upArrow}
                   alt="Close Sidebar"
                 />
               </div>
               <div className={isSideBarOpen ? "hidden" : "block"}>
                 <Image
                   className="hidden md:block w-6 h-6"
-                  src={xOpenSidebar}
+                  src={rightArrow}
                   alt="Open Sidebar"
                 />
                 <Image
                   className="block md:hidden w-6 h-6"
-                  src={yOpenSidebar}
+                  src={downArrow}
                   alt="Open Sidebar"
                 />
               </div>
@@ -272,7 +283,7 @@ function Account() {
           {sidebarHover && (
             <Tooltip
               message={isSideBarOpen ? "Close Sidebar" : "Open Sidebar"}
-              className="top-2 md:top-1/2 md:left-14 absolute z-10"
+              className="hidden md:block top-2 md:top-1/2 md:left-14 absolute z-10"
             />
           )}
         </div>
@@ -285,8 +296,8 @@ function Account() {
         </Main>
         <ProfileView show={accountView === "profile"} />
         <ProfileEditView show={accountView === "profile-edit"} />
-        <FriendsView show={accountView === "friends"} />
-        <FriendRequests show={accountView === "friend_requests"} />
+        {/* <FriendsView show={accountView === "friends"} />
+        <FriendRequests show={accountView === "friend_requests"} /> */}
       </div>
     </div>
   );

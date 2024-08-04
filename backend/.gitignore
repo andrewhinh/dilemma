@@ -163,11 +163,5 @@ cython_debug/
 # Mkcert
 certificates/
 
-# DB
-data.db
-
 # .env.* files
 .env.*
-
-# Google credentials
-*google-credentials.json

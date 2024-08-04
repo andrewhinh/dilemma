@@ -5,6 +5,7 @@ import { MainNav } from "./ui/Nav";
 import Header from "./ui/Header";
 import Main from "./ui/Main";
 import { Button } from "./ui/Button";
+import Support from "./home/Support";
 
 const ErrorPage = () => {
   const router = useRouter();
@@ -24,6 +25,7 @@ const ErrorPage = () => {
           </Button>
         </Header>
       </Main>
+      <Support />
     </>
   );
 };

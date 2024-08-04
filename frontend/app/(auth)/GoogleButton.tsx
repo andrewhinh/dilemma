@@ -3,7 +3,6 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { sendRequest } from "../lib/api";
 
-import Form from "../ui/Form";
 import { Button } from "../ui/Button";
 import googleIcon from "@/public/google-icon.svg";
 import buttonLoading from "@/public/button-loading.svg";
@@ -22,7 +21,7 @@ function GoogleButton({ action, setErrorMsg }: GoogleButtonProps) {
 
     setGoogleLoading(true);
 
-    sendRequest("/verify-email/google", "POST", { state: action }).then(
+    sendRequest("/auth/google/verify-email", "POST", { state: action }).then(
       (data) => {
         setGoogleLoading(false);
         if (data.detail) {

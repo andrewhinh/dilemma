@@ -2,7 +2,6 @@
 
 import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import validator from "validator";
 
@@ -23,6 +22,8 @@ function Base() {
 
   const [pic, setPic] = useState<string>("");
   const [email, setEmail] = useState<string>("");
+  const [firstName, setFirstName] = useState<string>("");
+  const [lastName, setLastName] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [confirmPassword, setConfirmPassword] = useState<string>("");
 
@@ -58,6 +59,18 @@ function Base() {
       return;
     }
 
+    if (firstName === "") {
+      setErrorMsg("First name cannot be empty");
+      setLoading(false);
+      return;
+    }
+
+    if (lastName === "") {
+      setErrorMsg("Last name cannot be empty");
+      setLoading(false);
+      return;
+    }
+
     if (password === "") {
       setErrorMsg("Password cannot be empty");
       setLoading(false);
@@ -79,10 +92,12 @@ function Base() {
     let request = {
       profile_picture: pic,
       email: email,
+      first_name: firstName,
+      last_name: lastName,
       password: password,
       confirm_password: confirmPassword,
     };
-    sendRequest("/verify-email", "POST", request).then((data) => {
+    sendRequest("/auth/verify-email", "POST", request).then((data) => {
       if (data.detail) setErrorMsg(data.detail);
       else setVerifiedEmailMessage(data.message);
       setLoading(false);
@@ -104,13 +119,15 @@ function Base() {
     let request = {
       profile_picture: pic,
       email: email,
+      first_name: firstName,
+      last_name: lastName,
       password: password,
       confirm_password: confirmPassword,
       code: code,
     };
 
     toHome(
-      "/token/signup",
+      "/auth/signup",
       request,
       () => setLoading(false),
       (error) => {
@@ -146,6 +163,20 @@ function Base() {
                 placeholder="Email"
                 autoFocus
                 onChange={(e) => setEmail(e.target.value)}
+              />
+              <Input
+                type="text"
+                name="first_name"
+                value={firstName}
+                placeholder="First Name"
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+              <Input
+                type="text"
+                name="last_name"
+                value={lastName}
+                placeholder="Last Name"
+                onChange={(e) => setLastName(e.target.value)}
               />
               <Input
                 type="password"

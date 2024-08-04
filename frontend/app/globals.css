@@ -12,7 +12,7 @@ input:-webkit-autofill {
   --typing-duration: 1.5s; /* Typing duration for subtitle */
   --blink-duration: 1s; /* Blink duration for cursor */
   --stop-cursor-duration: 2.5s; /* typing-duration + blink-duration */
-  --typing-steps-subtitle: 20; /* Characters in subtitle */
+  --typing-steps-subtitle: 26; /* Characters in subtitle */
 }
 
 @keyframes typing {

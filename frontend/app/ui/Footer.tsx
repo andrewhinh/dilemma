@@ -1,13 +1,21 @@
 import React, { ReactNode } from "react";
 
 interface FooterProps {
-  footer?: string;
   children: ReactNode;
+  className?: string;
 }
 
-function Footer({ children }: FooterProps) {
+function Footer({ children, className }: FooterProps) {
+  const defaultClassName =
+    "flex flex-1 p-4 bg-slate-300 text-zinc-500 justify-center items-center";
   return (
-    <footer className="p-4 bg-slate-300 text-zinc-500 flex">{children}</footer>
+    <footer
+      className={
+        className ? `${className} ${defaultClassName}` : defaultClassName
+      }
+    >
+      {children}
+    </footer>
   );
 }
 

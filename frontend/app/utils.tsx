@@ -1,22 +1,16 @@
-import { UserBackend, useConst } from "./providers";
+import { User, useConst } from "./providers";
 import { sendRequest } from "./lib/api";
 import { useAccount } from "./account/providers";
 
 const useGetUser = () => {
   const setUser = useSetUser();
-  const getSentFriendRequests = useGetSentFriendRequests();
-  const getIncomingFriendRequests = useGetIncomingFriendRequests();
-  const getFriends = useGetFriends();
 
   return () => {
     return new Promise((resolve, reject) => {
-      sendRequest("/user/", "GET").then((data) => {
+      sendRequest("/user/profile", "GET").then((data) => {
         if (data.detail) reject();
         else {
           setUser(data);
-          getSentFriendRequests();
-          getIncomingFriendRequests();
-          getFriends();
           resolve(data);
         }
       });
@@ -31,14 +25,14 @@ const useUpdateUser = () => {
 
   return (
     e: React.MouseEvent<HTMLButtonElement, MouseEvent>,
-    request: UserBackend
+    request: User
   ) => {
     e.preventDefault();
 
     if (!canUpdateUser) return;
 
     let showUpdateUser = false;
-    if (request.profile_picture || request.username || request.fullname) {
+    if (request.profile_picture || request.first_name || request.last_name) {
       showUpdateUser = true;
     }
 
@@ -47,7 +41,7 @@ const useUpdateUser = () => {
     if (showUpdateUser)
       dispatch({ type: "SET_UPDATE_USER_LOADING", payload: true });
 
-    sendRequest("/user/update", "PATCH", request).then((data) => {
+    sendRequest("/user/profile/update", "PATCH", request).then((data) => {
       if (data.detail) {
         dispatch({
           type: "SET_UPDATE_USER_ERROR_MSG",
@@ -73,7 +67,7 @@ const useUpdateUser = () => {
 const useSetUser = () => {
   const { dispatch: constDispatch } = useConst();
 
-  return (data: UserBackend) => {
+  return (data: User) => {
     constDispatch({ type: "SET_JOIN_DATE", payload: data.join_date });
     constDispatch({
       type: "SET_PROVIDER",
@@ -85,12 +79,12 @@ const useSetUser = () => {
     });
     constDispatch({ type: "SET_EMAIL", payload: data.email });
     constDispatch({
-      type: "SET_USERNAME",
-      payload: data.username,
+      type: "SET_FIRST_NAME",
+      payload: data.first_name,
     });
     constDispatch({
-      type: "SET_FULLNAME",
-      payload: data.fullname,
+      type: "SET_LAST_NAME",
+      payload: data.last_name,
     });
     constDispatch({
       type: "SET_ACCOUNT_VIEW",
@@ -101,56 +95,18 @@ const useSetUser = () => {
       payload: data.is_sidebar_open,
     });
     constDispatch({
-      type: "SET_UID",
-      payload: data.uid,
+      type: "SET_UUID",
+      payload: data.uuid,
+    });
+    constDispatch({
+      type: "SET_REQUESTER_LINKS",
+      payload: data.requester_links,
+    });
+    constDispatch({
+      type: "SET_RECEIVER_LINKS",
+      payload: data.receiver_links,
     });
   };
 };
 
-const useGetSentFriendRequests = () => {
-  const { dispatch } = useConst();
-
-  return () => {
-    sendRequest("/friends/requests/sent", "GET").then((data) => {
-      dispatch({
-        type: "SET_SENT_FRIEND_REQUESTS",
-        payload: data,
-      });
-    });
-  };
-};
-
-const useGetIncomingFriendRequests = () => {
-  const { dispatch } = useConst();
-
-  return () => {
-    sendRequest("/friends/requests/incoming", "GET").then((data) => {
-      dispatch({
-        type: "SET_INCOMING_FRIEND_REQUESTS",
-        payload: data,
-      });
-    });
-  };
-};
-
-const useGetFriends = () => {
-  const { dispatch } = useConst();
-
-  return () => {
-    sendRequest("/friends/", "GET").then((data) => {
-      dispatch({
-        type: "SET_FRIENDS",
-        payload: data,
-      });
-    });
-  };
-};
-
-export {
-  useGetUser,
-  useUpdateUser,
-  useSetUser,
-  useGetSentFriendRequests,
-  useGetIncomingFriendRequests,
-  useGetFriends,
-};
+export { useGetUser, useUpdateUser, useSetUser };

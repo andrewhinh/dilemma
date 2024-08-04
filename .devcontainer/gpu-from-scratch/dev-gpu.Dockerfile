@@ -36,6 +36,7 @@ RUN npm install && rm -rf /root/frontend/package.json
 COPY ./backend/Makefile /root/backend/
 COPY ./backend/environment.yml /root/backend/
 WORKDIR /root/backend
+RUN conda update -n base -c defaults conda
 RUN make env
 
 # switch to a login shell after cleaning up config:

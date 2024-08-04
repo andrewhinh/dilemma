@@ -1,10 +1,11 @@
 """User routes."""
+
 from datetime import datetime
-from typing import Annotated, List, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, Security
 from fastapi.responses import RedirectResponse
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from app.database import get_session
 from app.dependencies.security import verify_api_key
@@ -16,16 +17,9 @@ from app.dependencies.users import (
     VERIFY_CODE_EXPIRES,
     create_token,
     delete_auth_cookies,
-    generate_username_from_email,
     get_current_active_user,
-    get_friend_links,
-    get_friends,
     get_google_auth_url,
-    get_incoming_friend_request_links,
-    get_incoming_friend_requests,
     get_password_hash,
-    get_sent_friend_request_links,
-    get_sent_friend_requests,
     get_user,
     get_user_from_token,
     google_decode_refresh_token,
@@ -43,15 +37,14 @@ from app.dependencies.users import (
 )
 from app.models.users import (
     AuthCode,
-    Friend,
-    FriendRead,
-    FriendRequest,
-    FriendRequestRead,
+    ChatRequest,
+    ChatRequestCreate,
+    ChatRequestRead,
+    ChatRequestUpdate,
     GoogleAuth,
     User,
     UserCreate,
     UserRead,
-    UserReference,
     UserUpdate,
 )
 
@@ -63,7 +56,7 @@ router = APIRouter(
 
 
 # Native signup/login
-@router.post("/verify-email", response_model=dict[str, str])
+@router.post("/auth/verify-email", response_model=dict[str, str])
 async def verify_email(
     *,
     session: Session = Depends(get_session),
@@ -128,7 +121,7 @@ If you did not request this code, please ignore this email.
     return {"message": "If the email exists, you will receive a verification email shortly."}
 
 
-@router.post("/token/signup", response_model=UserRead)
+@router.post("/auth/signup", response_model=UserRead)
 async def signup(
     *,
     session: Session = Depends(get_session),
@@ -156,8 +149,8 @@ async def signup(
     created_user = User(
         profile_picture=db_user.profile_picture,
         email=db_user.email,
-        username=generate_username_from_email(session, db_user.email),
-        fullname=db_user.fullname,
+        first_name=db_user.first_name,
+        last_name=db_user.last_name,
         hashed_password=get_password_hash(db_user.password),
         refresh_token=refresh_token,
     )
@@ -169,7 +162,7 @@ async def signup(
     return UserRead.model_validate(created_user)
 
 
-@router.post("/token/login", response_model=UserRead)
+@router.post("/auth/login", response_model=UserRead)
 async def login(
     *,
     session: Session = Depends(get_session),
@@ -191,15 +184,13 @@ async def login(
     provider = "dilemma"
     db_user = UserCreate.model_validate(user)
 
-    if db_user.email:
-        verified_user = get_user(session, disabled=False, provider=provider, email=db_user.email)
-    elif db_user.username:
-        verified_user = get_user(session, disabled=False, provider=provider, username=db_user.username)
-    else:
+    if not db_user.email:
         raise HTTPException(
             status_code=400,
-            detail="Username or email is empty",
+            detail="Email is empty",
         )
+    verified_user = get_user(db_user.email, session, disabled=False, provider=provider)
+
     if not db_user.password:
         raise HTTPException(
             status_code=400,
@@ -221,7 +212,7 @@ async def login(
 
 
 # Google signup/login
-@router.post("/verify-email/google", response_class=RedirectResponse)
+@router.post("/auth/google/verify-email", response_class=RedirectResponse)
 async def verify_email_google(
     *,
     auth: GoogleAuth,
@@ -247,7 +238,7 @@ async def verify_email_google(
     return response
 
 
-@router.post("/token/google", response_model=UserRead)
+@router.post("/auth/google", response_model=UserRead)
 async def auth_google(
     *,
     session: Session = Depends(get_session),
@@ -291,8 +282,8 @@ async def auth_google(
         db_user = User(
             profile_picture=user_info["picture"],
             email=user_info["email"],
-            username=generate_username_from_email(session, user_info["email"]),
-            fullname=user_info["name"],
+            first_name=user_info["given_name"],
+            last_name=user_info["family_name"],
             refresh_token=enc_refresh_token,
             provider=provider,
         )
@@ -320,14 +311,14 @@ async def auth_google(
 
 
 # Token management
-@router.post("/token/refresh", response_model=UserRead)
+@router.post("/auth/token/refresh", response_model=UserRead)
 async def refresh_token(
     *,
     session: Session = Depends(get_session),
     response: Response,
-    access_token: Optional[str] = Cookie(default=None),
-    refresh_token: Optional[str] = Cookie(default=None),
-    provider: Optional[str] = Cookie(default=None),
+    access_token: str | None = Cookie(default=None),
+    refresh_token: str | None = Cookie(default=None),
+    provider: str | None = Cookie(default=None),
 ):
     """Refresh token.
 
@@ -343,7 +334,7 @@ async def refresh_token(
     Returns
     -------
     Token
-        token_type and uid
+        token_type and uuid
     """
     # Check if access token is valid
     try:
@@ -375,14 +366,14 @@ async def refresh_token(
     return UserRead.model_validate(user)
 
 
-@router.post("/token/logout", response_model=dict[str, str])
+@router.post("/auth/logout", response_model=dict[str, str])
 async def logout(
     *,
     session: Session = Depends(get_session),
     response: Response,
-    access_token: Optional[str] = Cookie(default=None),
-    refresh_token: Optional[str] = Cookie(default=None),
-    provider: Optional[str] = Cookie(default=None),
+    access_token: str | None = Cookie(default=None),
+    refresh_token: str | None = Cookie(default=None),
+    provider: str | None = Cookie(default=None),
 ):
     """Logout.
 
@@ -430,7 +421,7 @@ async def logout(
 
 
 # Native password recovery
-@router.post("/forgot-password", response_model=dict[str, str])
+@router.post("/account/password/forgot", response_model=dict[str, str])
 async def forgot_password(
     *,
     session: Session = Depends(get_session),
@@ -453,16 +444,13 @@ async def forgot_password(
     provider = "dilemma"
     db_user = UserUpdate.model_validate(user)
 
-    if db_user.email:
-        verified_user = get_user(session, disabled=False, provider=provider, email=db_user.email)
-    elif db_user.username:
-        verified_user = get_user(session, disabled=False, provider=provider, username=db_user.username)
-    else:
+    if not db_user.email:
         raise HTTPException(
             status_code=400,
-            detail="Username or email is empty",
+            detail="Email is empty",
         )
 
+    verified_user = get_user(db_user.email, session, disabled=False, provider=provider)
     if verified_user:
         recovery_code = AuthCode(
             email=verified_user.email, request_type="recovery", expire_date=datetime.utcnow() + RECOVERY_CODE_EXPIRES
@@ -484,7 +472,7 @@ If you did not request this code, please ignore this email.
     return {"message": "If the email exists, you will receive a recovery email shortly."}
 
 
-@router.post("/check-code", response_model=dict[str, str])
+@router.post("/account/code/verify", response_model=dict[str, str])
 async def check_code(
     *,
     session: Session = Depends(get_session),
@@ -507,22 +495,20 @@ async def check_code(
     provider = "dilemma"
     db_user = UserUpdate.model_validate(user)
 
-    if db_user.email:
-        verified_user = get_user(session, disabled=False, provider=provider, email=db_user.email)
-    elif db_user.username:
-        verified_user = get_user(session, disabled=False, provider=provider, username=db_user.username)
-    else:
+    if not db_user.email:
         raise HTTPException(
             status_code=400,
-            detail="Username or email is empty",
+            detail="Email is empty",
         )
+
+    verified_user = get_user(db_user.email, session, disabled=False, provider=provider)
 
     verify_code(session, db_user.code, verified_user.email, "recovery")
 
     return {"message": "Code is valid"}
 
 
-@router.post("/reset-password", response_class=RedirectResponse)
+@router.post("/account/password/reset", response_class=RedirectResponse)
 async def reset_password(
     *,
     session: Session = Depends(get_session),
@@ -546,15 +532,13 @@ async def reset_password(
     response = RedirectResponse("/")
     db_user = UserUpdate.model_validate(user)
 
-    if db_user.email:
-        verified_user = get_user(session, disabled=False, provider=provider, email=db_user.email)
-    elif db_user.username:
-        verified_user = get_user(session, disabled=False, provider=provider, username=db_user.username)
-    else:
+    if not db_user.email:
         raise HTTPException(
             status_code=400,
-            detail="Username or email is empty",
+            detail="Email is empty",
         )
+
+    verified_user = get_user(session, disabled=False, provider=provider, email=db_user.email)
 
     if not db_user.password:
         raise HTTPException(status_code=400, detail="Password is empty")
@@ -572,12 +556,12 @@ async def reset_password(
 
 
 # Native email management
-@router.post("/verify-email/update", response_model=dict[str, str])
+@router.post("/account/email/verify-update", response_model=dict[str, str])
 async def verify_email_update(
     *,
     current_user: Annotated[User, Depends(get_current_active_user)],
     session: Session = Depends(get_session),
-    provider: Optional[str] = Cookie(default=None),
+    provider: str | None = Cookie(default=None),
     user: UserUpdate,
 ):
     """Verify new email.
@@ -611,7 +595,7 @@ async def verify_email_update(
             detail="Email is the same",
         )
 
-    user_exists = get_user(session, email=db_user.email)
+    user_exists = get_user(db_user.email, session)
     if not user_exists:
         verify_code = AuthCode(
             email=db_user.email,
@@ -635,7 +619,7 @@ If you did not request this code, please ignore this email.
     return {"message": "If the email exists, you will receive a verification email shortly."}
 
 
-@router.post("/update-email", response_model=UserRead)
+@router.post("/account/email/update", response_model=UserRead)
 async def update_email(
     *,
     current_user: Annotated[User, Depends(get_current_active_user)],
@@ -669,7 +653,7 @@ async def update_email(
 
 
 # User management
-@router.get("/user/", response_model=UserRead)
+@router.get("/user/profile", response_model=UserRead)
 async def read_user(
     *,
     current_user: Annotated[User, Depends(get_current_active_user)],
@@ -684,7 +668,7 @@ async def read_user(
     return UserRead.model_validate(current_user)
 
 
-@router.patch("/user/update", response_model=UserRead)
+@router.patch("/user/profile/update", response_model=UserRead)
 async def update_user(
     *,
     current_user: Annotated[User, Depends(get_current_active_user)],
@@ -707,7 +691,7 @@ async def update_user(
     Returns
     -------
     Token
-        token_type and uid
+        token_type and uuid
     """
     user_data = new_user.model_dump(exclude_unset=True)
     verify_user_update(session, current_user, user_data)
@@ -721,238 +705,137 @@ async def update_user(
     return UserRead.model_validate(current_user)
 
 
-@router.delete("/user/delete", response_model=dict[str, str])
+@router.delete("/user/profile/delete", response_model=UserRead)
 async def delete_user(
     *,
     session: Session = Depends(get_session),
     current_user: Annotated[User, Depends(get_current_active_user)],
-) -> dict[str, str]:
+):
     session.delete(current_user)
     session.commit()
-    return {"message": "User deleted"}
+    return UserRead.model_validate(current_user)
 
 
-# Friend request management
-@router.post("/friends/send-request", response_model=UserRead)
-async def send_friend_request(
+# Chat request management
+@router.post("/chat-request/send/", response_model=ChatRequestRead)
+async def send_chat_request(
     *,
     session: Session = Depends(get_session),
-    current_user: Annotated[User, Depends(get_current_active_user)],
-    friend: UserReference,
+    current_user: User = Depends(get_current_active_user),
+    request: ChatRequestCreate,
 ):
-    db_friend = UserReference.model_validate(friend)
-    if not db_friend.username:
-        raise HTTPException(status_code=400, detail="Username is empty")
-    if current_user.username == db_friend.username:
-        raise HTTPException(status_code=400, detail="Cannot send request to yourself")
+    """Send a chat request to another user."""
+    if current_user.uuid == request.receiver_uuid:
+        raise HTTPException(status_code=400, detail="Cannot send chat request to yourself")
 
-    friend = get_user(session, disabled=False, username=db_friend.username)
-    if friend:
-        if friend in get_sent_friend_requests(current_user):
-            raise HTTPException(status_code=400, detail="Friend request already sent")
-        if friend in get_incoming_friend_requests(current_user):
-            raise HTTPException(status_code=400, detail="Friend request already received")
-        if friend in get_friends(current_user):
-            raise HTTPException(status_code=400, detail="Friend already added")
+    receiver = session.get(User, request.receiver_uuid)
+    if not receiver:
+        raise HTTPException(status_code=404, detail="Receiver not found")
 
-        new_friend_request = FriendRequest(sender=current_user, receiver=friend)
-        session.add(new_friend_request)
-        session.commit()
-        session.refresh(new_friend_request)
-        return UserRead.model_validate(current_user)
-    else:
-        raise HTTPException(status_code=404, detail="Friend not found")
+    chat_request = ChatRequest(
+        phone_number=request.phone_number,
+        content=request.content,
+        requester_uuid=current_user.uuid,
+        receiver_uuid=request.receiver_uuid,
+    )
+    session.add(chat_request)
+    session.commit()
+    session.refresh(chat_request)
+
+    return ChatRequestRead.model_validate(chat_request)
 
 
-@router.post("/friends/revert-request", response_model=UserRead)
-async def revert_friend_request(
+@router.post("/chat-request/revert/", response_model=ChatRequestRead)
+async def revert_chat_request(
     *,
     session: Session = Depends(get_session),
-    current_user: Annotated[User, Depends(get_current_active_user)],
-    friend: UserReference,
+    current_user: User = Depends(get_current_active_user),
+    request: ChatRequestUpdate,
 ):
-    db_friend = UserReference.model_validate(friend)
-    if not db_friend.username:
-        raise HTTPException(status_code=400, detail="Username is empty")
-    if current_user.username == db_friend.username:
-        raise HTTPException(status_code=400, detail="Cannot send request to yourself")
-
-    friend = get_user(session, disabled=False, username=db_friend.username)
-    if friend:
-        friend_request_links = get_sent_friend_request_links(current_user)
-        friend_requests = get_sent_friend_requests(current_user)
-        if friend not in friend_requests:
-            raise HTTPException(status_code=400, detail="Friend request not found")
-        if friend in get_friends(current_user):
-            raise HTTPException(status_code=400, detail="Friend already added")
-
-        for delete_request, delete_request_link in zip(friend_requests, friend_request_links, strict=False):
-            if delete_request.username == friend.username:
-                delete_request_link.status = "reverted"
-                session.add(current_user)
-                session.commit()
-                session.refresh(current_user)
-                return UserRead.model_validate(current_user)
-    else:
-        raise HTTPException(status_code=404, detail="Friend not found")
-
-
-@router.post("/friends/accept-request", response_model=UserRead)
-async def accept_friend_request(
-    *,
-    session: Session = Depends(get_session),
-    current_user: Annotated[User, Depends(get_current_active_user)],
-    friend: UserReference,
-):
-    db_friend = UserReference.model_validate(friend)
-    if not db_friend.username:
-        raise HTTPException(status_code=400, detail="Username is empty")
-    if current_user.username == db_friend.username:
-        raise HTTPException(status_code=400, detail="Cannot accept request from yourself")
-
-    friend = get_user(session, disabled=False, username=db_friend.username)
-    if friend:
-        friend_request_links = get_incoming_friend_request_links(current_user)
-        friend_requests = get_incoming_friend_requests(current_user)
-        if friend not in friend_requests:
-            raise HTTPException(status_code=400, detail="Friend request not sent")
-        if friend in get_friends(current_user):
-            raise HTTPException(status_code=400, detail="Friend already added")
-
-        for friend_request, friend_request_link in zip(friend_requests, friend_request_links, strict=False):
-            if friend_request.username == friend.username:
-                friend_request_link.status = "accepted"
-                new_friend = Friend(friend_1=current_user, friend_2=friend)
-                session.add(current_user)
-                session.add(new_friend)
-                session.commit()
-                session.refresh(current_user)
-                return UserRead.model_validate(current_user)
-    else:
-        raise HTTPException(status_code=404, detail="Friend not found")
-
-
-@router.post("/friends/decline-request", response_model=UserRead)
-async def decline_friend_request(
-    *,
-    session: Session = Depends(get_session),
-    current_user: Annotated[User, Depends(get_current_active_user)],
-    friend: UserReference,
-):
-    db_friend = UserReference.model_validate(friend)
-    if not db_friend.username:
-        raise HTTPException(status_code=400, detail="Username is empty")
-    if current_user.username == db_friend.username:
-        raise HTTPException(status_code=400, detail="Cannot decline request from yourself")
-
-    friend = get_user(session, disabled=False, username=db_friend.username)
-    if friend:
-        friend_request_links = get_incoming_friend_request_links(current_user)
-        friend_requests = get_incoming_friend_requests(current_user)
-        if friend not in friend_requests:
-            raise HTTPException(status_code=400, detail="Friend request not sent")
-        if friend in get_friends(current_user):
-            raise HTTPException(status_code=400, detail="Friend already added")
-
-        for friend_request, friend_request_link in zip(friend_requests, friend_request_links, strict=False):
-            if friend_request.username == friend.username:
-                friend_request_link.status = "declined"
-                session.add(current_user)
-                session.commit()
-                session.refresh(current_user)
-                return UserRead.model_validate(current_user)
-    else:
-        raise HTTPException(status_code=404, detail="Friend not found")
-
-
-@router.get("/friends/requests/sent", response_model=List[FriendRequestRead])
-async def read_sent_friend_requests(
-    *,
-    current_user: Annotated[User, Depends(get_current_active_user)],
-):
-    friend_request_links = get_sent_friend_request_links(current_user)
-    friend_requests = get_sent_friend_requests(current_user)
-    friend_requests = [
-        FriendRequestRead(
-            uid=friend_request.uid,
-            join_date=friend_request.join_date,
-            profile_picture=friend_request.profile_picture,
-            username=friend_request.username,
-            request_date=link.request_date,
+    """Revert a chat request sent to another user."""
+    chat_request = session.exec(
+        select(ChatRequest).where(
+            ChatRequest.receiver_uuid == request.receiver_uuid, ChatRequest.requester_uuid == current_user.uuid
         )
-        for friend_request, link in zip(friend_requests, friend_request_links, strict=False)
-    ]
-    return friend_requests
+    ).first()
+    if not chat_request:
+        raise HTTPException(status_code=404, detail="Chat request not found or unauthorized")
+
+    chat_request.status = "reverted"
+    session.add(chat_request)
+    session.commit()
+    session.refresh(chat_request)
+
+    return ChatRequestRead.model_validate(chat_request)
 
 
-@router.get("/friends/requests/incoming", response_model=List[FriendRequestRead])
-async def read_incoming_friend_requests(
-    *,
-    current_user: Annotated[User, Depends(get_current_active_user)],
-):
-    friend_request_links = get_incoming_friend_request_links(current_user)
-    friend_requests = get_incoming_friend_requests(current_user)
-    friend_requests = [
-        FriendRequestRead(
-            uid=friend_request.uid,
-            join_date=friend_request.join_date,
-            profile_picture=friend_request.profile_picture,
-            username=friend_request.username,
-            status=link.status,
-            request_date=link.request_date,
-        )
-        for friend_request, link in zip(friend_requests, friend_request_links, strict=False)
-    ]
-    return friend_requests
-
-
-# Friend management
-@router.get("/friends/", response_model=List[FriendRead])
-async def read_friends(
-    *,
-    current_user: Annotated[User, Depends(get_current_active_user)],
-):
-    friend_links = get_friend_links(current_user)
-    friends = get_friends(current_user)
-    friends = [
-        FriendRead(
-            uid=friend.uid,
-            join_date=friend.join_date,
-            profile_picture=friend.profile_picture,
-            username=friend.username,
-            friendship_date=link.friendship_date,
-        )
-        for friend, link in zip(friends, friend_links, strict=False)
-    ]
-    return friends
-
-
-@router.post("/friends/delete", response_model=UserRead)
-async def delete_friend(
+@router.patch("/chat-request/accept/", response_model=ChatRequestRead)
+async def accept_chat_request(
     *,
     session: Session = Depends(get_session),
-    current_user: Annotated[User, Depends(get_current_active_user)],
-    friend: UserReference,
+    current_user: User = Depends(get_current_active_user),
+    request: ChatRequestUpdate,
 ):
-    db_friend = UserReference.model_validate(friend)
-    if not db_friend.username:
-        raise HTTPException(status_code=400, detail="Username is empty")
-    if current_user.username == db_friend.username:
-        raise HTTPException(status_code=400, detail="Cannot delete yourself as a friend")
+    """Accept a chat request."""
+    chat_request = session.exec(
+        select(ChatRequest).where(
+            ChatRequest.requester_uuid == request.requester_uuid, ChatRequest.receiver_uuid == current_user.uuid
+        )
+    ).first()
+    if not chat_request:
+        raise HTTPException(status_code=404, detail="Chat request not found or unauthorized")
 
-    friend = get_user(session, disabled=False, username=db_friend.username)
-    if friend:
-        friend_links = get_friend_links(current_user)
-        friends = get_friends(current_user)
-        if friend not in friends:
-            raise HTTPException(status_code=400, detail="Friend not added")
+    chat_request.status = "accepted"
+    session.add(chat_request)
+    session.commit()
+    session.refresh(chat_request)
 
-        for delete_friend, delete_friend_link in zip(friends, friend_links, strict=False):
-            if delete_friend.username == friend.username:
-                delete_friend_link.status = "deleted"
-                session.add(current_user)
-                session.commit()
-                session.refresh(current_user)
-                return UserRead.model_validate(current_user)
-    else:
-        raise HTTPException(status_code=404, detail="Friend not found")
+    return ChatRequestRead.model_validate(chat_request)
+
+
+@router.patch("/chat-request/decline/", response_model=ChatRequestRead)
+async def decline_chat_request(
+    *,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_active_user),
+    request: ChatRequestUpdate,
+):
+    """Decline a chat request."""
+    chat_request = session.exec(
+        select(ChatRequest).where(
+            ChatRequest.requester_uuid == request.requester_uuid, ChatRequest.receiver_uuid == current_user.uuid
+        )
+    ).first()
+    if not chat_request:
+        raise HTTPException(status_code=404, detail="Chat request not found or unauthorized")
+
+    chat_request.status = "declined"
+    session.add(chat_request)
+    session.commit()
+    session.refresh(chat_request)
+
+    return ChatRequestRead.model_validate(chat_request)
+
+
+@router.patch("/chat-request/ignore/", response_model=ChatRequestRead)
+async def ignore_chat_request(
+    *,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_active_user),
+    request: ChatRequestUpdate,
+):
+    """Ignore a chat request."""
+    chat_request = session.exec(
+        select(ChatRequest).where(
+            ChatRequest.requester_uuid == request.requester_uuid, ChatRequest.receiver_uuid == current_user.uuid
+        )
+    ).first()
+    if not chat_request:
+        raise HTTPException(status_code=404, detail="Chat request not found or unauthorized")
+
+    chat_request.status = "ignored"
+    session.add(chat_request)
+    session.commit()
+    session.refresh(chat_request)
+
+    return ChatRequestRead.model_validate(chat_request)

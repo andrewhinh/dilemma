@@ -26,5 +26,5 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           push: true
-          tags: andrewhinh/dilemma:latest
+          tags: andrewhinh/dilemma:devcontainer-latest
           file: .devcontainer/gpu-from-scratch/dev-gpu.Dockerfile

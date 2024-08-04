@@ -7,16 +7,13 @@ import Image from "next/image";
 import { useRefreshToken } from "../lib/callbacks";
 import {
   useSetUser,
-  useGetSentFriendRequests,
-  useGetIncomingFriendRequests,
-  useGetFriends,
 } from "../utils";
 import { sendRequest } from "../lib/api";
 import { useConst } from "../providers";
 
 import { LoggedInNav } from "../ui/Nav";
 import Main from "../ui/Main";
-import { File } from "../ui/Upload";
+import Search from "../search/Search";
 import Support from "./Support";
 import pageLoading from "@/public/page-loading.svg";
 
@@ -25,11 +22,8 @@ function Base() {
   const router = useRouter();
   const refreshToken = useRefreshToken();
   const setUser = useSetUser();
-  const { state, dispatch } = useConst();
-  const getSentFriendRequests = useGetSentFriendRequests();
-  const getIncomingFriendRequests = useGetIncomingFriendRequests();
-  const getFriends = useGetFriends();
 
+  const { state, dispatch } = useConst();
   const { verifiedLoggedOut, isLoggedIn } = state;
 
   useEffect(() => {
@@ -37,7 +31,7 @@ function Base() {
     const authState = searchParams.get("state");
 
     if (authCode && authState) {
-      sendRequest("/token/google", "POST", {
+      sendRequest("/auth/google", "POST", {
         code: authCode,
         state: authState,
       }).then((data) => {
@@ -53,9 +47,6 @@ function Base() {
             payload: true,
           });
           setUser(data);
-          getSentFriendRequests();
-          getIncomingFriendRequests();
-          getFriends();
         }
       });
     } else {
@@ -75,14 +66,10 @@ function Base() {
 
   return (
     <>
-      <div
-        className={`flex flex-col min-h-screen ${
-          isLoggedIn ? "block" : "hidden"
-        }`}
-      >
+      <div className={`flex flex-col flex-1 ${isLoggedIn ? "block" : "hidden"}`}>
         <LoggedInNav />
-        <Main>
-          <File />
+        <Main className="gap-4">
+          <Search />
         </Main>
         <Support />
       </div>

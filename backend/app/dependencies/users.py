@@ -1,11 +1,11 @@
 """Dependencies for user endpoints."""
+
 import smtplib
-import uuid
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formataddr
-from typing import Annotated, List, Optional
+from typing import Annotated
 
 import requests
 from fastapi import Cookie, Depends, HTTPException, Response
@@ -17,7 +17,7 @@ from sqlmodel import Session, select
 
 from app.config import get_settings
 from app.database import get_session
-from app.models.users import AuthCode, Friend, FriendRequest, User
+from app.models.users import AuthCode, User
 
 SETTINGS = get_settings()
 
@@ -52,7 +52,10 @@ CREDENTIALS_EXCEPTION = HTTPException(
 
 
 def get_user(
-    session: Session, disabled: bool = None, provider: str = None, email: str = None, username: str = None
+    email: str,
+    session: Session,
+    disabled: bool = None,
+    provider: str = None,
 ) -> User | None:
     """
     Get user.
@@ -65,8 +68,6 @@ def get_user(
         Provider
     email : str
         Email
-    username : str
-        Username
 
     Returns
     -------
@@ -83,8 +84,6 @@ def get_user(
 
     if email:
         return session.exec(statement.where(User.email == email)).first()
-    elif username:
-        return session.exec(statement.where(User.username == username)).first()
     else:
         return None
 
@@ -237,30 +236,6 @@ def create_token(data: dict, expires_delta: timedelta) -> str:
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return encoded_jwt
-
-
-def generate_username_from_email(session: Session, email: str) -> str:
-    """
-    Generate username from email.
-
-    Parameters
-    ----------
-    session : Session
-        Session
-    email : str
-        Email
-
-    Returns
-    -------
-    str
-        Username
-    """
-    base = email.split("@")[0]
-    username = base
-    while get_user(session, username=username):
-        unique_suffix = uuid.uuid4().hex[:4]
-        username = f"{base}_{unique_suffix}"
-    return username
 
 
 def get_password_hash(password: str) -> str:
@@ -478,8 +453,8 @@ def google_get_user_from_user_info(
     provider = "google"
     email = user_info.get("email")
     if disabled is not None:
-        return get_user(session, disabled=disabled, provider=provider, email=email)
-    return get_user(session, provider=provider, email=email)
+        return get_user(email, session, disabled=disabled, provider=provider)
+    return get_user(email, session, provider=provider)
 
 
 def set_redirect_fe(response: RedirectResponse, route: str) -> RedirectResponse:
@@ -583,6 +558,8 @@ def get_user_from_token(session: Session, provider: str, token: str) -> User:
         try:
             user_info = google_get_user_info_from_access_token(token)
             email = user_info.get("email")
+            if email is None:
+                raise CREDENTIALS_EXCEPTION
         except HTTPException:  # token is refresh token
             dec_refresh_token = google_decode_refresh_token(token)
             access_token = google_get_new_access_token(dec_refresh_token)
@@ -591,7 +568,7 @@ def get_user_from_token(session: Session, provider: str, token: str) -> User:
     else:
         raise CREDENTIALS_EXCEPTION
 
-    db_user = get_user(session, disabled=False, provider=provider, email=email)
+    db_user = get_user(email, session, disabled=False, provider=provider)
     if db_user is None:
         raise CREDENTIALS_EXCEPTION
     return db_user
@@ -615,8 +592,8 @@ def delete_auth_cookies(response: Response, cookies: list[str] = None) -> None:
 async def get_current_user(
     *,
     session: Session = Depends(get_session),
-    access_token: Optional[str] = Cookie(default=None),
-    provider: Optional[str] = Cookie(default=None),
+    access_token: str | None = Cookie(default=None),
+    provider: str | None = Cookie(default=None),
 ) -> User:
     """
     Get current user.
@@ -664,42 +641,20 @@ async def get_current_active_user(
     return current_user
 
 
-def verify_user_update(session: Session, current_user: User, user_data: dict):
+def verify_user_update(user_data: dict):
     """
     Verify user update data.
 
     Parameters
     ----------
-    session : Session
-        Session
-    current_user : User
-        Current user
     user_data : dict
         User data
-
-    Returns
-    -------
-    bool
-        True if username changed, else False
     """
     if "email" in user_data.keys():
         raise HTTPException(
             status_code=400,
             detail="Email cannot be updated",
         )
-
-    if "username" in user_data.keys():
-        if not user_data["username"]:
-            raise HTTPException(
-                status_code=400,
-                detail="Username is empty",
-            )
-        if current_user.username != user_data["username"]:
-            if get_user(session, username=user_data["username"]):
-                raise HTTPException(
-                    status_code=400,
-                    detail="Username is invalid",
-                )
 
     if "password" in user_data.keys() and "confirm_password" in user_data.keys():
         if not user_data["password"]:
@@ -720,109 +675,3 @@ def verify_user_update(session: Session, current_user: User, user_data: dict):
         user_data["hashed_password"] = get_password_hash(user_data["password"])
         del user_data["password"]
         del user_data["confirm_password"]
-
-
-def get_sent_friend_request_links(current_user: User, status: str = "pending") -> List[FriendRequest]:
-    """
-    Get sent friend request links.
-
-    Parameters
-    ----------
-    current_user : User
-        Current user
-
-    Returns
-    -------
-    List[FriendRequest]
-        Sent friend request links
-    """
-    return [link for link in current_user.sender_links if link.status == status]
-
-
-def get_sent_friend_requests(current_user: User, status: str = "pending") -> List[User]:
-    """
-    Get sent friend requests.
-
-    Parameters
-    ----------
-    current_user : User
-        Current user
-
-    Returns
-    -------
-    List[User]
-        Sent friend requests
-    """
-    return [link.receiver for link in current_user.sender_links if link.status == status]
-
-
-def get_incoming_friend_request_links(current_user: User, status: str = "pending") -> List[FriendRequest]:
-    """
-    Get incoming friend request links.
-
-    Parameters
-    ----------
-    current_user : User
-        Current user
-
-    Returns
-    -------
-    List[FriendRequest]
-        Incoming friend request links
-    """
-    return [link for link in current_user.receiver_links if link.status == status]
-
-
-def get_incoming_friend_requests(current_user: User, status: str = "pending") -> List[User]:
-    """
-    Get incoming friend requests.
-
-    Parameters
-    ----------
-    current_user : User
-        Current user
-
-    Returns
-    -------
-    List[User]
-        Incoming friend requests
-    """
-    return [link.sender for link in current_user.receiver_links if link.status == status]
-
-
-def get_friend_links(current_user: User, status: str = "confirmed") -> List[Friend]:
-    """
-    Get friends links.
-
-    Parameters
-    ----------
-    current_user : User
-        Current user
-
-    Returns
-    -------
-    List[Friend]
-        Friend links
-    """
-    return [link for link in current_user.friend_1_links if link.status == status] + [
-        link for link in current_user.friend_2_links if link.status == status
-    ]
-
-
-def get_friends(current_user: User, status: str = "confirmed") -> List[User]:
-    """
-    Get friends.
-
-    Parameters
-    ----------
-    current_user : User
-        Current user
-
-    Returns
-    -------
-    List[User]
-        Friend
-    """
-    return [link.friend_1 for link in current_user.friend_1_links if link.status == status] + [
-        link.friend_2 for link in current_user.friend_2_links if link.status == status
-    ]

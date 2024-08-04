@@ -114,18 +114,4 @@ function ProfilePicture({
   );
 }
 
-function File() {
-  return (
-    <Upload className="p-12 w-48 h-48 rounded-lg">
-      <label
-        htmlFor="file-upload"
-        className="absolute inset-0 cursor-pointer flex flex-col text-center items-center justify-center"
-      >
-        Upload to create flashcards
-      </label>
-      <Input id="file-upload" type="file" className="hidden" />
-    </Upload>
-  );
-}
-
-export { ProfilePicture, File };
+export { ProfilePicture };
