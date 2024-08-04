@@ -29,13 +29,12 @@ Set up the conda environment:
    make setup
    ```
 
-Create a `.env` file:
+Create a `.env` (+ `.env.development` + `.env.production`):
 
 ```bash
 # Get your SMTP_SSL_PASSWORD: https://myaccount.google.com/apppasswords
 # Get your GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET: https://console.cloud.google.com/apis/credentials
 # Get your OpenAI API key: https://platform.openai.com/signup
-API_URL=<backend URL here>
 API_KEY=$(openssl rand -hex 32)
 DB_ECHO=True
 POSTGRES_SERVER=localhost

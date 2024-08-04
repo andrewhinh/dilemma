@@ -25,7 +25,7 @@ function Nav({ children }: { children: ReactNode }) {
   });
 
   return (
-    <nav className="p-4 bg-cyan-200 text-zinc-500 flex">
+    <nav className="h-20 p-4 bg-cyan-200 text-zinc-500 flex">
       <div className="flex flex-1 justify-start md:pl-2">
         <Link
           href={homeLink}

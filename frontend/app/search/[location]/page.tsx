@@ -62,6 +62,12 @@ function Search() {
     center_long,
     properties,
   } = state;
+
+  // filters
+  const [showListingType, setShowListingType] = useState(false);
+  const [showPrice, setShowPrice] = useState(false);
+  const [showBedsAndBaths, setShowBedsAndBaths] = useState(false);
+  const [showStyle, setShowStyle] = useState(false);
   const [sort, setSort] = useState("newest");
   const [showSort, setShowSort] = useState(false);
 
@@ -245,7 +251,7 @@ function Search() {
               ))}
             </MapContainer>
             <div className="flex flex-col flex-1">
-              <Header className="p-8 gap-2 items-start border-b-2 max-h-60">
+              <Header className="p-8 gap-2 items-start border-b-2 h-48">
                 <h1 className="text-xl md:text-2xl">
                   {location} Homes{" "}
                   {listing_type === "for_sale"
@@ -254,16 +260,243 @@ function Search() {
                     ? "For Rent"
                     : "Sold"}
                 </h1>
-                <h2 className="text-sm md:text-md">
-                  {properties.length.toLocaleString()} homes
-                </h2>
+                <div className="flex flex-row justify-center items-center gap-2">
+                  <Button
+                    className="p-2 whitespace-nowrap"
+                    onClick={() => {
+                      setShowListingType(!showListingType);
+                    }}
+                  >
+                    <h2 className="text-sm md:text-md">
+                      {listing_type === "for_sale"
+                        ? "For Sale"
+                        : listing_type === "for_rent"
+                        ? "For Rent"
+                        : "Sold"}
+                    </h2>
+                    <Image
+                      src={showListingType ? upArrow : downArrow}
+                      alt={showListingType ? "Up Arrow" : "Down Arrow"}
+                      className="w-6 h-6 invert"
+                    />
+                  </Button>
+                  <Button
+                    className="p-2 whitespace-nowrap"
+                    onClick={() => {
+                      setShowPrice(!showPrice);
+                    }}
+                  >
+                    <h2 className="text-sm md:text-md">
+                      {min_price === null && max_price === null
+                        ? "Price"
+                        : min_price !== null && max_price === null
+                        ? `${min_price.toLocaleString()}+`
+                        : min_price === null && max_price !== null
+                        ? `Up to ${max_price.toLocaleString()}`
+                        : min_price !== null && max_price !== null
+                        ? `${min_price.toLocaleString()}-${max_price.toLocaleString()}`
+                        : ""}
+                    </h2>
+                    <Image
+                      src={showPrice ? upArrow : downArrow}
+                      alt={showPrice ? "Up Arrow" : "Down Arrow"}
+                      className="w-6 h-6 invert"
+                    />
+                  </Button>
+                  <Button
+                    className="p-2 whitespace-nowrap"
+                    onClick={() => {
+                      setShowBedsAndBaths(!showBedsAndBaths);
+                    }}
+                  >
+                    <h2 className="text-sm md:text-md">
+                      {min_beds === null ||
+                      max_beds === null ||
+                      min_baths === null ||
+                      max_baths === null
+                        ? "Beds/Baths"
+                        : min_beds !== null &&
+                          max_beds === null &&
+                          min_baths === null &&
+                          max_baths === null
+                        ? `${min_beds}+ Beds/0+ Baths`
+                        : min_beds === null &&
+                          max_beds !== null &&
+                          min_baths === null &&
+                          max_baths === null
+                        ? `Up to ${max_beds} Beds/0+ Baths`
+                        : min_beds === null &&
+                          max_beds === null &&
+                          min_baths !== null &&
+                          max_baths === null
+                        ? `0+ Beds/${min_baths}+ Baths`
+                        : min_beds === null &&
+                          max_beds === null &&
+                          min_baths === null &&
+                          max_baths !== null
+                        ? `0+ Beds/Up to ${max_baths} Baths`
+                        : min_beds !== null &&
+                          max_beds !== null &&
+                          min_baths === null &&
+                          max_baths === null
+                        ? `${min_beds}-${max_beds} Beds/0+ Baths`
+                        : min_beds === null &&
+                          max_beds === null &&
+                          min_baths !== null &&
+                          max_baths !== null
+                        ? `0+ Beds/${min_baths}-${max_baths} Baths`
+                        : min_beds !== null &&
+                          max_beds !== null &&
+                          min_baths !== null &&
+                          max_baths !== null
+                        ? `${min_beds}-${max_beds} Beds/${min_baths}-${max_baths} Baths`
+                        : ""}
+                    </h2>
+                    <Image
+                      src={showBedsAndBaths ? upArrow : downArrow}
+                      alt={showBedsAndBaths ? "Up Arrow" : "Down Arrow"}
+                      className="w-6 h-6 invert"
+                    />
+                  </Button>
+                  <Button
+                    className="p-2 whitespace-nowrap"
+                    onClick={() => {
+                      setShowStyle(!showStyle);
+                    }}
+                  >
+                    <h2 className="text-sm md:text-md">
+                      {style === null || style === "" ? "Style" : style}
+                    </h2>
+                    <Image
+                      src={showStyle ? upArrow : downArrow}
+                      alt={showStyle ? "Up Arrow" : "Down Arrow"}
+                      className="w-6 h-6 invert"
+                    />
+                  </Button>
+                </div>
+                <Dropdown
+                  className={`z-20 top-6 text-sm md:text-md ${
+                    showListingType ? "block" : "hidden"
+                  }`}
+                >
+                  <Button
+                    className={`p-2 whitespace-nowrap ${
+                      listing_type === "for_sale" ? "hidden" : "block"
+                    }`}
+                    onClick={() => {
+                      dispatch({
+                        type: "SET_LISTING_TYPE",
+                        payload: "for_sale",
+                      });
+                      setShowListingType(false);
+                    }}
+                  >
+                    For Sale
+                  </Button>
+                  <Button
+                    className={`p-2 whitespace-nowrap ${
+                      listing_type === "for_rent" ? "hidden" : "block"
+                    }`}
+                    onClick={() => {
+                      dispatch({
+                        type: "SET_LISTING_TYPE",
+                        payload: "for_rent",
+                      });
+                      setShowListingType(false);
+                    }}
+                  >
+                    For Rent
+                  </Button>
+                  <Button
+                    className={`p-2 whitespace-nowrap ${
+                      listing_type === "sold" ? "hidden" : "block"
+                    }`}
+                    onClick={() => {
+                      dispatch({ type: "SET_LISTING_TYPE", payload: "sold" });
+                      setShowListingType(false);
+                    }}
+                  >
+                    Sold
+                  </Button>
+                </Dropdown>
+                <Dropdown
+                  className={`z-20 top-6 text-sm md:text-md ${
+                    showPrice ? "block" : "hidden"
+                  }`}
+                >
+                  <Button
+                    className={`p-2 whitespace-nowrap ${
+                      min_price === 0 && max_price === 0 ? "hidden" : "block"
+                    }`}
+                    onClick={() => {
+                      dispatch({ type: "SET_MIN_PRICE", payload: 0 });
+                      dispatch({ type: "SET_MAX_PRICE", payload: 0 });
+                      setShowPrice(false);
+                    }}
+                  >
+                    Any Price
+                  </Button>
+                </Dropdown>
+                <Dropdown
+                  className={`z-20 top-6 text-sm md:text-md ${
+                    showBedsAndBaths ? "block" : "hidden"
+                  }`}
+                >
+                  <Button
+                    className={`p-2 whitespace-nowrap ${
+                      min_beds === 0 && max_beds === 0 ? "hidden" : "block"
+                    }`}
+                    onClick={() => {
+                      dispatch({ type: "SET_MIN_BEDS", payload: 0 });
+                      dispatch({ type: "SET_MAX_BEDS", payload: 0 });
+                      setShowBedsAndBaths(false);
+                    }}
+                  >
+                    Any Beds
+                  </Button>
+                  <Button
+                    className={`p-2 whitespace-nowrap ${
+                      min_baths === 0 && max_baths === 0 ? "hidden" : "block"
+                    }`}
+                    onClick={() => {
+                      dispatch({ type: "SET_MIN_BATHS", payload: 0 });
+                      dispatch({ type: "SET_MAX_BATHS", payload: 0 });
+                      setShowBedsAndBaths(false);
+                    }}
+                  >
+                    Any Baths
+                  </Button>
+                </Dropdown>
+                <Dropdown
+                  className={`z-20 top-6 text-sm md:text-md ${
+                    showStyle ? "block" : "hidden"
+                  }`}
+                >
+                  <Button
+                    className={`p-2 whitespace-nowrap ${
+                      style === "" ? "hidden" : "block"
+                    }`}
+                    onClick={() => {
+                      dispatch({ type: "SET_STYLE", payload: "" });
+                      setShowStyle(false);
+                    }}
+                  >
+                    Any Style
+                  </Button>
+                </Dropdown>
                 <div
                   className="flex flex-row justify-center items-center gap-0.5"
                   onMouseLeave={() => {
                     setShowSort(false);
                   }}
                 >
-                  <h2 className="text-sm md:text-md">Sort by:</h2>
+                  <div className="flex flex-row justify-center items-center gap-2">
+                    <h2 className="text-sm md:text-md">
+                      {properties.length.toLocaleString()} homes
+                    </h2>
+                    <h2 className="text-sm md:text-md">|</h2>
+                    <h2 className="text-sm md:text-md">Sort by:</h2>
+                  </div>
                   <div
                     className="relative gap-0.5 p-0.5 flex flex-row justify-center items-center"
                     onClick={() => {
@@ -365,9 +598,9 @@ function Search() {
                   </div>
                 </div>
               </Header>
-              {/* h-[calc()] = h-screen (100vh) - nav (h-10 (2.5rem) + 2 * p-4 (1rem)) - header (max-h-60 (15rem) + 2 * p-8 (2rem)) - footer (text-lg (1.75rem) + 2 * p-4 (1rem))
+              {/* h-[calc()] = h-screen (100vh) - nav (h-20 = 5rem) - header (h-48 = 12rem) - footer (h-16 = 4rem)
                */}
-              <Grid className="grid-cols-auto-fit-min-15 md:grid-cols-auto-fit-min-20 p-4 overflow-y-auto h-[calc(100vh-18.25rem)]">
+              <Grid className="grid-cols-auto-fit-min-15 md:grid-cols-auto-fit-min-20 p-4 overflow-y-auto h-[calc(100vh-20rem)]">
                 {properties.map((property, index) => (
                   <PropertyCard
                     key={`${property.uuid}-card-${index === focus}`}
