@@ -16,7 +16,7 @@ import Dropdown from "@/app/ui/Dropdown";
 import { Button } from "@/app/ui/Button";
 import Grid from "@/app/ui/Grid";
 import PropertyCard from "./PropertyCard";
-import Support from "@/app/home/Support";
+import Support from "@/app/ui/Support";
 
 import downArrow from "@/public/down-arrow.svg";
 import upArrow from "@/public/up-arrow.svg";
@@ -62,6 +62,8 @@ function Search() {
     center_long,
     properties,
   } = state;
+
+  // filters
   const [sort, setSort] = useState("newest");
   const [showSort, setShowSort] = useState(false);
 
@@ -199,7 +201,7 @@ function Search() {
   return (
     <>
       <div
-        className={`flex flex-col max-h-screen ${
+        className={`flex flex-col flex-1 ${
           properties.length > 0 ? "block" : "hidden"
         }`}
       >
@@ -245,8 +247,8 @@ function Search() {
               ))}
             </MapContainer>
             <div className="flex flex-col flex-1">
-              <Header className="p-8 gap-2 items-start border-b-2 max-h-60">
-                <h1 className="text-xl md:text-2xl">
+              <Header className="p-8 gap-2 items-start border-b-2 h-28">
+                <h1 className="text-lg md:text-xl">
                   {location} Homes{" "}
                   {listing_type === "for_sale"
                     ? "For Sale"
@@ -254,16 +256,16 @@ function Search() {
                     ? "For Rent"
                     : "Sold"}
                 </h1>
-                <h2 className="text-sm md:text-md">
-                  {properties.length.toLocaleString()} homes
-                </h2>
                 <div
                   className="flex flex-row justify-center items-center gap-0.5"
-                  onMouseLeave={() => {
-                    setShowSort(false);
-                  }}
                 >
-                  <h2 className="text-sm md:text-md">Sort by:</h2>
+                  <div className="flex flex-row justify-center items-center gap-2">
+                    <h2 className="text-sm md:text-md">
+                      {properties.length.toLocaleString()} homes
+                    </h2>
+                    <h2 className="text-sm md:text-md">|</h2>
+                    <h2 className="text-sm md:text-md">Sort by:</h2>
+                  </div>
                   <div
                     className="relative gap-0.5 p-0.5 flex flex-row justify-center items-center"
                     onClick={() => {
@@ -365,9 +367,9 @@ function Search() {
                   </div>
                 </div>
               </Header>
-              {/* h-[calc()] = h-screen (100vh) - nav (h-10 (2.5rem) + 2 * p-4 (1rem)) - header (max-h-60 (15rem) + 2 * p-8 (2rem)) - footer (text-lg (1.75rem) + 2 * p-4 (1rem))
+              {/* h-[calc()] = h-screen (100vh) - nav (h-20 = 5rem) - header (h-28 = 7rem) - footer (h-16 = 4rem)
                */}
-              <Grid className="grid-cols-auto-fit-min-15 md:grid-cols-auto-fit-min-20 p-4 overflow-y-auto h-[calc(100vh-18.25rem)]">
+              <Grid className="grid-cols-auto-fit-min-15 md:grid-cols-auto-fit-min-20 p-4 overflow-y-auto h-[calc(100vh-16rem)]">
                 {properties.map((property, index) => (
                   <PropertyCard
                     key={`${property.uuid}-card-${index === focus}`}

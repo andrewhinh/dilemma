@@ -16,12 +16,12 @@ function ProfileView({ show }: { show: boolean }) {
   const { state: accountState, dispatch: accountDispatch } = useAccount();
   const updateUser = useUpdateUser();
 
-  const { joinDate, profilePicture, username, fullname } = constState;
+  const { join_date, profile_picture, first_name, last_name } = constState;
   const { canUpdateUser, updateUserErrorMsg, updateUserLoading } = accountState;
 
-  const [tempProfilePicture, setTempProfilePicture] = useState(profilePicture);
-  const [tempUsername, setTempUsername] = useState(username);
-  const [tempFullname, setTempFullname] = useState(fullname);
+  const [tempProfilePicture, setTempProfilePicture] = useState(profile_picture);
+  const [tempFirstName, setTempFirstName] = useState(first_name);
+  const [tempLastName, setTempLastName] = useState(last_name);
 
   return (
     <Main className={`relative z-0 gap-16 ${show ? "block" : "hidden"}`}>
@@ -29,13 +29,13 @@ function ProfileView({ show }: { show: boolean }) {
         onSubmit={(e) =>
           updateUser(e, {
             profile_picture: tempProfilePicture,
-            username: tempUsername,
-            fullname: tempFullname,
+            first_name: tempFirstName,
+            last_name: tempLastName,
           })
         }
       >
         <ProfilePicture
-          picture={tempProfilePicture}
+          picture={tempProfilePicture || ''}
           setErrorMsg={(msg) =>
             accountDispatch({
               type: "SET_UPDATE_USER_ERROR_MSG",
@@ -44,7 +44,7 @@ function ProfileView({ show }: { show: boolean }) {
           }
           setPicture={(pic) => setTempProfilePicture(pic)}
           onChange={(pic) => {
-            if (pic !== profilePicture) {
+            if (pic !== profile_picture) {
               accountDispatch({
                 type: "SET_CAN_UPDATE_USER",
                 payload: true,
@@ -60,7 +60,7 @@ function ProfileView({ show }: { show: boolean }) {
         <div className="flex flex-col">
           <p>Joined on</p>
           <p className="text-cyan-500">
-            {new Date(joinDate).toLocaleDateString("en-US", {
+            {join_date && new Date(join_date).toLocaleDateString("en-US", {
               month: "long",
               day: "numeric",
               year: "numeric",
@@ -70,14 +70,14 @@ function ProfileView({ show }: { show: boolean }) {
         <div className="flex flex-col gap-4 w-48 md:w-60">
           <div className="flex flex-col gap-2">
             <Input
-              id="username"
+              id="first_name"
               type="text"
-              value={tempUsername}
-              placeholder="Username"
+              value={tempFirstName}
+              placeholder="First Name"
               onChange={(e) => {
-                setTempUsername(e.target.value);
-                if (e.target.value !== username) {
-                  if (e.target.value === "" && username === null) {
+                setTempFirstName(e.target.value);
+                if (e.target.value !== first_name) {
+                  if (e.target.value === "" && first_name === null) {
                     accountDispatch({
                       type: "SET_CAN_UPDATE_USER",
                       payload: false,
@@ -91,20 +91,20 @@ function ProfileView({ show }: { show: boolean }) {
                 } else {
                   accountDispatch({
                     type: "SET_CAN_UPDATE_USER",
-                    payload: false,
+                      payload: false,
                   });
                 }
               }}
             />
             <Input
-              id="fullname"
+              id="last_name"
               type="text"
-              value={tempFullname}
-              placeholder="Full Name"
+              value={tempLastName}
+              placeholder="Last Name"
               onChange={(e) => {
-                setTempFullname(e.target.value);
-                if (e.target.value !== fullname) {
-                  if (e.target.value === "" && fullname === null) {
+                setTempLastName(e.target.value);
+                if (e.target.value !== last_name) {
+                  if (e.target.value === "" && last_name === null) {
                     accountDispatch({
                       type: "SET_CAN_UPDATE_USER",
                       payload: false,
@@ -132,12 +132,12 @@ function ProfileView({ show }: { show: boolean }) {
                 payload: tempProfilePicture,
               });
               constDispatch({
-                type: "SET_USERNAME",
-                payload: tempUsername,
+                type: "SET_FIRST_NAME",
+                payload: tempFirstName,
               });
               constDispatch({
-                type: "SET_FULLNAME",
-                payload: tempFullname,
+                type: "SET_LAST_NAME",
+                payload: tempLastName,
               });
             }}
           >

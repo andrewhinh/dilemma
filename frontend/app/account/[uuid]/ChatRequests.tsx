@@ -12,12 +12,12 @@
 // import ChatsTable from "./ChatsTable";
 // import buttonLoading from "@/public/button-loading.svg";
 
-// function ChatView({ show }: { show: boolean }) {
+// function ChatRequests({ show }: { show: boolean }) {
 //   const { state: constState } = useConst();
 //   const { state: accountState } = useAccount();
 //   const setUser = useSetUser();
 
-//   const { sentChatRequests, receivedChatRequests } = constState;
+//   const { uuid, requester_links, receiver_links } = constState;
 
 //   const {
 //     revertRequestErrorMsg,
@@ -25,7 +25,7 @@
 //     declineRequestErrorMsg,
 //   } = accountState;
 
-//   const [requestName, setRequestName] = useState("");
+//   const [requestUuid, setRequestUuid] = useState("");
 //   const [sendRequestErrorMsg, setSendRequestErrorMsg] = useState("");
 //   const [sendRequestLoading, setSendRequestLoading] = useState(false);
 
@@ -36,21 +36,22 @@
 //     setSendRequestErrorMsg("");
 //     setSendRequestLoading(true);
 
-//     if (requestName === "") {
-//       setSendRequestErrorMsg("Name cannot be empty");
+//     if (requestUuid === "") {
+//       setSendRequestErrorMsg("UUID cannot be empty");
 //       setSendRequestLoading(false);
 //       return;
 //     }
 
 //     let request = {
-//       username: requestUsername,
+//       requester_uuid: uuid,
+//       receiver_uuid: requestUuid,
 //     };
 
-//     sendRequest("/friends/send-request", "POST", request).then((data) => {
+//     sendRequest("/chat-request/send", "POST", request).then((data) => {
 //       if (data.detail) setSendRequestErrorMsg(data.detail);
 //       else {
 //         setUser(data);
-//         setRequestUsername("");
+//         setRequestUuid("");
 //       }
 //       setSendRequestLoading(false);
 //     });
@@ -61,11 +62,11 @@
 //       <Form onSubmit={(e) => handlesendChatRequest(e)}>
 //         <div className="flex flex-col gap-4 w-48 md:w-60">
 //           <Input
-//             id="requestName"
+//             id="requestUuid"
 //             type="text"
-//             value={requestName}
-//             placeholder="Name"
-//             onChange={(e) => setRequestName(e.target.value)}
+//             value={requestUuid}
+//             placeholder="UUID"
+//             onChange={(e) => setRequestUuid(e.target.value)}
 //           />
 //           <FormButton className="whitespace-nowrap">
 //             <Image
@@ -86,7 +87,7 @@
 //         <div className="w-full">
 //           <ChatsTable
 //             title="Sent"
-//             data={sentChatRequests}
+//             data={requester_links || []}
 //             type="sent"
 //           />
 //         </div>
@@ -97,9 +98,9 @@
 //       <div className="gap-6 flex flex-col text-center items-center justify-center">
 //         <div className="w-full">
 //           <ChatsTable
-//             title="Received"
-//             data={receivedChatRequests}
-//             type="received"
+//             title="Incoming"
+//             data={receiver_links || []}
+//             type="incoming"
 //           />
 //         </div>
 //         {acceptRequestErrorMsg && (
@@ -113,4 +114,4 @@
 //   );
 // }
 
-// export default ChatView;
+// export default ChatRequests;

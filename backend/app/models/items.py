@@ -1,13 +1,10 @@
 """Item models."""
 
-from uuid import UUID, uuid4
-
-from sqlalchemy import ARRAY, INTEGER, String
-from sqlmodel import Column, Field, Relationship, SQLModel
+from pydantic import BaseModel
 
 
-class SearchRequestBase(SQLModel):
-    """Search request base model."""
+class SearchRequest(BaseModel):
+    """Search request model."""
 
     location: str
     listing_type: str = "for_sale"  # for_rent, for_sale, sold
@@ -39,22 +36,7 @@ class SearchRequestBase(SQLModel):
     parking_garage: int | None = None
 
 
-class SearchRequest(SearchRequestBase, table=True):
-    """Search request model."""
-
-    id: int = Field(primary_key=True, index=True)
-    uuid: UUID = Field(default_factory=lambda: uuid4(), unique=True)
-
-    search_results: list["SearchResult"] = Relationship(back_populates="search_request")
-
-
-class SearchRequestRead(SearchRequestBase):
-    """Search request read model."""
-
-    uuid: UUID
-
-
-class PropertyBase(SQLModel):
+class Property(BaseModel):
     """Property base model."""
 
     property_url: str | None = None
@@ -86,57 +68,14 @@ class PropertyBase(SQLModel):
     longitude: float | None = None
     parking_garage: int | None = None
     primary_photo: str | None = None
-    alt_photos: list[str | None] = Field(sa_column=Column(ARRAY(String)))
+    alt_photos: list[str | None] = None
     neighborhoods: str | None = None
 
 
-class SearchResultPropertyLink(SQLModel, table=True):
-    """Search result property link model."""
+class SearchResult(BaseModel):
+    """Search results model."""
 
-    search_result_id: int = Field(foreign_key="searchresult.id", primary_key=True)
-    property_id: int = Field(foreign_key="property.id", primary_key=True)
-
-
-class Property(PropertyBase, table=True):
-    """Property model."""
-
-    id: int = Field(primary_key=True, index=True)
-    uuid: UUID = Field(default_factory=lambda: uuid4(), unique=True)
-
-    search_results: list["SearchResult"] = Relationship(
-        back_populates="properties", link_model=SearchResultPropertyLink
-    )
-
-
-class PropertyRead(PropertyBase):
-    """Property read model."""
-
-    uuid: UUID
-
-
-class SearchResultsBase(SQLModel):
-    """Search results base model."""
-
-    popups: list[int | None] = Field(sa_column=Column(ARRAY(INTEGER)))
+    popups: list[int | None] = None
     center_lat: float | None = None
     center_long: float | None = None
-
-
-class SearchResult(SearchResultsBase, table=True):
-    """Search result model."""
-
-    id: int = Field(primary_key=True, index=True)
-    uuid: UUID = Field(default_factory=lambda: uuid4(), unique=True)
-
-    search_request_uuid: UUID = Field(foreign_key="searchrequest.uuid")
-    search_request: SearchRequest = Relationship(back_populates="search_results")
-    properties: list[Property] = Relationship(back_populates="search_results", link_model=SearchResultPropertyLink)
-
-
-class SearchResultRead(SearchResultsBase):
-    """Search result read model."""
-
-    uuid: UUID
-    search_request_uuid: UUID
-    search_request: SearchRequestRead
-    properties: list[PropertyRead]
+    properties: list[Property] = None

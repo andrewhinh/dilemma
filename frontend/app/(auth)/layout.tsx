@@ -1,6 +1,6 @@
 import { AuthNav } from "../ui/Nav";
 import Main from "../ui/Main";
-import Support from "../home/Support";
+import Support from "../ui/Support";
 
 export default function AuthLayout({
   children,

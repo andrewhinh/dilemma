@@ -1,5 +1,6 @@
 // import Image from "next/image";
 // import { useAccount } from "../providers";
+// import { useConst } from "@/app/providers";
 // import { sendRequest } from "../../lib/api";
 // import {
 //   useSetUser,
@@ -10,7 +11,6 @@
 // import { Button } from "../../ui/Button";
 // import check from "@/public/check.svg";
 // import x from "@/public/x.svg";
-// import trash from "@/public/trash.svg";
 // import buttonLoading from "@/public/button-loading.svg";
 // import profileOutline from "@/public/profile-outline.svg";
 
@@ -20,23 +20,25 @@
 //   type,
 // }: {
 //   title: string;
-//   data: FriendRequest[] | Friend[];
-//   type: "sent" | "incoming" | "friends";
+//   data: Array<any>;
+//   type: "sent" | "incoming" | "chats";
 // }) {
-//   const { state, dispatch } = useAccount();
+//   const { state: accountState, dispatch } = useAccount();
 //   const setUser = useSetUser();
 
 //   const {
 //     revertRequestLoading,
 //     acceptRequestLoading,
 //     declineRequestLoading,
-//     deleteFriendLoading,
-//   } = state;
+//   } = accountState;
+
+//     const {state } = useConst();
+//   const { uuid } = state;
 
 //   const maxSmallChars = 7;
 //   const maxLargeChars = 12;
 
-//   const handleRevertFriendRequest = (
+//   const handleRevertChatRequest = (
 //     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
 //   ) => {
 //     e.preventDefault();
@@ -51,20 +53,21 @@
 //       ])
 //     );
 
-//     if (formDataObj.username === "") {
+//     if (formDataObj.uuid === "") {
 //       dispatch({
 //         type: "SET_REVERT_REQUEST_ERROR_MSG",
-//         payload: "Username cannot be empty",
+//         payload: "UUID cannot be empty",
 //       });
 //       dispatch({ type: "SET_REVERT_REQUEST_LOADING", payload: false });
 //       return;
 //     }
 
 //     let request = {
-//       username: formDataObj.username,
+//         requester_uuid: uuid,
+//         receiver_uuid: formDataObj.uuid,
 //     };
 
-//     sendRequest("/friends/revert-request", "POST", request).then((data) => {
+//     sendRequest("/chat-request/revert/", "POST", request).then((data) => {
 //       if (data.detail)
 //         dispatch({
 //           type: "SET_REVERT_REQUEST_ERROR_MSG",
@@ -77,7 +80,7 @@
 //     });
 //   };
 
-//   const handleAcceptFriendRequest = (
+//   const handleAcceptChatRequest = (
 //     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
 //   ) => {
 //     e.preventDefault();
@@ -92,20 +95,21 @@
 //       ])
 //     );
 
-//     if (formDataObj.username === "") {
+//     if (formDataObj.uuid === "") {
 //       dispatch({
 //         type: "SET_ACCEPT_REQUEST_ERROR_MSG",
-//         payload: "Username cannot be empty",
+//         payload: "UUID cannot be empty",
 //       });
 //       dispatch({ type: "SET_ACCEPT_REQUEST_LOADING", payload: false });
 //       return;
 //     }
 
 //     let request = {
-//       username: formDataObj.username,
+//         requester_uuid: formDataObj.uuid,
+//         receiver_uuid: uuid,
 //     };
 
-//     sendRequest("/friends/accept-request", "POST", request).then((data) => {
+//     sendRequest("/chat-request/accept/", "POST", request).then((data) => {
 //       if (data.detail)
 //         dispatch({
 //           type: "SET_ACCEPT_REQUEST_ERROR_MSG",
@@ -118,7 +122,7 @@
 //     });
 //   };
 
-//   const handleDeclineFriendRequest = (
+//   const handleDeclineChatRequest = (
 //     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
 //   ) => {
 //     e.preventDefault();
@@ -133,20 +137,21 @@
 //       ])
 //     );
 
-//     if (formDataObj.username === "") {
+//     if (formDataObj.uuid === "") {
 //       dispatch({
 //         type: "SET_DECLINE_REQUEST_ERROR_MSG",
-//         payload: "Username cannot be empty",
+//         payload: "UUID cannot be empty",
 //       });
 //       dispatch({ type: "SET_DECLINE_REQUEST_LOADING", payload: false });
 //       return;
 //     }
 
 //     let request = {
-//       username: formDataObj.username,
+//       requester_uuid: formDataObj.uuid,
+//         receiver_uuid: uuid,
 //     };
 
-//     sendRequest("/friends/decline-request", "POST", request).then((data) => {
+//     sendRequest("/chat-request/decline/", "POST", request).then((data) => {
 //       if (data.detail)
 //         dispatch({
 //           type: "SET_DECLINE_REQUEST_ERROR_MSG",
@@ -156,47 +161,6 @@
 //         setUser(data);
 //       }
 //       dispatch({ type: "SET_DECLINE_REQUEST_LOADING", payload: false });
-//     });
-//   };
-
-//   const handleDeleteFriend = (
-//     e: React.MouseEvent<HTMLButtonElement, MouseEvent>
-//   ) => {
-//     e.preventDefault();
-//     dispatch({ type: "SET_DELETE_FRIEND_ERROR_MSG", payload: null });
-//     dispatch({ type: "SET_DELETE_FRIEND_LOADING", payload: true });
-
-//     const formData = new FormData(e.target as HTMLFormElement);
-//     const formDataObj = Object.fromEntries(
-//       Array.from(formData.entries()).map(([key, value]) => [
-//         key,
-//         value.toString(),
-//       ])
-//     );
-
-//     if (formDataObj.username === "") {
-//       dispatch({
-//         type: "SET_DELETE_FRIEND_ERROR_MSG",
-//         payload: "Username cannot be empty",
-//       });
-//       dispatch({ type: "SET_DELETE_FRIEND_LOADING", payload: false });
-//       return;
-//     }
-
-//     let request = {
-//       username: formDataObj.username,
-//     };
-
-//     sendRequest("/friends/delete", "POST", request).then((data) => {
-//       if (data.detail)
-//         dispatch({
-//           type: "SET_DELETE_FRIEND_ERROR_MSG",
-//           payload: data.detail,
-//         });
-//       else {
-//         setUser(data);
-//       }
-//       dispatch({ type: "SET_DELETE_FRIEND_LOADING", payload: false });
 //     });
 //   };
 
@@ -260,7 +224,7 @@
 //               </div>
 //               <div className="flex gap-1 md:gap-2">
 //                 {type === "sent" && (
-//                   <Form onSubmit={(e) => handleRevertFriendRequest(e)}>
+//                   <Form onSubmit={(e) => handleRevertChatRequest(e)}>
 //                     <Input
 //                       id="revertUsername"
 //                       name="username"
@@ -290,7 +254,7 @@
 //                 )}
 //                 {type === "incoming" && (
 //                   <>
-//                     <Form onSubmit={(e) => handleAcceptFriendRequest(e)}>
+//                     <Form onSubmit={(e) => handleAcceptChatRequest(e)}>
 //                       <Input
 //                         id="acceptUsername"
 //                         name="username"
@@ -317,7 +281,7 @@
 //                         />
 //                       </Button>
 //                     </Form>
-//                     <Form onSubmit={(e) => handleDeclineFriendRequest(e)}>
+//                     <Form onSubmit={(e) => handleDeclineChatRequest(e)}>
 //                       <Input
 //                         id="declineUsername"
 //                         name="username"
@@ -345,35 +309,6 @@
 //                       </Button>
 //                     </Form>
 //                   </>
-//                 )}
-//                 {type === "friends" && (
-//                   <Form onSubmit={(e) => handleDeleteFriend(e)}>
-//                     <Input
-//                       id="deleteUsername"
-//                       name="username"
-//                       type="hidden"
-//                       value={row.username}
-//                     />
-//                     <Button
-//                       type="submit"
-//                       className="bg-rose-500 rounded-full w-8 h-8 md:w-10 md:h-10"
-//                     >
-//                       <Image
-//                         className={`w-4 h-4 ${
-//                           deleteFriendLoading ? "block" : "hidden"
-//                         }`}
-//                         src={buttonLoading}
-//                         alt="Delete"
-//                       />
-//                       <Image
-//                         className={`w-4 h-4 ${
-//                           deleteFriendLoading ? "hidden" : "block"
-//                         }`}
-//                         src={trash}
-//                         alt="Delete"
-//                       />
-//                     </Button>
-//                   </Form>
 //                 )}
 //               </div>
 //             </td>

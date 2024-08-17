@@ -3,13 +3,11 @@
 import glob
 import logging
 
-from fastapi import APIRouter, Depends, Security
-from sqlmodel import Session
+from fastapi import APIRouter, Security
 
-from app.database import get_session
 from app.dependencies.items import LocationReplacer, search_properties
 from app.dependencies.security import verify_api_key
-from app.models.items import SearchRequest, SearchResultRead
+from app.models.items import SearchRequest, SearchResult
 
 logger = logging.getLogger(__name__)
 
@@ -30,12 +28,11 @@ router = APIRouter(
 )
 
 
-@router.post("/search/properties", response_model=SearchResultRead | list[str])
-async def property_data(*, session: Session = Depends(get_session), request: SearchRequest):
+@router.post("/search/properties", response_model=SearchResult | list[str])
+async def property_data(*, request: SearchRequest):
     """Get property data from query."""
     # replacements = replace_location(request.location).replacements
     # if replacements:
     #     return replacements
 
-    search_result = search_properties(session, request)
-    return SearchResultRead.model_validate(search_result)
+    return search_properties(request)

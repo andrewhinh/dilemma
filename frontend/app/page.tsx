@@ -11,7 +11,7 @@ import Main from "./ui/Main";
 import Header from "./ui/Header";
 import Search from "./search/Search";
 import { Button } from "./ui/Button";
-import Support from "./home/Support";
+import Support from "./ui/Support";
 import pageLoading from "@/public/page-loading.svg";
 
 function App() {
@@ -31,14 +31,14 @@ function App() {
         className={`flex flex-col flex-1 ${verifiedLoggedOut ? "block" : "hidden"}`}
       >
         <LoggedOutNav showSignUp={false} />
-        <Main className="gap-12 md:gap-24">
+        <Main className="gap-16 md:gap-16">
           <Header>
             <h1 className="text-4xl md:text-6xl">Dilemma</h1>
             {
               // Change steps of typewriter effect if text is changed
             }
             <h2 className="text-xl md:text-3xl subtitle">
-              Manage real estate easily.
+              Real estate website demo.
             </h2>
           </Header>
           <div className="gap-4 flex flex-col w-60 md:w-72">

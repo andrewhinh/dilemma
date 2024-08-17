@@ -50,7 +50,7 @@
 
 # @pytest.fixture(name="current_user")
 # def current_user_fixture(user_data: dict, session: Session):
-#     return get_user(session, user_data["email"])
+#     return get_user(user_data["email"], session)
 
 
 # @pytest.fixture(name="client")

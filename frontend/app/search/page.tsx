@@ -3,7 +3,7 @@
 import Main from "../ui/Main";
 import Search from "./Search";
 import { MainNav } from "../ui/Nav";
-import Support from "../home/Support";
+import Support from "../ui/Support";
 
 function App() {
   return (

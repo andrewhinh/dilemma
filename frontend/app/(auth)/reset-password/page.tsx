@@ -122,8 +122,8 @@ function ResetPassword() {
           className={!verifiedUserMessage && !verifiedCode ? "block" : "hidden"}
         >
           <Input
-            type="id"
-            name="id"
+            type="email"
+            name="email"
             placeholder="Email"
             autoFocus
             onChange={(e) => setEmail(e.target.value)}

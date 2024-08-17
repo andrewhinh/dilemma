@@ -14,7 +14,7 @@ import { useConst } from "../providers";
 import { LoggedInNav } from "../ui/Nav";
 import Main from "../ui/Main";
 import Search from "../search/Search";
-import Support from "./Support";
+import Support from "../ui/Support";
 import pageLoading from "@/public/page-loading.svg";
 
 function Base() {

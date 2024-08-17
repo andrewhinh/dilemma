@@ -641,7 +641,7 @@ async def get_current_active_user(
     return current_user
 
 
-def verify_user_update(user_data: dict):
+def verify_user_update(user_data: dict) -> None:
     """
     Verify user update data.
 

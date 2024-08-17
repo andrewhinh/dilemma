@@ -5,7 +5,7 @@ import { MainNav } from "./ui/Nav";
 import Header from "./ui/Header";
 import Main from "./ui/Main";
 import { Button } from "./ui/Button";
-import Support from "./home/Support";
+import Support from "./ui/Support";
 
 const ErrorPage = () => {
   const router = useRouter();

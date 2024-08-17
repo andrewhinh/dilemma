@@ -82,8 +82,8 @@ function Base() {
           <div className="gap-4 flex flex-col">
             <div className="gap-2 flex flex-col text-left">
               <Input
-                type="id"
-                name="id"
+                type="email"
+                name="email"
                 placeholder="Email"
                 autoFocus
               />

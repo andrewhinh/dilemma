@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlmodel import Field, Relationship, SQLModel
+from sqlmodel import Field, SQLModel
 
 # Max lengths (in characters)
 MAX_EMAIL_LENGTH = 400
@@ -35,59 +35,59 @@ class GoogleAuth(SQLModel):
     state: str
 
 
-# Link models
-class ChatRequestBase(SQLModel):
-    """Chat request link base model."""
+# # Link models
+# class ChatRequestBase(SQLModel):
+#     """Chat request link base model."""
 
-    phone_number: str = Field(default=None, max_length=MAX_PHONE_NUMBER_LENGTH, index=True)
-    content: str | None = Field(default=None, max_length=MAX_MESSAGE_LENGTH)
-
-
-class ChatRequest(ChatRequestBase, table=True):
-    """Chat request link model."""
-
-    id: int | None = Field(default=None, primary_key=True)
-
-    request_date: datetime = Field(default_factory=datetime.utcnow)
-    status: str = Field(default="pending", index=True)
-
-    requester_uuid: UUID = Field(default=None, foreign_key="user.uuid")
-    receiver_uuid: UUID = Field(default=None, foreign_key="user.uuid")
-    requester: "User" = Relationship(
-        back_populates="requester_links",
-        sa_relationship_kwargs={
-            "foreign_keys": "ChatRequest.requester_uuid",
-        },
-    )
-    receiver: "User" = Relationship(
-        back_populates="receiver_links",
-        sa_relationship_kwargs={
-            "foreign_keys": "ChatRequest.receiver_uuid",
-        },
-    )
+#     phone_number: str = Field(default=None, max_length=MAX_PHONE_NUMBER_LENGTH, index=True)
+#     content: str | None = Field(default=None, max_length=MAX_MESSAGE_LENGTH)
 
 
-class ChatRequestCreate(ChatRequestBase):
-    """Chat request link create model."""
+# class ChatRequest(ChatRequestBase, table=True):
+#     """Chat request link model."""
 
-    requester_uuid: UUID
-    receiver_uuid: UUID
+#     id: int | None = Field(default=None, primary_key=True)
+
+#     request_date: datetime = Field(default_factory=datetime.utcnow)
+#     status: str = Field(default="pending", index=True)
+
+#     requester_uuid: UUID = Field(default=None, foreign_key="user.uuid")
+#     receiver_uuid: UUID = Field(default=None, foreign_key="user.uuid")
+#     requester: "User" = Relationship(
+#         back_populates="requester_links",
+#         sa_relationship_kwargs={
+#             "foreign_keys": "ChatRequest.requester_uuid",
+#         },
+#     )
+#     receiver: "User" = Relationship(
+#         back_populates="receiver_links",
+#         sa_relationship_kwargs={
+#             "foreign_keys": "ChatRequest.receiver_uuid",
+#         },
+#     )
 
 
-class ChatRequestRead(ChatRequestCreate):
-    """Chat request link read model."""
+# class ChatRequestCreate(ChatRequestBase):
+#     """Chat request link create model."""
 
-    request_date: datetime
-    status: str
+#     requester_uuid: UUID
+#     receiver_uuid: UUID
 
 
-class ChatRequestUpdate(SQLModel):
-    """Chat request link update model."""
+# class ChatRequestRead(ChatRequestCreate):
+#     """Chat request link read model."""
 
-    phone_number: str | None = None
-    content: str | None = None
-    requester_uuid: UUID | None = None
-    receiver_uuid: UUID | None = None
+#     request_date: datetime
+#     status: str
+
+
+# class ChatRequestUpdate(SQLModel):
+#     """Chat request link update model."""
+
+#     phone_number: str | None = None
+#     content: str | None = None
+#     requester_uuid: UUID | None = None
+#     receiver_uuid: UUID | None = None
 
 
 # User
@@ -99,8 +99,8 @@ class UserBase(SQLModel):
 
     profile_picture: str | None = None
     email: str = Field(default=None, max_length=MAX_EMAIL_LENGTH, index=True)
-    first_name: str = Field(default=None, max_length=MAX_FIRST_NAME_LENGTH, index=True)
-    last_name: str = Field(default=None, max_length=MAX_LAST_NAME_LENGTH, index=True)
+    first_name: str | None = Field(default=None, max_length=MAX_FIRST_NAME_LENGTH, index=True)
+    last_name: str | None = Field(default=None, max_length=MAX_LAST_NAME_LENGTH, index=True)
 
     account_view: str = Field(default="profile")
     is_sidebar_open: bool = Field(default=True)
@@ -117,24 +117,24 @@ class User(UserBase, table=True):
     hashed_password: str | None = Field(default=None)
     refresh_token: str | None = Field(default=None)
 
-    requester_links: list["ChatRequest"] = Relationship(
-        back_populates="requester",
-        sa_relationship_kwargs={
-            "foreign_keys": "ChatRequest.requester_uuid",
-            "lazy": "selectin",
-            "cascade": "all, delete",
-            "overlaps": "receiver_links",
-        },
-    )
-    receiver_links: list["ChatRequest"] = Relationship(
-        back_populates="receiver",
-        sa_relationship_kwargs={
-            "foreign_keys": "ChatRequest.receiver_uuid",
-            "lazy": "selectin",
-            "cascade": "all, delete",
-            "overlaps": "requester_links",
-        },
-    )
+    # requester_links: list["ChatRequest"] = Relationship(
+    #     back_populates="requester",
+    #     sa_relationship_kwargs={
+    #         "foreign_keys": "ChatRequest.requester_uuid",
+    #         "lazy": "selectin",
+    #         "cascade": "all, delete",
+    #         "overlaps": "receiver_links",
+    #     },
+    # )
+    # receiver_links: list["ChatRequest"] = Relationship(
+    #     back_populates="receiver",
+    #     sa_relationship_kwargs={
+    #         "foreign_keys": "ChatRequest.receiver_uuid",
+    #         "lazy": "selectin",
+    #         "cascade": "all, delete",
+    #         "overlaps": "requester_links",
+    #     },
+    # )
 
 
 class UserCreate(UserBase):
@@ -149,8 +149,8 @@ class UserRead(UserBase):
     """User read model."""
 
     uuid: UUID
-    requester_links: list[ChatRequestRead] = []
-    receiver_links: list[ChatRequestRead] = []
+    # requester_links: list[ChatRequestRead] = []
+    # receiver_links: list[ChatRequestRead] = []
 
 
 class UserUpdate(SQLModel):

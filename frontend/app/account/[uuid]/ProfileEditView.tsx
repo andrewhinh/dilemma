@@ -266,38 +266,40 @@ function EditView({ show }: { show: boolean }) {
           <p className="text-rose-500">{updateEmailErrorMsg}</p>
         )}
       </Form>
-      <Form onSubmit={(e) => handleUpdatePassword(e)}>
-        <div className="flex flex-col gap-4 w-48 md:w-60">
-          <div className="flex flex-col gap-2">
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              placeholder="New Password"
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <Input
-              id="confirmPassword"
-              type="password"
-              value={confirmPassword}
-              placeholder="Confirm Password"
-              onChange={(e) => setConfirmPassword(e.target.value)}
-            />
+      {provider === "dilemma" && (
+        <Form onSubmit={(e) => handleUpdatePassword(e)}>
+          <div className="flex flex-col gap-4 w-48 md:w-60">
+            <div className="flex flex-col gap-2">
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                placeholder="New Password"
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                placeholder="Confirm Password"
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+            <FormButton>
+              <Image
+                src={buttonLoading}
+                className={`w-6 h-6 ${pwdLoading ? "block" : "hidden"}`}
+                alt="Update"
+              />
+              <p className={`${pwdLoading ? "hidden" : "block"}`}>
+                Update Password
+              </p>
+            </FormButton>
           </div>
-          <FormButton>
-            <Image
-              src={buttonLoading}
-              className={`w-6 h-6 ${pwdLoading ? "block" : "hidden"}`}
-              alt="Update"
-            />
-            <p className={`${pwdLoading ? "hidden" : "block"}`}>
-              Update Password
-            </p>
-          </FormButton>
-        </div>
-        {pwdErrorMsg && <p className="text-rose-500">{pwdErrorMsg}</p>}
-        {pwdSuccessMsg && <p className="text-cyan-500">{pwdSuccessMsg}</p>}
-      </Form>
+          {pwdErrorMsg && <p className="text-rose-500">{pwdErrorMsg}</p>}
+          {pwdSuccessMsg && <p className="text-cyan-500">{pwdSuccessMsg}</p>}
+        </Form>
+      )}
       <Form onSubmit={(e) => handleDeleteAccount(e)}>
         <div className="flex flex-col gap-4 w-48 md:w-60">
           <div className="flex flex-col gap-2">

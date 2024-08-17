@@ -20,8 +20,8 @@ import ProfileEditView from "./ProfileEditView";
 import pageLoading from "@/public/page-loading.svg";
 import profile from "@/public/profile.svg";
 import profileEdit from "@/public/profile-edit.svg";
-import friends from "@/public/friends.svg";
-import friendRequests from "@/public/friend-requests.svg";
+import chats from "@/public/chats.svg";
+import chatRequests from "@/public/chat-requests.svg";
 import leftArrow from "@/public/left-arrow.svg";
 import rightArrow from "@/public/right-arrow.svg";
 import upArrow from "@/public/up-arrow.svg";
@@ -37,11 +37,10 @@ function Account() {
   const getUser = useGetUser();
   const updateUser = useUpdateUser();
 
-  const { getUserInfo, accountView, isSideBarOpen, uuid } = constState;
+  const { getUserInfo, account_view, is_sidebar_open, uuid } = constState;
   const [profileHover, setProfileHover] = useState(false);
   const [profileEditHover, setProfileEditHover] = useState(false);
-  const [friendHover, setFriendHover] = useState(false);
-  const [friendRequestHover, setFriendRequestHover] = useState(false);
+  const [chatRequestHover, setChatRequestHover] = useState(false);
   const [sidebarHover, setSidebarHover] = useState(false);
 
   useAuthEffect({
@@ -62,7 +61,7 @@ function Account() {
     <div className="flex flex-col md:flex-row flex-1">
       <div
         className={`p-2 gap-2 md:gap-4 md:p-4 flex flex-col items-center justify-top bg-slate-300 ${
-          isSideBarOpen ? "min-w-min" : "hidden"
+          is_sidebar_open ? "min-w-min" : "hidden"
         }`}
       >
         <div
@@ -91,7 +90,7 @@ function Account() {
                 });
               }}
               className={`relative w-full px-4 py-2 ${
-                accountView === "profile" && "bg-zinc-500"
+                account_view === "profile" && "bg-zinc-500"
               }`}
             >
               <Image src={profile} className="w-6 h-6" alt="Your Profile" />
@@ -130,7 +129,7 @@ function Account() {
                 });
               }}
               className={`w-full px-4 py-2 ${
-                accountView === "profile-edit" && "bg-zinc-500"
+                account_view === "profile-edit" && "bg-zinc-500"
               }`}
             >
               <Image src={profileEdit} className="w-6 h-6" alt="Edit Profile" />
@@ -143,14 +142,14 @@ function Account() {
             />
           )}
         </div>
-        <div
+        {/* <div
           className="relative w-full"
-          onMouseEnter={() => setFriendHover(true)}
-          onMouseLeave={() => setFriendHover(false)}
+          onMouseEnter={() => setChatRequestHover(true)}
+          onMouseLeave={() => setChatRequestHover(false)}
         >
           <Form
             onSubmit={(e) => {
-              let value = "friends";
+              let value = "chat_requests";
               constDispatch({
                 type: "SET_ACCOUNT_VIEW",
                 payload: value,
@@ -169,62 +168,23 @@ function Account() {
                 });
               }}
               className={`w-full px-4 py-2 ${
-                accountView === "friends" && "bg-zinc-500"
-              }`}
-            >
-              <Image src={friends} className="w-6 h-6" alt="Your Friends" />
-            </Button>
-          </Form>
-          {friendHover && (
-            <Tooltip
-              message="Your Friends"
-              className="hidden md:block left-16 top-1/4"
-            />
-          )}
-        </div>
-        <div
-          className="relative w-full"
-          onMouseEnter={() => setFriendRequestHover(true)}
-          onMouseLeave={() => setFriendRequestHover(false)}
-        >
-          <Form
-            onSubmit={(e) => {
-              let value = "friend_requests";
-              constDispatch({
-                type: "SET_ACCOUNT_VIEW",
-                payload: value,
-              });
-              updateUser(e, {
-                account_view: value,
-              });
-            }}
-          >
-            <Button
-              type="submit"
-              onClick={() => {
-                accountDispatch({
-                  type: "SET_CAN_UPDATE_USER",
-                  payload: true,
-                });
-              }}
-              className={`w-full px-4 py-2 ${
-                accountView === "friend_requests" && "bg-zinc-500"
+                account_view === "chat_requests" && "bg-zinc-500"
               }`}
             >
               <Image
-                src={friendRequests}
+                src={chatRequests}
                 className="w-6 h-6"
-                alt="Add Friends"
+                alt="Manage Chat Requests"
               />
             </Button>
           </Form>
-          {friendRequestHover && (
+          {chatRequestHover && (
             <Tooltip
-              message="Add Friends"
+              message="Manage Chat Requests"
               className="hidden md:block left-16 top-1/4"
             />
           )}
-        </div>
+        </div> */}
       </div>
       <div className="relative flex flex-col md:flex-row flex-1">
         <div
@@ -234,7 +194,7 @@ function Account() {
           <Form
             className="w-full"
             onSubmit={(e) => {
-              let value = !isSideBarOpen;
+              let value = !is_sidebar_open;
               constDispatch({
                 type: "SET_IS_SIDEBAR_OPEN",
                 payload: value,
@@ -254,7 +214,7 @@ function Account() {
               }}
               className="bg-transparent top-2 md:top-1/2 md:left-5 absolute z-10"
             >
-              <div className={isSideBarOpen ? "block" : "hidden"}>
+              <div className={is_sidebar_open ? "block" : "hidden"}>
                 <Image
                   className="hidden md:block w-6 h-6"
                   src={leftArrow}
@@ -266,7 +226,7 @@ function Account() {
                   alt="Close Sidebar"
                 />
               </div>
-              <div className={isSideBarOpen ? "hidden" : "block"}>
+              <div className={is_sidebar_open ? "hidden" : "block"}>
                 <Image
                   className="hidden md:block w-6 h-6"
                   src={rightArrow}
@@ -282,22 +242,21 @@ function Account() {
           </Form>
           {sidebarHover && (
             <Tooltip
-              message={isSideBarOpen ? "Close Sidebar" : "Open Sidebar"}
+              message={is_sidebar_open ? "Close Sidebar" : "Open Sidebar"}
               className="hidden md:block top-2 md:top-1/2 md:left-14 absolute z-10"
             />
           )}
         </div>
-        <Main className={`relative z-0 ${accountView === "" ? "" : "hidden"}`}>
+        <Main className={`relative z-0 ${account_view === "" ? "" : "hidden"}`}>
           <Image
             src={pageLoading}
             alt="Loading"
             className="w-24 md:w-48 object-contain"
           />
         </Main>
-        <ProfileView show={accountView === "profile"} />
-        <ProfileEditView show={accountView === "profile-edit"} />
-        {/* <FriendsView show={accountView === "friends"} />
-        <FriendRequests show={accountView === "friend_requests"} /> */}
+        <ProfileView show={account_view === "profile"} />
+        <ProfileEditView show={account_view === "profile-edit"} />
+        {/* <ChatRequests show={account_view === "chat_requests"} /> */}
       </div>
     </div>
   );

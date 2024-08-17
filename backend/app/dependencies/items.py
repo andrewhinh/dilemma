@@ -9,10 +9,10 @@ from contextlib import contextmanager
 from datetime import datetime
 
 import dspy
+import pandas as pd
 from dsp.utils import deduplicate
 from homeharvest import scrape_property
 from pydantic import BaseModel, Field
-from sqlmodel import Session, select
 
 from app.config import get_settings
 from app.models.items import Property, SearchRequest, SearchResult
@@ -52,27 +52,8 @@ def time_limit(seconds):
         signal.alarm(0)
 
 
-# Get property
-def get_property(
-    session: Session,
-    street: str | None = None,
-    unit: str | None = None,
-    city: str | None = None,
-    state: str | None = None,
-    zip_code: str | None = None,
-) -> Property:
-    return session.exec(
-        select(Property)
-        .where(Property.street == street)
-        .where(Property.unit == unit)
-        .where(Property.city == city)
-        .where(Property.state == state)
-        .where(Property.zip_code == zip_code)
-    ).first()
-
-
 # Search properties
-def search_properties(session: Session, request: SearchRequest) -> SearchResult:
+def search_properties(request: SearchRequest) -> SearchResult:
     """Search properties."""
     properties = scrape_property(
         location=request.location,
@@ -87,156 +68,72 @@ def search_properties(session: Session, request: SearchRequest) -> SearchResult:
 
     list_properties = []
     for _, row in properties.iterrows():
-        property = get_property(
-            session,
-            street=row["street"],
-            unit=row["unit"],
-            city=row["city"],
-            state=row["state"],
-            zip_code=row["zip_code"],
-        )
-        if property:
-            property.property_url = row["property_url"] if "property_url" in row else property.url
-            property.mls = row["mls"] if "mls" in row else property.mls
-            property.mls_id = row["mls_id"] if "mls_id" in row else property.mls_id
-            property.status = row["status"] if "status" in row else property.status
-            property.street = row["street"] if "street" in row else property.street
-            property.unit = row["unit"] if "unit" in row else property.unit
-            property.city = row["city"] if "city" in row else property.city
-            property.state = row["state"] if "state" in row else property.state
-            property.zip_code = row["zip_code"] if "zip_code" in row else property.zip_code
-            property.style = row["style"].name if "style" in row else property.style
-            property.beds = row["beds"] if "beds" in row else property.beds
-            property.full_baths = row["full_baths"] if "full_baths" in row else property.full_baths
-            property.half_baths = row["half_baths"] if "half_baths" in row else property.half_baths
-            property.sqft = row["sqft"] if "sqft" in row else property.sqft
-            property.year_built = row["year_built"] if "year_built" in row else property.year_built
-            property.stories = row["stories"] if "stories" in row else property.stories
-            property.lot_sqft = row["lot_sqft"] if "lot_sqft" in row else property.lot_sqft
-            property.days_on_mls = row["days_on_mls"] if "days_on_mls" in row else property.days_on_mls
-            property.list_price = (
-                row["list_price"]
-                if "list_price" in row
-                and row["list_price"] is not None
-                and not math.isinf(row["list_price"])
-                and not math.isnan(row["list_price"])
-                else property.list_price
-            )
-            property.list_date = row["list_date"] if "list_date" in row else property.list_date
-            property.pending_date = row["pending_date"] if "pending_date" in row else property.pending_date
-            property.sold_price = (
-                row["sold_price"]
-                if "sold_price" in row
-                and row["sold_price"] is not None
-                and not math.isinf(row["sold_price"])
-                and not math.isnan(row["sold_price"])
-                else property.sold_price
-            )
-            property.last_sold_date = row["last_sold_date"] if "last_sold_date" in row else property.last_sold_date
-            property.price_per_sqft = (
-                row["price_per_sqft"]
-                if "price_per_sqft" in row
-                and row["price_per_sqft"] is not None
-                and not math.isinf(row["price_per_sqft"])
-                and not math.isnan(row["price_per_sqft"])
-                else property.price_per_sqft
-            )
-            property.hoa_fee = (
-                row["hoa_fee"]
-                if "hoa_fee" in row
-                and row["hoa_fee"] is not None
-                and not math.isinf(row["hoa_fee"])
-                and not math.isnan(row["hoa_fee"])
-                else property.hoa_fee
-            )
-            property.latitude = (
-                row["latitude"]
-                if "latitude" in row
-                and row["latitude"] is not None
-                and not math.isinf(row["latitude"])
-                and not math.isnan(row["latitude"])
-                else property.latitude
-            )
-            property.longitude = (
-                row["longitude"]
-                if "longitude" in row
-                and row["longitude"] is not None
-                and not math.isinf(row["longitude"])
-                and not math.isnan(row["longitude"])
-                else property.longitude
-            )
-            property.parking_garage = row["parking_garage"] if "parking_garage" in row else property.parking_garage
-            property.primary_photo = row["primary_photo"] if "primary_photo" in row else property.primary_photo
-            property.alt_photos = list(row["alt_photos"].split(",")) if "alt_photos" in row else property.alt_photos
-            property.neighborhoods = row["neighborhoods"] if "neighborhoods" in row else property.neighborhoods
-        else:
-            property = Property(
-                property_url=row["property_url"] if "property_url" in row else None,
-                mls=row["mls"] if "mls" in row else None,
-                mls_id=row["mls_id"] if "mls_id" in row else None,
-                status=row["status"] if "status" in row else None,
-                street=row["street"] if "street" in row else None,
-                unit=row["unit"] if "unit" in row else None,
-                city=row["city"] if "city" in row else None,
-                state=row["state"] if "state" in row else None,
-                zip_code=row["zip_code"] if "zip_code" in row else None,
-                style=row["style"].name if "style" in row else None,
-                beds=row["beds"] if "beds" in row else None,
-                full_baths=row["full_baths"] if "full_baths" in row else None,
-                half_baths=row["half_baths"] if "half_baths" in row else None,
-                sqft=row["sqft"] if "sqft" in row else None,
-                year_built=row["year_built"] if "year_built" in row else None,
-                stories=row["stories"] if "stories" in row else None,
-                lot_sqft=row["lot_sqft"] if "lot_sqft" in row else None,
-                days_on_mls=row["days_on_mls"] if "days_on_mls" in row else None,
+        list_properties.append(
+            Property(
+                property_url=row["property_url"]
+                if "property_url" in row and not pd.isna(row["property_url"])
+                else None,
+                mls=row["mls"] if "mls" in row and not pd.isna(row["mls"]) else None,
+                mls_id=row["mls_id"] if "mls_id" in row and not pd.isna(row["mls_id"]) else None,
+                status=row["status"] if "status" in row and not pd.isna(row["status"]) else None,
+                street=row["street"] if "street" in row and not pd.isna(row["street"]) else None,
+                unit=row["unit"] if "unit" in row and not pd.isna(row["unit"]) else None,
+                city=row["city"] if "city" in row and not pd.isna(row["city"]) else None,
+                state=row["state"] if "state" in row and not pd.isna(row["state"]) else None,
+                zip_code=row["zip_code"] if "zip_code" in row and not pd.isna(row["zip_code"]) else None,
+                style=row["style"] if "style" in row and not pd.isna(row["style"]) else None,
+                beds=row["beds"] if "beds" in row and not pd.isna(row["beds"]) else None,
+                full_baths=row["full_baths"] if "full_baths" in row and not pd.isna(row["full_baths"]) else None,
+                half_baths=row["half_baths"] if "half_baths" in row and not pd.isna(row["half_baths"]) else None,
+                sqft=row["sqft"] if "sqft" in row and not pd.isna(row["sqft"]) else None,
+                year_built=row["year_built"] if "year_built" in row and not pd.isna(row["year_built"]) else None,
+                stories=row["stories"] if "stories" in row and not pd.isna(row["stories"]) else None,
+                lot_sqft=row["lot_sqft"] if "lot_sqft" in row and not pd.isna(row["lot_sqft"]) else None,
+                days_on_mls=row["days_on_mls"] if "days_on_mls" in row and not pd.isna(row["days_on_mls"]) else None,
                 list_price=row["list_price"]
-                if "list_price" in row
-                and row["list_price"] is not None
-                and not math.isinf(row["list_price"])
-                and not math.isnan(row["list_price"])
+                if "list_price" in row and not pd.isna(row["list_price"]) and not math.isinf(row["list_price"])
                 else None,
-                list_date=row["list_date"] if "list_date" in row else None,
-                pending_date=row["pending_date"] if "pending_date" in row else None,
+                list_date=row["list_date"] if "list_date" in row and not pd.isna(row["list_date"]) else None,
+                pending_date=row["pending_date"]
+                if "pending_date" in row and not pd.isna(row["pending_date"])
+                else None,
                 sold_price=row["sold_price"]
-                if "sold_price" in row
-                and row["sold_price"] is not None
-                and not math.isinf(row["sold_price"])
-                and not math.isnan(row["sold_price"])
+                if "sold_price" in row and not pd.isna(row["sold_price"]) and not math.isinf(row["sold_price"])
                 else None,
-                last_sold_date=row["last_sold_date"] if "last_sold_date" in row else None,
+                last_sold_date=row["last_sold_date"]
+                if "last_sold_date" in row and not pd.isna(row["last_sold_date"])
+                else None,
                 price_per_sqft=row["price_per_sqft"]
                 if "price_per_sqft" in row
-                and row["price_per_sqft"] is not None
+                and not pd.isna(row["price_per_sqft"])
                 and not math.isinf(row["price_per_sqft"])
-                and not math.isnan(row["price_per_sqft"])
                 else None,
                 hoa_fee=row["hoa_fee"]
-                if "hoa_fee" in row
-                and row["hoa_fee"] is not None
-                and not math.isinf(row["hoa_fee"])
-                and not math.isnan(row["hoa_fee"])
+                if "hoa_fee" in row and not pd.isna(row["hoa_fee"]) and not math.isinf(row["hoa_fee"])
                 else None,
                 latitude=row["latitude"]
-                if "latitude" in row
-                and row["latitude"] is not None
-                and not math.isinf(row["latitude"])
-                and not math.isnan(row["latitude"])
+                if "latitude" in row and not pd.isna(row["latitude"]) and not math.isinf(row["latitude"])
                 else None,
                 longitude=row["longitude"]
-                if "longitude" in row
-                and row["longitude"] is not None
-                and not math.isinf(row["longitude"])
-                and not math.isnan(row["longitude"])
+                if "longitude" in row and not pd.isna(row["longitude"]) and not math.isinf(row["longitude"])
                 else None,
-                parking_garage=row["parking_garage"] if "parking_garage" in row else None,
-                primary_photo=row["primary_photo"] if "primary_photo" in row else None,
-                alt_photos=list(row["alt_photos"].split(",")) if "alt_photos" in row else [],
-                neighborhoods=row["neighborhoods"] if "neighborhoods" in row else None,
+                parking_garage=row["parking_garage"]
+                if "parking_garage" in row and not pd.isna(row["parking_garage"])
+                else None,
+                primary_photo=row["primary_photo"]
+                if "primary_photo" in row and not pd.isna(row["primary_photo"])
+                else None,
+                alt_photos=list(row["alt_photos"].split(","))
+                if "alt_photos" in row and not pd.isna(row["alt_photos"])
+                else [],
+                neighborhoods=row["neighborhoods"]
+                if "neighborhoods" in row and not pd.isna(row["neighborhoods"])
+                else None,
             )
-        list_properties.append(property)
+        )
 
-    lats = [property.latitude for property in list_properties if property.latitude]
-    longs = [property.longitude for property in list_properties if property.longitude]
+    lats = [p.latitude for p in list_properties if p.latitude]
+    longs = [p.longitude for p in list_properties if p.longitude]
 
     search_result = SearchResult(
         popups=random.sample(range(len(list_properties)), min(len(list_properties), DEFAULT_MAX_POPUPS))
@@ -244,12 +141,8 @@ def search_properties(session: Session, request: SearchRequest) -> SearchResult:
         else [],
         center_lat=sum(lats) / len(lats) if lats else None,
         center_long=sum(longs) / len(longs) if longs else None,
-        search_request=request,
         properties=list_properties,
     )
-    session.add(search_result)
-    session.commit()
-    session.refresh(search_result)
     return search_result
 
 

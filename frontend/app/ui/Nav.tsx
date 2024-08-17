@@ -25,7 +25,7 @@ function Nav({ children }: { children: ReactNode }) {
   });
 
   return (
-    <nav className="p-4 bg-cyan-200 text-zinc-500 flex">
+    <nav className="h-20 p-4 bg-cyan-200 text-zinc-500 flex">
       <div className="flex flex-1 justify-start md:pl-2">
         <Link
           href={homeLink}
@@ -41,7 +41,6 @@ function Nav({ children }: { children: ReactNode }) {
 
 function LoggedOutNav({ showLogin = true, showSignUp = true }) {
   const router = useRouter();
-  const both = showLogin && showSignUp;
 
   return (
     <Nav>
@@ -51,7 +50,7 @@ function LoggedOutNav({ showLogin = true, showSignUp = true }) {
             onClick={() => {
               router.push("/login");
             }}
-            className={`p-2 ${both ? "max-w-28" : "max-w-20"}`}
+            className="p-2 whitespace-nowrap w-24"
           >
             <p>Login</p>
           </Button>
@@ -61,9 +60,7 @@ function LoggedOutNav({ showLogin = true, showSignUp = true }) {
             onClick={() => {
               router.push("/signup");
             }}
-            className={`p-2 whitespace-nowrap ${
-              both ? "max-w-28" : "max-w-20"
-            }`}
+            className="p-2 whitespace-nowrap w-24"
           >
             <p>Sign Up</p>
           </Button>
@@ -94,22 +91,18 @@ function LoggedInNav() {
   return (
     <Nav>
       <div
-        onMouseLeave={() => setShowDropdown(false)}
         className="relative flex flex-1 justify-end md:pr-2"
+        onClick={() => {
+          setShowDropdown(!showDropdown);
+        }}
       >
-        <div
-          onMouseEnter={() => {
-            setShowDropdown(!showDropdown);
-          }}
-        >
-          <Image
-            src={profile_picture || profileOutline}
-            alt="Account Link"
-            width={40}
-            height={40}
-            className="rounded-full object-contain"
-          />
-        </div>
+        <Image
+          src={profile_picture || profileOutline}
+          alt="Account Link"
+          width={40}
+          height={40}
+          className="h-10 rounded-full object-contain cursor-pointer"
+        />
         {showDropdown && (
           <Dropdown className="z-20 top-10 right-0">
             <Button
@@ -156,7 +149,7 @@ function AuthNav() {
     <>
       {route === "login" && <LoggedOutNav showLogin={false} />}
       {route === "signup" && <LoggedOutNav showSignUp={false} />}
-      {route === "reset-password" && <LoggedOutNav showLogin={false} />}
+      {route === "reset-password" && <LoggedOutNav />}
     </>
   );
 }

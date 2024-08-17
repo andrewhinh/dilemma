@@ -53,7 +53,7 @@ const useLogOut = () => {
           payload: false,
         });
         setUser({
-          join_date: "",
+          join_date: new Date(),
           provider: "",
           profile_picture: "",
           email: "",

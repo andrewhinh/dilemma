@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: "%s | Dilemma",
     default: "Dilemma",
   },
-  description: "Manage real estate easily.",
+  description: "Real estate website demo.",
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || ""),
 };
 

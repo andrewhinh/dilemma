@@ -18,6 +18,8 @@ interface State {
   acceptRequestLoading: boolean;
   declineRequestErrorMsg: string;
   declineRequestLoading: boolean;
+  deleteChatErrorMsg: string;
+  deleteChatLoading: boolean;
 }
 
 const initialState: State = {
@@ -30,6 +32,8 @@ const initialState: State = {
   acceptRequestLoading: false,
   declineRequestErrorMsg: "",
   declineRequestLoading: false,
+  deleteChatErrorMsg: "",
+  deleteChatLoading: false,
 };
 
 interface AccountContextType {
@@ -62,6 +66,10 @@ const reducer = (state: State, action: Action) => {
       return { ...state, declineRequestErrorMsg: action.payload };
     case "SET_DECLINE_REQUEST_LOADING":
       return { ...state, declineRequestLoading: action.payload };
+    case "SET_DELETE_CHAT_ERROR_MSG":
+      return { ...state, deleteChatErrorMsg: action.payload };
+    case "SET_DELETE_CHAT_LOADING":
+      return { ...state, deleteChatLoading: action.payload };
     default:
       return state;
   }
