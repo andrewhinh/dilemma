@@ -1,6 +1,6 @@
 # Dilemma
 
-Real estate website demo to better understand React, Next.js, and FastAPI.
+Real estate website demo to better understand React, Next.js, Tailwind CSS, PostgreSQL, and FastAPI.
 
 ## Contributing
 
