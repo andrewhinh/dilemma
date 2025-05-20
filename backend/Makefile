@@ -17,11 +17,6 @@ setup:
 	pre-commit install
 	export PYTHONPATH=.
 	echo "export PYTHONPATH=.:$PYTHONPATH" >> ~/.bashrc
-	mkcert -install
-	mkcert localhost 127.0.0.1 ::1
-	mkdir -p certificates
-	mv localhost+2-key.pem certificates/localhost+2-key.pem
-	mv localhost+2.pem certificates/localhost+2.pem
 
 # Generate migration script
 script:
@@ -40,6 +35,8 @@ compile:
 	python scripts/compile.py
 
 # Run app
+# For local development, the backend runs over HTTP.
+# For production, HTTPS should be handled by a reverse proxy.
 dev:
 	sudo -u postgres psql -c "SELECT 1 FROM pg_database WHERE datname = 'dilemma'" | grep -q 1 || sudo -u postgres createdb dilemma; python app/main.py
 

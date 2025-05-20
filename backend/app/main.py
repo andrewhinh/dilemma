@@ -52,8 +52,6 @@ def main():
     uvicorn.run(
         "app.main:app",
         reload=True,
-        ssl_keyfile="./certificates/localhost+2-key.pem",
-        ssl_certfile="./certificates/localhost+2.pem",
     )
 
 

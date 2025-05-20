@@ -29,9 +29,19 @@ Set up the conda environment:
    make setup
    ```
 
-Create a `.env` (+ `.env.development` + `.env.production`):
+Create your environment configuration files (e.g., `.env`, `.env.development`, `.env.production`).
 
+Start by copying the example file for your base `.env` configuration:
 ```bash
+cp .env.example .env
+```
+Then, edit the `.env` file to set your specific values for all variables.
+
+For other environments like development or production, you can create `.env.development` and `.env.production` files. You can copy your configured `.env` or the `.env.example` as a starting point and then customize the values as needed for each specific environment.
+
+The following is an example of how you might set variables, but it's recommended to manage these in your actual `.env` files:
+```bash
+# Example:
 # Get your SMTP_SSL_PASSWORD: https://myaccount.google.com/apppasswords
 # Get your GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET: https://console.cloud.google.com/apis/credentials
 # Get your OpenAI API key: https://platform.openai.com/signup
@@ -54,33 +64,15 @@ SMTP_SSL_PASSWORD=<your password here>
 FRONTEND_URL=<frontend URL here>
 GOOGLE_CLIENT_ID=<your client ID here>
 GOOGLE_CLIENT_SECRET=<your client secret here>
-GOOGLE_REDIRECT_URI=${FRONTEND_URL}/home
+GOOGLE_REDIRECT_URI=${FRONTEND_URL}/home # Or your specific callback URL
 OPENAI_API_KEY=<your key here>
 
-cat <<EOF > .env.test
-API_URL=$API_URL
-API_KEY=$API_KEY
-DB_ECHO=$DB_ECHO
-POSTGRES_SERVER=$POSTGRES_SERVER
-POSTGRES_USER=$POSTGRES_USER
-POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-POSTGRES_DB=$POSTGRES_DB
-JWT_SECRET=$JWT_SECRET
-ACCESS_TOKEN_EXPIRE_MINUTES=$ACCESS_TOKEN_EXPIRE_MINUTES
-REFRESH_TOKEN_EXPIRE_MINUTES=$REFRESH_TOKEN_EXPIRE_MINUTES
-VERIFY_CODE_EXPIRE_MINUTES=$VERIFY_CODE_EXPIRE_MINUTES
-RECOVERY_CODE_EXPIRE_MINUTES=$RECOVERY_CODE_EXPIRE_MINUTES
-SMTP_SSL_HOST=$SMTP_SSL_HOST
-SMTP_SSL_PORT=$SMTP_SSL_PORT
-SMTP_SSL_SENDER=$SMTP_SSL_SENDER
-SMTP_SSL_LOGIN=$SMTP_SSL_LOGIN
-SMTP_SSL_PASSWORD=$SMTP_SSL_PASSWORD
-FRONTEND_URL=$FRONTEND_URL
-GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
-GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET
-GOOGLE_REDIRECT_URI=$GOOGLE_REDIRECT_URI
-OPENAI_API_KEY=$OPENAI_API_KEY
-EOF
+# Note: The script below for .env.test is illustrative. 
+# You should create and manage your .env.test file with appropriate test-specific values,
+# potentially by copying .env.example and adjusting for your testing environment.
+# cat <<EOF > .env.test
+# ... (variables as above) ...
+# EOF
 ```
 
 ## Development
@@ -110,6 +102,8 @@ make dev
 ```
 
 To build the backend Docker image:
+
+The `Makefile` targets for building Docker images (e.g., `make build-dev`, `make build-prod`) use a Docker build argument `ENV_FILE` to specify which environment configuration file (e.g., `.env.development`, `.env.production`) is copied into the Docker image as `.env`. This allows you to build images tailored for different environments.
 
 - Local:
 

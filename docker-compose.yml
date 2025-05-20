@@ -1,0 +1,52 @@
+version: '3.8'
+
+networks:
+  app-network:
+    driver: bridge
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        ENV_FILE: .env.development # Specifies which .env file inside ./backend to use as .env in the image
+    env_file:
+      - ./backend/.env.development # Makes variables available at runtime and for build arg substitution if Dockerfile used them
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/repo # For local development, reflects code changes if backend supports hot-reloading
+    networks:
+      - app-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # These ARGs are expected by the frontend/Dockerfile
+        # Their values will be sourced from the env_file below by Docker Compose
+        # Ensure these variable names match those in frontend/.env.local.development
+        - NEXT_PUBLIC_APP_URL
+        - NEXT_PUBLIC_SUPPORT_EMAIL
+        - API_URL # Used for build-time rendering of server components if any access API
+        - API_PORT
+        - API_KEY # Used for build-time rendering and/or embedding in client bundle if not careful (should be for server components)
+    env_file:
+      - ./frontend/.env.local.development # Primary source of env vars for build ARGs and runtime
+    environment:
+      # Explicitly set runtime environment variables.
+      # These override values from env_file for the runtime container environment if names clash.
+      NODE_ENV: production # Ensures Next.js runs in production mode
+      API_URL: http://backend:8000 # CRITICAL: Ensures frontend at runtime uses Docker service discovery for backend
+      # API_KEY and API_PORT will be available from env_file if defined there and used by frontend Dockerfile's runtime ENV instructions
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app # For local development, enables hot-reloading
+      - /app/node_modules # Isolates container node_modules from host to prevent conflicts
+    depends_on:
+      - backend
+    networks:
+      - app-network

@@ -22,4 +22,4 @@ ARG ENV_FILE
 COPY $ENV_FILE .env
 
 # Use docker run -it --rm to run the web server
-ENTRYPOINT ["gunicorn", "app.main:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0"]
+ENTRYPOINT ["gunicorn", "app.main:app", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]

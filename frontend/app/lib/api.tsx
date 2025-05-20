@@ -10,12 +10,6 @@ import { cookies } from "next/headers";
 const removeTrailingSlash = (url: string | undefined) =>
   url ? url.replace(/\/$/, "") : "";
 
-// const websocketUrlBase = `wss://${removeProtocol(
-//   removeTrailingSlash(process.env.API_URL)
-// )}`;
-// const websocketUrlPort = process.env.API_PORT ? `:${process.env.API_PORT}` : "";
-// const websocketURL = `${websocketUrlBase}${websocketUrlPort}`;
-
 // Only add port for localhost
 const apiUrlBase = removeTrailingSlash(process.env.API_URL);
 const apiUrlPort = process.env.API_PORT ? `:${process.env.API_PORT}` : "";
@@ -121,4 +115,4 @@ const sendRequest = async (route: string, method: string, data: any = null) => {
 //   };
 // };
 
-export { sendRequest };  //, sendWebsocket };
+export { sendRequest };
